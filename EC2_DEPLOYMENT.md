@@ -6,7 +6,7 @@ operations.
 
 The app is fully self-hosted: Node.js + MySQL 8 + nginx on Ubuntu 24.04, with
 file storage on S3 and optional PayFast/Stripe payments. There are no external
-SaaS dependencies — it does not need Manus or any other service provider.
+SaaS dependencies.
 
 ---
 

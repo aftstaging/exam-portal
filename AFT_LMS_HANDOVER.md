@@ -4,7 +4,7 @@
 
 This repository contains the **Accountants for Tomorrow (AFT) Learning Management and Examination Portal**. It is a Node.js full-stack application for professional accounting exam preparation. The current product combines a public mock-exam catalogue, Case Study simulations, CIMAStudy-inspired Objective tests, a learner dashboard, instructor marking workflows, admin content management, protected resources, generated printable exams, and payment infrastructure.
 
-The application is fully self-hosted — it does not depend on any external SaaS provider (no Manus dependency). It runs on Node.js with pnpm, stores files on AWS S3, and authenticates locally with signed session cookies. Deployment targets a single Ubuntu EC2 instance (see `EC2_DEPLOYMENT.md` and `DEPLOY_EC2.md`).
+The application is fully self-hosted and does not depend on any external SaaS provider. It runs on Node.js with pnpm, stores files on AWS S3, and authenticates locally with signed session cookies. Deployment targets a single Ubuntu EC2 instance (see `EC2_DEPLOYMENT.md` and `DEPLOY_EC2.md`).
 
 > Important current state: all published Case Study and Objective test products have temporarily been set to `priceCents = 0`, so they show **Start exam** / free-enrollment actions. The instructor-marking add-on remains paid. PayFast checkout and the admin pricing controls remain implemented for future reactivation.
 

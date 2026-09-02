@@ -1,6 +1,6 @@
 # EC2 Deployment Guide — AFT Learning Portal
 
-The app is fully self-hosted (local auth, AWS S3 storage, no Manus dependencies).
+The app is fully self-hosted (local auth, AWS S3 storage).
 Deploy on a single Ubuntu 24.04 EC2 instance behind nginx.
 
 ## 1. Provision the instance
