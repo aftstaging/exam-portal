@@ -3,7 +3,7 @@
 - [x] Apply the official Accountants for Tomorrow visual identity with deep navy navigation, vivid green actions, pale mint exam surfaces, and no chat, Teams, or support overlays.
 - [x] Build the public portal homepage with course and exam discovery plus authentication entry points.
 - [x] Build public course, qualification, mock-exam, study-resource, and product discovery views.
-- [x] Build authentication entry points and protected student account routing using the existing Manus OAuth flow.
+- [x] Build authentication entry points and protected student account routing using local signed-session auth.
 - [x] Build the student dashboard for owned products, progress, saved attempts, resume actions, and account information.
 - [x] Extend the database schema for qualifications, levels, products, entitlements, resources, mock exams, case-study sections, attempts, answers, submissions, objective-test questions, feedback, marking, notifications, and audit events.
 - [x] Add database helpers and typed tRPC procedures for catalogue, dashboard, exam, resource, marking, and administration workflows.

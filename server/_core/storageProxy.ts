@@ -2,13 +2,6 @@ import type { Express } from "express";
 import { storageGetSignedUrl } from "../storage";
 
 export function registerStorageProxy(app: Express) {
-  // Legacy route: rows seeded before self-hosting may carry /manus-storage/...
-  // URLs. Redirect them to the new /storage/* prefix so stored fileUrls keep
-  // working, then fall through to the live handler below.
-  app.get("/manus-storage/:key(*)", (req, res) => {
-    res.redirect(308, `/storage/${req.params.key}`);
-  });
-
   app.get("/storage/:key(*)", async (req, res) => {
     const key = req.params.key;
     if (!key) {

@@ -8,7 +8,7 @@ The current browser session is not authenticated: `/dashboard` resolves to the p
 
 ## Latest session status
 
-After the utility refinement checkpoint, the browser again redirected to the Manus sign-in page when attempting to open the preview route. No learner or administrator credentials were supplied, so protected learner-start, signed-download, and admin visibility actions remain pending for a signed-in UAT session. The public imported-store selection path and Cartn Mock Exam 4 debrief path were previously exercised successfully.
+After the utility refinement checkpoint, the browser again redirected to the sign-in page when attempting to open the preview route. No learner or administrator credentials were supplied, so protected learner-start, signed-download, and admin visibility actions remain pending for a signed-in UAT session. The public imported-store selection path and Cartn Mock Exam 4 debrief path were previously exercised successfully.
 
 ## Exam-flow correction QA — 26 August 2026
 

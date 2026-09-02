@@ -72,21 +72,24 @@ INSERT INTO `caseStudySections` (`mockExamId`, `sectionNumber`, `title`, `introd
 SELECT @mb, 4, 'Task 4 — Mock B', '45 minutes. Three sub-tasks weighted 33%, 34%, and 33%. Refer to the protected May & August 2026 question paper for complete case wording.', NULL, NULL, 2700, 30
 WHERE NOT EXISTS (SELECT 1 FROM `caseStudySections` WHERE `mockExamId` = @mb AND `sectionNumber` = 4);
 
+-- Resource rows are created without a file attached. The seed script
+-- (server/scripts/seed-exams.ts) uploads the source PDFs from source-pdfs/ to
+-- the self-hosted S3 storage layer and attaches them to these rows.
 INSERT INTO `resources` (`productId`, `title`, `kind`, `fileKey`, `fileUrl`, `status`)
-SELECT @p3, 'Cartn Mock Exam 3 — Question paper', 'printable_pdf', '/manus-storage/cartn-mock-3-questions_86b5bfd2.pdf', '/manus-storage/cartn-mock-3-questions_86b5bfd2.pdf', 'published'
+SELECT @p3, 'Cartn Mock Exam 3 — Question paper', 'printable_pdf', NULL, NULL, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `resources` WHERE `title` = 'Cartn Mock Exam 3 — Question paper');
 INSERT INTO `resources` (`productId`, `title`, `kind`, `fileKey`, `fileUrl`, `status`)
-SELECT @p3, 'Cartn Mock Exam 3 — Suggested solutions', 'feedback', '/manus-storage/cartn-mock-3-solutions_32e82a35.pdf', '/manus-storage/cartn-mock-3-solutions_32e82a35.pdf', 'published'
+SELECT @p3, 'Cartn Mock Exam 3 — Suggested solutions', 'feedback', NULL, NULL, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `resources` WHERE `title` = 'Cartn Mock Exam 3 — Suggested solutions');
 INSERT INTO `resources` (`productId`, `title`, `kind`, `fileKey`, `fileUrl`, `status`)
-SELECT @p4, 'Cartn Mock Exam 4 — Question paper', 'printable_pdf', '/manus-storage/cartn-mock-4-questions_2482578c.pdf', '/manus-storage/cartn-mock-4-questions_2482578c.pdf', 'published'
+SELECT @p4, 'Cartn Mock Exam 4 — Question paper', 'printable_pdf', NULL, NULL, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `resources` WHERE `title` = 'Cartn Mock Exam 4 — Question paper');
 INSERT INTO `resources` (`productId`, `title`, `kind`, `fileKey`, `fileUrl`, `status`)
-SELECT @p4, 'Cartn Mock Exam 4 — Suggested solutions', 'feedback', '/manus-storage/cartn-mock-4-solutions_fd3050f1.pdf', '/manus-storage/cartn-mock-4-solutions_fd3050f1.pdf', 'published'
+SELECT @p4, 'Cartn Mock Exam 4 — Suggested solutions', 'feedback', NULL, NULL, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `resources` WHERE `title` = 'Cartn Mock Exam 4 — Suggested solutions');
 INSERT INTO `resources` (`productId`, `title`, `kind`, `fileKey`, `fileUrl`, `status`)
-SELECT @pb, 'Mock B — May & August 2026 question paper', 'printable_pdf', '/manus-storage/cima-mock-b-questions_3d75099e.pdf', '/manus-storage/cima-mock-b-questions_3d75099e.pdf', 'published'
+SELECT @pb, 'Mock B — May & August 2026 question paper', 'printable_pdf', NULL, NULL, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `resources` WHERE `title` = 'Mock B — May & August 2026 question paper');
 INSERT INTO `resources` (`productId`, `title`, `kind`, `fileKey`, `fileUrl`, `status`)
-SELECT @pb, 'Mock B — Answers and marking guide', 'feedback', '/manus-storage/cima-mock-b-answers-marking-guide_9a4a66dc.pdf', '/manus-storage/cima-mock-b-answers-marking-guide_9a4a66dc.pdf', 'published'
+SELECT @pb, 'Mock B — Answers and marking guide', 'feedback', NULL, NULL, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `resources` WHERE `title` = 'Mock B — Answers and marking guide');

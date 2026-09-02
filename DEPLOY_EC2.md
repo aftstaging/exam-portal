@@ -87,6 +87,19 @@ sudo systemctl restart aft-portal  # apply .env/build changes
 
 **Releases**: on each deploy re-run `pnpm install --frozen-lockfile=false`, `pnpm exec drizzle-kit migrate` (with `DATABASE_URL` exported), `pnpm build`, then `systemctl restart aft-portal`.
 
+**Load the exams (required once and again after any exam/PDF changes)** — the schema
+migrations do NOT create exam catalogue records or upload PDFs. Run the idempotent
+import script after S3 is configured:
+
+```bash
+cd /opt/aft-learning-portal
+pnpm exec tsx server/scripts/seed-exams.ts
+```
+
+This imports the case-study + objective-test catalogues into MySQL and uploads the
+`source-pdfs/` files to S3, attaching them to the matching protected resources. Safe to
+re-run at any time.
+
 ## Files
 
 - `deploy/setup-ec2.sh` — full provisioning script (steps 3 above).

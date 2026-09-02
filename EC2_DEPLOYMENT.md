@@ -193,6 +193,35 @@ Demo logins (sandbox only, don't use in production):
 
 ---
 
+## 6b. Load the exam catalogue (required — this is what makes exams appear)
+
+The portal has **two parts** for every exam: the catalogue *metadata* in MySQL and
+the source *PDF files* in S3. Neither is created automatically by the schema
+migrations, which is why a freshly deployed portal is empty.
+
+Run the one-shot, idempotent import script **after** S3 is configured in `.env`:
+
+```bash
+cd /opt/aft-learning-portal
+pnpm exec tsx server/scripts/seed-exams.ts
+```
+
+The script:
+1. Imports the case-study catalogue (`drizzle/import-sample-exams.sql`) — 3 products,
+   3 mock exams, 12 sections, 6 protected resources.
+2. Imports the objective-test catalogue (`drizzle/import-objective-tests.sql`) — 3 products,
+   3 mock exams, and a full AFT question bank.
+3. Uploads the source PDFs from `source-pdfs/` to S3 and attaches them to the matching
+   resource rows so learners can actually download the question papers and marking guides.
+
+Every insert is guarded by `WHERE NOT EXISTS` and PDF attaches replace the existing file
+key, so it is safe to re-run at any time (e.g. after `git pull` with updated PDFs).
+
+You can also load exams through the admin console (Products → Case-study exams →
+generate printable PDF / upload resources) instead of the script, but the script is the
+fastest repeatable path.
+
+---
 ## 7. Database management
 
 The schema lives in `drizzle/` and migrations run with Drizzle Kit.
@@ -243,6 +272,7 @@ export DATABASE_URL="mysql://aftportal:PASSWORD@localhost:3306/aft_portal"
 pnpm exec drizzle-kit migrate      # only if schema changed
 pnpm build
 sudo systemctl restart aft-portal
+pnpm exec tsx server/scripts/seed-exams.ts   # load/refresh exams + attach PDFs (idempotent)
 ```
 
 Optionally re-run `nginx -t && systemctl reload nginx` if nginx config changed.

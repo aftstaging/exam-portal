@@ -4,7 +4,7 @@
 
 This repository contains the **Accountants for Tomorrow (AFT) Learning Management and Examination Portal**. It is a Node.js full-stack application for professional accounting exam preparation. The current product combines a public mock-exam catalogue, Case Study simulations, CIMAStudy-inspired Objective tests, a learner dashboard, instructor marking workflows, admin content management, protected resources, generated printable exams, and payment infrastructure.
 
-The live application is available at [https://acctlearn-ymm46xap.manus.space](https://acctlearn-ymm46xap.manus.space). The current published checkpoint is `4bbede91`. The codebase is intended to run as a managed Manus web project, but it can also be developed locally with Node.js and pnpm.
+The application is fully self-hosted — it does not depend on any external SaaS provider (no Manus dependency). It runs on Node.js with pnpm, stores files on AWS S3, and authenticates locally with signed session cookies. Deployment targets a single Ubuntu EC2 instance (see `EC2_DEPLOYMENT.md` and `DEPLOY_EC2.md`).
 
 > Important current state: all published Case Study and Objective test products have temporarily been set to `priceCents = 0`, so they show **Start exam** / free-enrollment actions. The instructor-marking add-on remains paid. PayFast checkout and the admin pricing controls remain implemented for future reactivation.
 
@@ -18,8 +18,8 @@ The live application is available at [https://acctlearn-ymm46xap.manus.space](ht
 | Server | Express 4, Node.js, ESM | `server/_core/index.ts` |
 | Database | MySQL/TiDB through Drizzle ORM | `drizzle/schema.ts`, `server/db.ts` |
 | Styling | Tailwind CSS 4 and project CSS tokens | `client/src/index.css` |
-| Authentication | Manus OAuth session cookies | `server/_core/context.ts`, `client/src/_core/hooks/useAuth.ts` |
-| File storage | Managed S3 helpers | `server/storage.ts`, `server/_core/storageProxy.ts` |
+| Authentication | Local auth with signed session cookies | `server/_core/context.ts`, `client/src/_core/hooks/useAuth.ts` |
+| File storage | AWS S3 | `server/storage.ts`, `server/_core/storageProxy.ts` |
 | Payments | PayFast hosted checkout and ITN verification; legacy Stripe foundation also remains | `server/payfast.ts`, `server/routers.ts`, `server/stripe.ts` |
 | Testing | Vitest | `server/*.test.ts`, `shared/*.test.ts` |
 | PDF generation | `pdf-lib` plus AFT branding | `server/pdf.ts` |
