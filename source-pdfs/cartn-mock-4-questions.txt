@@ -1,0 +1,633 @@
+​Management Case Study​                        ​Mock Exam 4​
+
+
+
+
+            ​CIMA Management Case Study​
+
+
+                           ​Mock Exam 4​
+                               ​Cartn​
+
+
+                          ​Unseen [3 hours]​
+
+
+
+
+​© Astranti 2026​               ​1​
+​Management Case Study​                                                                           ​Mock Exam 4​
+
+
+​Task 1 - Unseen case material [45 minutes]​
+ ​ ​ ​new​ ​government​ ​regulation​ ​in​ ​Harrland​ ​will​ ​take​ ​effect​ ​in​ ​18​ ​months,​ ​completely​
+ A
+ ​banning​ ​the​ ​plastic​ ​linings​ ​used​ ​by​ ​Cartn,​ ​forcing​ ​the​ ​company​ ​into​ ​a​ ​massive​
+  ​technological​​shift.​​To​​comply,​​Cartn​​are​​currently​​evaluating​​a​​significant​​investment​
+   ​of​ ​H$15​ ​million​ ​in​ ​'Bio-Shield'​ ​digital​ ​coating​ ​machines.​ ​This​​technology​​replaces​​the​
+    ​traditional​ ​polyethylene​ ​plastic​​layer​​with​​a​​biodegradable,​​starch-based​​coating​​that​
+​is applied digitally for precision.​
+
+F​ rom:​​Elizabeth Maenda, Senior Financial Manager​
+ ​To:​​Financial Manager​
+  ​Subject:​​Digital Data Sources and Quality Management​
+
+​Hi,​
+
+ ​ he​ ​Board​ ​is​ ​under​ ​pressure​ ​to​ ​improve​ ​the​ ​recyclability​ ​of​ ​our​ ​cartons​ ​due​​to​​the​​new​
+ T
+ ​government​​regulation​​banning​​plastic​​linings.​​We​​have​​already​​produced​​a​​prototype​​and​
+​have received a Quality Control (QC) Report on its performance.​
+
+ ​ owever,​ ​the​ ​Board​ ​is​​cautious.​​The​​initial​​NPV​​calculation​​looks​​positive,​​but​​we​​need​​to​
+ H
+ ​ensure​​our​​data​​sources​​for​​this​​appraisal​​are​​robust​​and​​that​​we​​have​​a​​plan​​to​​maintain​
+​quality and cost-efficiency if we move to full-scale production.​
+
+ I​’ve​​attached​​an​​email​​from​​the​​Production​​Director​​with​​the​​QC​​report.​​I​​need​​your​
+​input on two specific areas for tomorrow's briefing​
+
+        ​●​ ​Identify​ ​three​ ​specific​ ​digital​ ​data​ ​sources,​​internal​​or​​external,​​that​​Cartn​​should​
+             ​ tilise​ ​to​ ​improve​ ​the​ ​accuracy​ ​of​ ​its​ ​capital​ ​investment​ ​appraisal​ ​for​ ​the​
+             u
+            ​'Bio-Shield' machines..​
+
+                                                                                         ​[sub-task (a) = 40%]​
+
+        ​●​ ​Recommend​​with​​reasons​​how​​Cartn​​can​​apply​​Value​​Engineering​​and​​Total​​Quality​
+            ​Management (TQM) to the new Bio-Shield product line.​
+
+                                                                                         ​[sub-task (b) = 60%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                    ​2​
+​Management Case Study​                                                                            ​Mock Exam 4​
+
+
+​Reference material​
+​Email from Operations Director​
+​Hi Mario,​
+
+​Following​ ​our​ ​recent​ ​pilot​ ​of​ ​the​ ​Bio-Shield​ ​digital​ ​coating​ ​technology,​ ​my​ ​team​ ​has​
+ ​completed​ ​the​ ​formal​ ​Quality​ ​Control​ ​(QC)​ ​Report​ ​on​ ​the​ ​prototype​ ​units.​ ​The​ ​digital​
+  ​coating​ ​process​ ​is​ ​a​ ​significant​ ​departure​ ​from​ ​our​ ​traditional​ ​spray-on​ ​polyethylene​
+   ​methods.​​It​​offers​​precision,​​but​​as​​the​​report​​below​​indicates,​​there​​are​​technical​​hurdles​
+​we haven't fully cleared yet, particularly concerning our high-volume UHT lines.​
+
+​Please see the summary of the QC findings below:​
+
+​INTERNAL QC REPORT: BIO-SHIELD PROTOTYPE (BATCH #402)​
+
+​ est​
+T                ​ erformance​ ​Observations & Technical Findings​
+                 P
+​Category​       ​Metric​
+​ aterial​
+M                1​ 2%​ ​Reduction​ ​Digital​ ​application​ ​nozzles​ ​are​ ​far​ ​more​ ​precise​ ​than​
+​Efficiency​      ​in Waste​         ​traditional​​sprayers,​​significantly​​reducing​​overspray​​and​
+                                    ​raw material waste.​
+​ eat​
+H             ​ arginal​
+              M                  ​During​ ​simulated​ ​UHT​ ​(Ultra-High​ ​Temperature)​
+​Resistance​ ​Failure at 135°C​ ​processing,​ ​the​ ​starch-based​ ​bio-coating​ ​showed​ ​signs​
+                                  ​of​ ​thinning​ ​and​ ​micro-cracking.​ ​This​ ​could​​compromise​
+                                ​the 6-month shelf life of UHT milk.​
+​ tructural​ 4
+S            ​ %​ ​Leakage​ ​4​​out​​of​​every​​100​​units​​failed​​the​​pressure​​test.​​This​​was​
+​Integrity​  ​Rate​          ​traced​​to​​sensor​​calibration​​errors​​in​​the​​digital​​nozzles,​
+                            ​resulting in uneven coating at the carton seams.​
+​Adhesion​       ​ trong​ ​Bond​ ​The​ ​bio-shield​​material​​bonded​​exceptionally​​well​​to​​the​
+                 S
+                 ​on Paperboard​ ​primary​​paperboard​​layer,​​exceeding​​the​​performance​​of​
+                                 ​traditional plastic laminates in dry conditions.​
+
+​​My Concerns:​
+
+​My​​factory​​managers​​are​​already​​struggling​​with​​the​​volume​​targets​​for​​our​​standard​​milk​
+ ​cartons.​​If​​we​​introduce​​a​​technology​​that​​has​​a​​4%​​failure​​rate,​​we​​risk​​a​​massive​​spike​​in​
+  ​internal​ ​failure​ ​costs​ ​and​ ​potential​ ​recalls.​ ​Furthermore,​ ​if​ ​the​ ​thinning​ ​at​ ​135°C​ ​isn't​
+   ​resolved,​ ​the​ ​Bio-Shield​ ​will​ ​be​ ​useless​ ​for​ ​our​ ​UHT​ ​customers,​ ​who​ ​make​ ​up​ ​a​ ​massive​
+​portion of our recurring manufacturing revenue.​
+
+​Kind regards, Alison Cruikshank​
+
+
+​© Astranti 2026​                                   ​3​
+​Management Case Study​                                                                           ​Mock Exam 4​
+
+
+​Task 2 - Unseen case material [45 minutes]​
+ ​ he​ ​Board​ ​is​ ​meeting​ ​to​ ​discuss​ ​the​ ​Bio-Shield​ ​product​ ​launch.​ ​While​ ​the​ ​technical​
+ T
+ ​aspects​​are​​being​​refined,​​the​​Marketing​​and​​PR​​departments​​have​​proposed​​a​​radical​
+  ​shift​​in​​how​​Cartn​​captures​​value.​​They​​believe​​that​​simply​​selling​​a​​greener​​carton​​is​
+   ​not​ ​enough​ ​to​ ​maintain​ ​a​ ​competitive​ ​advantage;​ ​instead,​ ​Cartn​ ​should​ ​lead​ ​the​
+​industry by adopting a circular 'Take-Back & Recycle' business model.​
+
+F​ rom:​​Elizabeth Maenda, Senior Financial Manager​
+ ​To:​​Financial Manager​
+  ​Subject:​​Circular Business Model and Stakeholders​
+
+​Hi,​
+
+ ​ s​ ​the​ ​recent​ ​announcement​ ​of​ ​this​ ​potential​​shift​​in​​business​​models​​has​​leaked​​to​​the​
+ A
+​press, it has caused a mixture of excitement and hostility.​
+
+ ​ he​ ​Marketing​ ​Director​ ​has​ ​attached​ ​an​ ​executive​​summary​​of​​the​​'Take-Back​​&​​Recycle'​
+ T
+ ​business​​model​​and​​asked​​for​​our​​support​​in​​understanding​​how​​it​​will​​create​​sustainable​
+​value and how to manage key stakeholder groups.​
+
+​Please can you address the two points below?​
+
+        ​●​ ​Evaluate​ ​the​ ​proposed​ ​Circular​ ​Business​ ​Model​ ​for​ ​the​ ​Bio-Shield​ ​product​ ​range​
+            ​and explain how this model creates sustainable value for Cartn’s stakeholders​
+
+                                                                                          ​[sub-task (a) = 60%]​
+
+
+        ​●​ ​Identify​ ​the​ ​key​ ​stakeholder​ ​groups​ ​affected​ ​by​ ​the​ ​transition​ ​to​ ​the​ ​Bio-Shield​
+             r​ ange​ ​and​ ​advise​ ​the​ ​Board​ ​on​ ​an​ ​appropriate​ ​communication​ ​process​ ​for​ ​each​
+            ​group.​
+
+                                                                                         ​[sub-task (b) = 40%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                    ​4​
+​Management Case Study​                                                                            ​Mock Exam 4​
+
+
+​Reference material​
+​Executive Summary: Circular Business Model​
+​ o:​​The Board of Directors​
+T
+​From:​​Haitham Amer, Marketing Director​
+ ​Subject:​​Proposal for circular business model​
+
+ ​ e​​are​​evaluating​​a​​shift​​to​​a​​circular​​business​​model​​for​​the​​Bio-Shield​​range.​​Instead​​of​
+ W
+ ​the​ ​traditional​ ​linear​ ​approach​ ​of​​Take-Make-Dispose,​​we​​propose​​a​​'Take-Back​​&​​Recycle'​
+​scheme.​
+
+​Proposed Mechanics:​
+
+    ​●​ ​Partnership:​ ​Partner​ ​with​ ​major​ ​supermarket​ ​retailers​ ​to​ ​install​ ​Cartn-Collection​
+           ​Points.​
+     ​●​ ​Repurposing:​ ​Cartn​ ​will​ ​collect​ ​used​ ​Bio-Shield​ ​cartons,​ ​transport​ ​them​ ​to​ ​a​
+            ​dedicated facility to separate the layers, and re-pulp the paper fibres.​
+      ​●​ ​Secondary​ ​value:​ ​These​ ​fibres​ ​will​ ​be​ ​used​ ​to​ ​manufacture​ ​non-food​ ​secondary​
+               ​packaging​ ​(e.g.,​ ​corrugated​ ​cardboard​ ​for​ ​shipping)​ ​or​ ​sold​ ​to​ ​building​ ​material​
+             ​manufacturers.​
+       ​●​ ​Pricing​ ​shift:​ ​Transition​​from​​unit-sales​​to​​a​​'Packaging-as-a-Service'​​subscription,​
+              ​covering the supply of cartons and the cost of the end-of-life take-back logistics.​
+
+​Public Relations Concern:​
+
+ ​ umours​ ​are​ ​circulating​ ​in​ ​the​ ​Harrland​ ​Daily​ ​News​ ​about​ ​our​ ​potential​ ​'Take-Back​ ​&​
+ R
+​Recycle' scheme. While some coverage is positive, the following challenges have emerged:​
+
+    ​1.​ ​Environmental​ ​Groups​​(Green-Harrland):​​They​​have​​issued​​a​​press​​release​​calling​
+          ​our​ ​scheme​ ​a​ ​marketing​ ​gimmick.​ ​They​ ​argue​ ​that​ ​unless​ ​we​ ​can​ ​recycle​ ​the​
+           ​plastic/aluminium​ ​layers​ ​back​ ​into​ ​food-grade​ ​packaging,​ ​we​ ​are​ ​merely​
+         ​downcycling.​
+
+    ​2.​ ​Small​ ​Dairy​ ​Farmers​ ​Consortium:​ ​We​ ​received​ ​an​ ​urgent​​letter​​from​​a​​group​​of​
+          ​small-scale​ ​milk​ ​producers.​ ​They​ ​are​ ​fearful​ ​that​ ​the​ ​high​ ​cost​ ​of​ ​the​ ​Bio-Shield​
+           ​subscription​ ​-​ ​and​ ​the​ ​logistical​ ​burden​​of​​the​​take-back​​scheme​​-​​will​​drive​​them​
+            ​out​​of​​business,​​favouring​​only​​the​​big​​dairy​​conglomerates​​who​​have​​the​​margins​
+         ​to absorb these costs.​
+
+​
+
+
+
+
+​© Astranti 2026​                                   ​5​
+​Management Case Study​                                                                         ​Mock Exam 4​
+
+
+​Task 3 - Unseen case material [45 minutes]​
+ F​ ollowing​ ​a​ ​3-month​ ​pilot​ ​of​ ​the​ ​Bio-Shield​ ​project​ ​in​ ​Central​ ​City,​ ​the​ ​project​
+  ​committee​ ​has​ ​raised​ ​concerns​ ​over​ ​the​ ​return​ ​rate​ ​and​ ​the​ ​viability​ ​of​ ​the​​project​
+​being a success.​
+
+F​ rom:​​Elizabeth Maenda, Senior Financial Manager​
+ ​To:​​Financial Manager​
+  ​Subject:​​Measuring Risk and Project Management Tools and Techniques​
+
+​Hi,​
+
+ ​ e​ ​are​ ​currently​ ​facing​ ​the​ ​perfect​ ​storm​ ​of​ ​operational​ ​and​ ​financial​ ​hurdles​ ​as​ ​the​
+ W
+​Bio-Shield project is ramping up.​
+
+ ​ he​ ​Finance​ ​Director​ ​has​ ​forwarded​ ​me​ ​an​ ​email​ ​from​ ​the​ ​Project​ ​Committee​ ​and​ ​is​
+ T
+​concerned with the findings from the 3-month pilot.​
+
+​Please can you prepare a report on the following risk management measures?​
+
+        ​●​ ​Recommend​ ​and​ ​explain​ ​how​ ​Cartn​ ​can​ ​apply​ ​Sensitivity​ ​Analysis​ ​and​ ​Scenario​
+            ​Planning to evaluate the viability of the new Bio-Shield circular business model​
+
+                                                                                       ​[sub-task (a) = 40%]​
+
+        ​●​ ​Evaluate​ ​and​ ​recommend​ ​three​ ​project​ ​management​ ​tools​ ​or​ ​techniques​ ​that​
+            ​should be implemented to manage the project effectively​
+
+                                                                                       ​[sub-task (b) = 60%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                  ​6​
+​Management Case Study​                                                                            ​Mock Exam 4​
+
+
+​Reference material​
+​Project Committee Email​
+​To:​​Mario Baquero, Finance Director​
+ ​From:​​Project Lead, Bio-Shield Circular Initiative​
+  ​Date:​​1 April 2026​
+   ​Subject:​​URGENT: Bio-Shield Infrastructure Failure & Regulatory Risk​
+
+​Mario,​
+
+​We​​have​​completed​​the​​3-month​​"Take-Back"​​pilot​​in​​Central​​City,​​and​​the​​results​​indicate​
+​that the current project trajectory is unsustainable due to the risks highlighted below.​
+
+​1. Pilot Performance & Viability Gap​
+
+​The​ ​consumer​ ​return​ ​rate​ ​during​ ​the​ ​pilot​ ​was​ ​only​ ​22%,​ ​significantly​ ​below​ ​the​ ​40%​
+ ​threshold​ ​required​ ​for​ ​the​ ​logistics​ ​to​ ​be​ ​cost-neutral.​ ​Furthermore,​ ​a​​confidential​​legal​
+  ​briefing​ ​suggests​ ​that​ ​the​ ​upcoming​ ​"Harrland​ ​Green-Tax"​​will​​only​​exempt​​starch-based​
+   ​products​ ​if​ ​we​ ​can​​prove​​a​​50%​​recovery​​rate.​​If​​we​​fail​​to​​hit​​this​​50%​​target,​​we​​face​​a​
+​H$500 per tonne tax, effectively neutralising our competitive price advantage.​
+
+​2. IT & Logistics Deadlock​
+
+​The​​IT​​tracking​​system​​is​​now​​3​​months​​behind​​schedule.​​Friction​​between​​IT​​(focusing​​on​
+ ​high-security​​encryption)​​and​​Logistics​​(claiming​​the​​interface​​is​​too​​complex​​for​​drivers)​
+  ​has​​stalled​​development.​​We​​have​​no​​formal​​mechanism​​to​​resolve​​these​​cross-functional​
+​disputes.​
+
+​3. Scope Creep & Budget Overrun​
+
+​The​​project​​is​​suffering​​from​​significant​​scope​​creep​​due​​to​​unauthorised​​feature​​requests​
+ ​from​ ​the​ ​marketing​ ​department​ ​-​ ​most​ ​notably​ ​a​ ​late-stage​ ​requirement​ ​for​ ​individual​
+  ​customer​​carbon-tracking.​​This​​has​​caused​​the​​IT​​budget​​to​​balloon​​from​​H$1.2​​million​​to​
+   ​H$2.8​ ​million.​ ​Currently,​ ​these​ ​changes​ ​are​ ​being​ ​requested​ ​via​ ​email​ ​directly​ ​to​
+​developers, bypassing both the Project Manager and Finance.​
+
+​
+
+​
+
+
+
+
+​© Astranti 2026​                                   ​7​
+​Management Case Study​                                                                         ​Mock Exam 4​
+
+
+​Task 4 - Unseen case material [45 minutes]​
+ ​ s​ ​Cartn​ ​prepares​ ​for​ ​the​ ​full-scale​ ​rollout​ ​of​ ​the​ ​Bio-Shield​ ​range,​ ​the​ ​Finance​ ​and​
+ A
+ ​Operations​ ​departments​ ​have​ ​identified​ ​significant​ ​legacy​ ​issues​ ​at​ ​the​ ​oldest​
+​manufacturing plant, Plant Alpha.​
+
+F​ rom:​​Elizabeth Maenda, Senior Financial Manager​
+ ​To:​​Financial Manager​
+  ​Subject:​​Plant Alpha Accounting Treatment and Conflict Resolution​
+
+​Hi,​
+
+ ​ he​ ​Finance​ ​Director​ ​has​ ​been​ ​alerted​ ​to​ ​the​ ​issues​​at​​one​​of​​our​​oldest​​manufacturing​
+ T
+ ​plants​ ​and​ ​would​ ​like​ ​clarity​ ​on​ ​the​ ​accounting​ ​treatment​ ​we​ ​should​ ​apply​ ​to​ ​the​
+​soon-to-be obsolete extruders.​
+
+ ​ urthermore,​​he​​is​​concerned​​that​​the​​internal​​conflict​​between​​sales​​and​​manufacturing​
+ F
+​will stall the roll-out of the Bio-Shield project.​
+
+​Please can you support the Finance Director with a report on the following;​
+
+        ​●​ ​Recommend​ ​the​ ​appropriate​​accounting​​treatment​​for​​the​​extruders​​and​​the​​site​
+             ​clean-up​ ​commitment,​ ​and​ ​explain​ ​the​ ​impact​ ​these​ ​treatments​ ​will​ ​have​ ​on​
+            ​Cartn’s financial statements​
+
+                                                                                       ​[sub-task (a) = 60%]​
+
+        ​●​ ​Recommend​ ​two​ ​specific​ ​conflict​ ​resolution​ ​strategies​ ​that​ ​the​ ​Board​ ​should​
+             ​implement​ ​to​ ​resolve​ ​this​ ​conflict​ ​and​ ​ensure​ ​both​ ​departments​ ​work​ ​together​
+            ​toward the plastic-free transition.​
+
+                                                                                       ​[sub-task (b) = 40%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                  ​8​
+​Management Case Study​                                                                              ​Mock Exam 4​
+
+
+​Reference material​
+​Email from Finance Director​
+​To:​​Elizabeth Maenda, Senior Financial Manager​
+ ​From:​​Mario Baquero, Finance Director​
+  ​Subject:​​Plant Alpha transition: Accounting and Personnel Issues​
+
+​We​​have​​been​​made​​aware​​of​​urgent​​matters​​regarding​​the​​conversion​​of​​Plant​​Alpha​​to​​a​
+​Bio-Shield facility:​
+
+​Technical obsolescence of extrusion assets​
+
+​Our​ ​traditional​ ​lamination​ ​extruders​ ​at​ ​Plant​ ​Alpha​ ​currently​ ​have​ ​a​​carrying​​amount​​of​
+ ​H$8.4​ ​million.​ ​These​ ​were​ ​originally​ ​expected​ ​to​ ​operate​ ​until​ ​2032.​ ​However,​ ​following​
+  ​the​ ​recent​ ​Board​ ​decision​ ​to​ ​cease​ ​all​ ​plastic-laminated​ ​production​ ​by​ ​the​ ​end​ ​of​ ​next​
+   ​year,​ ​these​ ​assets​ ​will​ ​be​ ​decommissioned​ ​in​ ​18​ ​months.​ ​We​ ​have​ ​also​ ​received​​a​​quote​
+    ​from​ ​a​ ​scrap​ ​metal​ ​firm​ ​offering​ ​only​ ​H$200,000​ ​for​ ​the​ ​units​ ​in​ ​18​ ​months,​ ​which​ ​is​
+​significantly below our projected residual value.​
+
+​The Clean-Harrland public commitment​
+
+​Last​ ​week,​ ​our​ ​CEO,​ ​Guiquan​ ​Li,​ ​gave​​a​​televised​​interview​​where​​he​​formally​​committed​
+ ​Cartn​ ​to​ ​a​ ​site​ ​decontamination​ ​program​ ​for​ ​Plant​ ​Alpha.​ ​The​ ​local​ ​community​ ​is​
+  ​concerned​ ​about​ ​chemical​ ​residues​ ​from​ ​40​ ​years​ ​of​ ​plastic​ ​processing.​ ​Our​
+   ​environmental​​engineers​​estimate​​the​​cleanup​​will​​cost​​H$3.2​​million,​​likely​​payable​​in​​two​
+    ​years.​​Although​​no​​legislation​​currently​​forces​​us​​to​​clean​​this​​specific​​site,​​the​​Board​​feels​
+​the public announcement has created an expectation we cannot ignore.​
+
+​Breakdown in functional collaboration​
+
+​Haitham​ ​Amer​ ​(Marketing/Sales)​ ​recently​ ​walked​ ​out​ ​of​ ​a​ ​meeting,​ ​claiming​ ​that​ ​Alison​
+ ​Cruikshank​ ​(Production)​ ​is​ ​deliberately​ ​sabotaging​ ​his​ ​sales​ ​targets​ ​by​ ​padding​ ​the​
+​Bio-Shield production budget with unnecessary green overheads.​
+
+​Haitham​​argues​​that​​his​​team​​cannot​​sell​​a​​product​​that​​is​​25%​​more​​expensive​​than​​our​
+ ​competitors'​ ​traditional​ ​cartons.​ ​Alison​ ​has​ ​retaliated​ ​by​ ​accusing​ ​the​ ​sales​ ​team​ ​of​
+  ​strategic​ ​negligence,​ ​stating​ ​that​ ​if​ ​we​ ​don't​ ​transition​ ​now,​ ​the​ ​upcoming​ ​ban​ ​by​ ​the​
+   ​Harrland​​government​​on​​plastic​​linings​​will​​lead​​to​​the​​total​​closure​​of​​the​​company.​​This​
+​impasse is preventing us from signing several long-term dairy contracts.​
+
+​
+
+
+
+
+​© Astranti 2026​                                    ​9​
+​Management Case Study​                                                                                                                      ​Mock Exam 4​
+
+
+​Present value tables​
+​Present value of U$1 i.e. (1 + r)​​-n​ ​where r = interest rate, n = number of periods until payment or receipt.​
+
+                                                                            ​Interest rates (r)​
+​ eriod​
+P
+​s​
+ ​(n)​       ​1%​           ​2%​           ​3%​           ​4%​            ​5%​           ​6%​           ​7%​           ​8%​           ​9%​           ​10%​
+​​
+1              .​990​         .​980​         .​971​         .​962​          .​962​         .​943​         .​935​         .​926​         .​917​       .​909​
+​2​             ​.980​         ​.961​         ​.943​         ​.925​          ​.907​         ​.890​         ​.873​         ​.857​         ​.842​       ​.826​
+ ​3​             ​.971​         ​.942​         ​.915​         ​.889​          ​.864​         ​.840​         ​.816​         ​.794​         ​.772​       ​.751​
+  ​4​             ​.961​         ​.924​         ​.888​         ​.855​          ​.823​         ​.792​         ​.763​         ​.735​         ​.708​       ​.683​
+   ​5​             ​.951​         ​.906​         ​.863​         ​.822​          ​.784​         ​.747​         ​.713​         ​.681​         ​.650​       ​.621​
+
+​​
+6              .​942​         .​888​         .​837​         .​790​          .​746​         .​705​         .​666​         .​630​         .​596​       .​564​
+​7​             ​.933​         ​.871​         ​.813​         ​.760​             ​.711​      ​.665​         ​.623​         ​.583​         ​.547​       ​.513​
+ ​8​             ​.923​         ​.853​         ​.789​         ​.731​         ​.677​          ​.627​         ​.582​         ​.540​         ​.502​       ​.467​
+  ​9​             ​.914​         ​.837​         ​.766​         ​.703​         ​.645​          ​.592​         ​.544​         ​.500​         ​.460​       ​.424​
+   ​10​            ​.905​         ​.820​         ​.744​         ​.676​         ​.614​          ​.558​         ​.508​         ​.463​         ​.422​       ​.386​
+
+​ 1​
+1              .​896​         .​804​         .​722​         .​650​          .​585​         .​527​         .​475​         .​429​         .​388​       .​350​
+​12​            ​.887​         ​.788​         ​.701​         ​.625​          ​.557​         ​.497​         ​.444​         ​.397​         ​.356​       ​.319​
+ ​13​            ​.879​         ​.773​         ​.681​         ​.601​          ​.530​         ​.469​         ​.415​         ​.368​         ​.326​       ​.290​
+  ​14​            ​.870​         ​.758​         ​.661​         ​.577​          ​.505​         ​.442​         ​.388​         ​.340​         ​.299​       ​.263​
+   ​15​            ​.861​         ​.743​         ​.642​         ​.555​          ​.481​         ​.417​         ​.362​         ​.315​         ​.275​       ​.239​
+
+​ 6​
+1              .​853​         .​728​         .​623​         .​534​          .​458​         .​394​         .​339​         .​292​         .​252​       .​218​
+​17​            ​.844​         ​.714​         ​.605​         ​.513​          ​.436​         ​.371​         ​.317​         ​.270​         ​.231​       ​.198​
+ ​18​            ​.836​         ​.700​         ​.587​         ​.494​          ​.416​         ​.350​         ​.296​         ​.250​         ​.212​       ​.180​
+  ​19​            ​.828​         ​.686​         ​.570​         ​.475​          ​.396​         ​.331​         ​.277​         ​.232​         ​.194​       ​.164​
+   ​20​            ​.820​         ​.673​         ​.554​         ​.456​          ​.377​         ​.312​         ​.258​         ​.215​         ​.178​       ​.149​
+
+
+
+                                                                            ​Interest rates (r)​
+​ eriod​
+P
+​s​
+ ​(n)​         ​11%​          ​12%​          ​13%​          ​14%​           ​15%​          ​16%​          ​17%​          ​18%​          ​19%​        ​20%​
+​​
+1              .​901​         .​893​         .​885​         .​877​          .​870​         .​862​         .​855​         .​847​         .​840​       .​833​
+​2​             ​.812​         ​.797​         ​.783​         ​.769​          ​.756​         ​.743​         ​.731​         ​.718​         ​.706​       ​.694​
+ ​3​             ​.731​         ​.712​         ​.693​         ​.675​          ​.658​         ​.641​         ​.624​         ​.609​         ​.593​       ​.579​
+  ​4​             ​.659​         ​.636​         ​.613​         ​.592​          ​.572​         ​.552​         ​.534​         ​.516​         ​.499​       ​.482​
+   ​5​             ​.593​         ​.567​         ​.543​         ​.519​          ​.497​         ​.476​         ​.456​         ​.437​         ​.419​       ​.402​
+
+​​
+6              .​535​         .​507​         .​480​         .​456​          .​432​         .​410​         .​390​         .​370​         .​352​       .​335​
+​7​             ​.482​         ​.452​         ​.425​         ​.400​          ​.376​         ​.354​         ​.333​         ​.314​         ​.296​       ​.279​
+ ​8​             ​.434​         ​.404​         ​.376​         ​.351​          ​.327​         ​.305​         ​.285​         ​.266​         ​.249​       ​.233​
+  ​9​             ​.391​         ​.361​         ​.333​         ​.308​          ​.284​         ​.263​         ​.243​         ​.225​         ​.209​       ​.194​
+   ​10​            ​.352​         ​.322​         ​.295​         ​.270​          ​.247​         ​.227​         ​.208​         ​.191​         ​.176​       ​.162​
+
+​ 1​
+1              .​317​         .​287​         .​261​         .​237​          .​215​         .​195​         .​178​         .​162​         .​148​       .​135​
+​12​            ​.286​         ​.257​         ​.231​         ​.208​          ​.187​         ​.168​         ​.152​         ​.137​         ​.124​          ​.112​
+ ​13​            ​.258​         ​.229​         ​.204​         ​.182​          ​.163​         ​.145​         ​.130​           ​.116​       ​.104​      ​.093​
+  ​14​            ​.232​         ​.205​         ​.181​         ​.160​          ​.141​         ​.125​          ​.111​       ​.099​          ​.088​      ​.078​
+   ​15​            ​.209​         ​.183​         ​.160​         ​.140​          ​.123​         ​.108​        ​.095​         ​.084​          ​.074​      ​.065​
+
+​ 6​
+1              .​188​         .​163​         .​141​         .​123​          .​107​         .​093​         .​081​         .​071​         .​062​       .​054​
+​17​            ​.170​         ​.146​         ​.125​         ​.108​          ​.093​         ​.080​         ​.069​         ​.060​         ​.052​       ​.045​
+ ​18​            ​.153​         ​.130​           ​.111​       ​.095​          ​.081​         ​.069​         ​.059​         ​.051​         ​.044​       ​.038​
+  ​19​            ​.138​          ​.116​       ​.098​          ​.083​          ​.070​         ​.060​         ​.051​         ​.043​         ​.037​       ​.031​
+   ​20​            ​.124​        ​.104​         ​.087​          ​.073​          ​.061​         ​.051​         ​.043​         ​.037​         ​.031​       ​.026​
+
+
+
+​© Astranti 2026​                                                        ​10​
+​Management Case Study​                                                                                                                ​Mock Exam 4​
+
+
+​Cumulative present value tables​
+​This​ ​table​ ​shows​ ​the​ ​Present​ ​Value​ ​of​​U$1​​per​​annum,​​Receivable​​or​​Payable​​at​​the​​end​​of​​each​​year​​for​​n​​years​
+
+
+
+
+                                                                        ​Interest rates (r)​
+​ eriods​
+P
+​(n)​               ​1%​          ​2%​          ​3%​          ​4%​           ​5%​            ​6%​           ​7%​          ​8%​          ​9%​         ​10%​
+ ​1​         ​ .990​
+             0             ​ .980​
+                           0             ​ .971​
+                                         0             ​ .962​
+                                                       0              ​ .952​
+                                                                      0               ​ .943​
+                                                                                      0              ​ .935​
+                                                                                                     0             ​ .926​
+                                                                                                                   0             ​ .917​
+                                                                                                                                 0             ​ .909​
+                                                                                                                                               0
+  ​2​        ​1.970​       ​1.942​       ​1.913​       ​1.886​        ​1.859​         ​1.833​        ​1.808​       ​1.783​       ​1.759​       ​1.736​
+   ​3​        ​2.941​       ​2.884​       ​2.829​       ​2.775​        ​2.723​         ​2.673​        ​2.624​       ​2.577​       ​2.531​       ​2.487​
+    ​4​        ​3.902​       ​3.808​       ​3.717​       ​3.630​        ​3.546​         ​3.465​        ​3.387​       ​3.312​       ​3.240​       ​3.170​
+     ​5​        ​4.853​       ​4.713​       ​4.580​       ​4.452​        ​4.329​         ​4.212​        ​4.100​       ​3.993​       ​3.890​       ​3.791​
+
+​​
+6            ​ .795​
+             5             ​ .601​
+                           5             ​ .417​
+                                         5             ​ .242​
+                                                       5              ​ .076​
+                                                                      5               ​ .917​
+                                                                                      4              ​ .767​
+                                                                                                     4             ​ .623​
+                                                                                                                   4             ​ .486​
+                                                                                                                                 4             ​ .355​
+                                                                                                                                               4
+​7​          ​6.728​       ​6.472​       ​6.230​       ​6.002​        ​5.786​         ​5.582​        ​5.389​       ​5.206​       ​5.033​       ​4.868​
+ ​8​          ​7.652​       ​7.325​       ​7.020​       ​6.733​        ​6.463​         ​6.210​        ​5.971​       ​5.747​       ​5.535​       ​5.335​
+  ​9​          ​8.566​       ​8.162​       ​7.786​       ​7.435​        ​7.108​         ​6.802​        ​6.515​       ​6.247​       ​5.995​       ​5.759​
+   ​10​         ​9.471​       ​8.983​       ​8.530​       ​8.111​        ​7.722​         ​7.360​        ​7.024​       ​6.710​       ​6.418​       ​6.145​
+
+​ 1​
+1            ​ 0.368​
+             1             ​ .787​
+                           9             ​ .253​
+                                         9             ​ .760​
+                                                       8              ​ .306​
+                                                                      8               ​ .887​
+                                                                                      7              ​ .499​
+                                                                                                     7             ​ .139​
+                                                                                                                   7             ​ .805​
+                                                                                                                                 6             ​ .495​
+                                                                                                                                               8
+​12​         ​11.255​      ​10.575​      ​9.954​       ​9.385​        ​8.863​         ​8.384​        ​7.943​       ​7.536​       ​7.161​       ​6.814​
+ ​13​         ​12.134​      ​11.348​      ​10.635​      ​9.986​        ​9.394​         ​8.853​        ​8.358​       ​7.904​       ​7.487​       ​7.103​
+  ​14​         ​13.004​      ​12.106​      ​11.296​      ​10.563​       ​9.899​         ​9.295​        ​8.745​       ​8.244​       ​7.786​       ​7.367​
+   ​15​         ​13.865​      ​12.849​      ​11.938​      ​11.118​       ​10.380​        ​9.712​        ​9.108​       ​8.559​       ​8.061​       ​7.606​
+
+​ 6​
+1            ​ 4.718​
+             1             ​ 3.578​
+                           1             ​ 2.561​
+                                         1             ​ 1.652​
+                                                       1              ​ 0.838​
+                                                                      1               ​10.106​       ​ .447​
+                                                                                                     9             ​ .851​
+                                                                                                                   8             ​ .313​
+                                                                                                                                 8             ​ .824​
+                                                                                                                                               7
+​17​         ​15.562​      ​14.292​      ​13.166​      ​12.166​       ​11.274​         ​10.477​      ​9.763​       ​9.122​       ​8.544​       ​8.022​
+ ​18​         ​16.398​      ​14.992​      ​13.754​      ​12.659​       ​11.690​         ​10.828​      ​10.059​      ​9.372​       ​8.756​       ​8.201​
+  ​19​         ​17.226​      ​15.679​      ​14.324​      ​13.134​       ​12.085​         ​11.158​      ​10.336​      ​9.604​       ​8.950​       ​8.365​
+   ​20​         ​18.046​      ​16.351​      ​14.878​      ​13.590​       ​12.462​         ​11.470​      ​10.594​      ​9.818​       ​9.129​       ​8.514​
+                                                                           ​Interest rates (r)​
+​ eriods​
+P
+​(n)​              ​11%​         ​12%​         ​13%​         ​14%​          ​15%​           ​16%​          ​17%​         ​18%​         ​19%​         ​20%​
+ ​1​         ​ .901​
+             0             ​ .893​
+                           0             ​ .885​
+                                         0             ​ .877​
+                                                       0              ​ .870​
+                                                                      0               ​ .862​
+                                                                                      0              ​ 685​
+                                                                                                     0             ​ .847​
+                                                                                                                   0             ​ .840​
+                                                                                                                                 0             ​ .833​
+                                                                                                                                               0
+  ​2​        ​1.713​       ​1.690​       ​1.668​       ​1.647​        ​1.626​         ​1.605​        ​1.585​       ​1.566​       ​1.547​       ​1.528​
+   ​3​        ​2.444​       ​2.402​       ​2.361​       ​2.322​        ​2.283​         ​2.246​        ​2.210​       ​2.174​       ​2.140​       ​2.106​
+    ​4​        ​3.102​       ​3.037​       ​2.974​       ​2.914​        ​2.855​         ​2.798​        ​2.743​       ​2.690​       ​2.639​       ​2.589​
+     ​5​        ​3.696​       ​3.605​       ​3.517​       ​3.433​        ​3.352​         ​3.274​        ​3.199​       ​3.127​       ​3.058​       ​2.991​
+
+​​
+6            ​ .231​
+             4             ​ .111​
+                           4             ​ .998​
+                                         3             ​ .889​
+                                                       3              ​ .784​
+                                                                      3               ​ .685​
+                                                                                      3              ​ .589​
+                                                                                                     3             ​ .498​
+                                                                                                                   3             ​ .410​
+                                                                                                                                 3             ​ .326​
+                                                                                                                                               3
+​7​          ​4.712​       ​4.564​       ​4.423​       ​4.288​        ​4.160​         ​4.039​        ​3.922​       ​3.812​       ​3.706​       ​3.605​
+ ​8​          ​5.146​       ​4.968​       ​4.799​       ​4.639​        ​4.487​         ​4.344​        ​4.207​       ​4.078​       ​3.954​       ​3.837​
+  ​9​          ​5.537​       ​5.328​       ​5.132​       ​4.946​        ​4.772​         ​4.607​        ​4.451​       ​4.303​       ​4.163​       ​4.031​
+   ​10​         ​5.889​       ​5.650​       ​5.426​       ​5.216​        ​5.019​         ​4.833​        ​4.659​       ​4.494​       ​4.339​       ​4.192​
+
+​ 1​
+1            ​ .207​
+             6             ​ .938​
+                           5             ​ .687​
+                                         5             ​ .453​
+                                                       5              ​ .234​
+                                                                      5               ​ .029​
+                                                                                      5              ​ .836​
+                                                                                                     4             ​ .656​
+                                                                                                                   4             ​ .486​
+                                                                                                                                 4             ​ .327​
+                                                                                                                                               4
+​12​         ​6.492​       ​6.194​       ​5.918​       ​5.660​        ​5.421​         ​5.197​        ​4.968​       ​4.793​       ​4.611​       ​4.439​
+ ​13​         ​6.750​       ​6.424​       ​6.122​       ​5.842​        ​5.583​         ​5.342​        ​5.118​       ​4.910​       ​4.715​       ​4.533​
+  ​14​         ​6.982​       ​6.628​       ​6.302​       ​6.002​        ​5.724​         ​5.468​        ​5.229​       ​5.008​       ​4.802​       ​4.611​
+   ​15​         ​7.191​       ​6.811​       ​6.462​       ​6.142​        ​5.847​         ​5.575​        ​5.324​       ​5.092​       ​4.876​       ​4.675​
+
+
+​ 6​
+1            ​ .379​
+             7             ​ .974​
+                           6             ​ .604​
+                                         6             ​ .265​
+                                                       6              ​ .954​
+                                                                      5               ​ .668​
+                                                                                      5              ​ .405​
+                                                                                                     5             ​ .162​
+                                                                                                                   5             ​ .938​
+                                                                                                                                 4             ​ .730​
+                                                                                                                                               4
+​17​         ​7.549​       ​7.120​       ​6.729​       ​6.373​        ​6.047​         ​5.749​        ​5.475​       ​5.222​       ​4.990​       ​4.775​
+ ​18​         ​7.702​       ​7.250​       ​6.840​       ​6.467​        ​6.128​         ​5.818​        ​5.534​       ​5.273​       ​5.033​       ​4.812​
+  ​19​         ​7.839​       ​7.366​       ​6.938​       ​6.550​        ​6.198​         ​5.877​        ​5.584​       ​5.316​       ​5.070​       ​4.843​
+   ​20​         ​7.963​       ​7.469​       ​7.025​       ​6.623​        ​6.259​         ​5.929​        ​5.628​       ​5.353​       ​5.101​       ​4.870​
+
+
+
+
+​© Astranti 2026​                                                    ​11​
+

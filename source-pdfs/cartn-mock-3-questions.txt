@@ -1,0 +1,627 @@
+​Management Case Study​                        ​Mock Exam 3​
+
+
+
+
+            ​CIMA Management Case Study​
+
+
+                            ​Mock Exam 3​
+                               ​Cartn​
+
+
+                          ​Unseen [3 hours]​
+
+
+
+
+​© Astranti 2026​               ​1​
+​Management Case Study​                                                                               ​Mock Exam 3​
+
+
+​Task 1 - Unseen case material [45 minutes]​
+​You received the following email:​
+
+F​ rom: Elizabeth Maenda, Senior Financial Manager​
+ ​To: Financial Manager​
+  ​Subject: Fruitello Recall and Corema Industries Supply Terms​
+
+​Hi,​
+
+ I​​​trust​​you​​have​​seen​​the​​attached​​news​​regarding​​the​​Fruitello​​product​​recall.​​The​​Board​​is​
+​concerned about the implications for our own consultancy and supply arrangements.​
+
+ I​​​have​​attached​​a​​Briefing​​Note​​from​​the​​Operations​​Director​​which​​provides​​more​​detail​​on​
+  ​the​ ​situation​ ​and​ ​some​ ​issues​ ​we’ve​ ​identified​ ​with​ ​one​ ​of​ ​our​ ​own​ ​key​ ​suppliers.​ ​I​ ​need​
+​your advice on the following:​
+
+​I would be grateful if you could assist with the following:​
+
+        ​●​ ​Identify​ ​and​ ​evaluate​ ​the​ ​risks​ ​to​ ​Cartn​ ​arising​ ​from​ ​product/service​ ​reputation​
+            ​and contractual inadequacy in relation to its design and advisory services.​
+
+                                                                                            ​[sub-task (a) = 60%]​
+
+        ​●​ ​Recommend​ ​with​ ​reasons​ ​the​ ​approach​ ​the​ ​company​ ​could​ ​take​ ​to​ ​renegotiate​
+            ​terms with one of our major suppliers.​
+
+                                                                                            ​[sub-task (b) = 40%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                     ​2​
+​Management Case Study​                                                                         ​Mock Exam 3​
+
+
+​Reference material​
+​News article​
+​HARRLAND BUSINESS NEWS​
+
+​Fruitello issues large-scale product recall following packaging concerns​
+
+​Fruitello,​ ​a​ ​major​ ​fruit​ ​juice​ ​brand,​ ​has​ ​issued​ ​a​ ​large-scale​ ​product​ ​recall​ ​affecting​
+ ​hundreds​​of​​thousands​​of​​200ml​​and​​500ml​​fruit​​juice​​cartons​​after​​consumers​​reported​
+​an unusual taste and odour in their products.​
+
+​Investigations​ ​suggest​​the​​incident​​may​​be​​linked​​to​​a​​design​​flaw​​in​​the​​packaging,​​with​
+ ​concerns​​that​​the​​polyethylene​​layer​​used​​in​​the​​carton’s​​inner​​lining​​may​​not​​have​​been​
+  ​correctly​ ​specified​ ​in​ ​terms​ ​of​ ​its​ ​thickness​ ​and​ ​grade.​ ​This​ ​allegedly​ ​resulted​ ​in​
+   ​inadequate​ ​separation​ ​between​ ​the​ ​aluminium​ ​layer​ ​and​ ​the​ ​acidic​ ​fruit​ ​juice​ ​contents,​
+    ​potentially​​tainting​​the​​product​​and​​raising​​consumer​​safety​​concerns.​​The​​specifications​
+     ​were​ ​developed​ ​by​ ​the​ ​packaging​ ​manufacturer​ ​during​ ​the​ ​design​ ​process​ ​for​ ​Fruitello,​
+​highlighting the role of external expertise in packaging development.​
+
+​Fruitello​ ​initiated​ ​the​ ​recall​ ​after​ ​identifying​ ​the​ ​issue,​ ​and​ ​the​ ​packaging​​manufacturer​
+ ​has​ ​confirmed​ ​it​ ​is​ ​conducting​ ​an​ ​internal​ ​review​ ​of​ ​its​ ​design​ ​processes.​ ​Industry​
+​observers suggest that legal proceedings or claims could follow.​
+
+​The​ ​incident​ ​has​ ​also​ ​raised​ ​broader​ ​considerations​ ​around​ ​how​ ​responsibilities​ ​are​
+ ​defined​ ​across​ ​the​ ​packaging​ ​design​​process,​​particularly​​where​​external​​parties​​such​​as​
+  ​design​​or​​advisory​​specialists​​are​​involved.​​In​​such​​situations,​​contractual​​clarity​​can​​play​
+   ​an​ ​important​ ​role​ ​in​ ​determining​ ​how​ ​issues​ ​are​ ​addressed​ ​and​ ​where​ ​responsibility​
+​ultimately lies.​
+
+
+
+
+​© Astranti 2026​                                  ​3​
+​Management Case Study​                                                                          ​Mock Exam 3​
+
+
+​Internal briefing note​
+
+​ o: The Board​
+T
+​From: Alison Cruikshank, Operations Director​
+ ​Subject: Internal Review: Laminar Solutions and Corema Industries​
+
+​Laminar Solutions (Fruitello Incident)​
+
+ I​ndustry​ ​intelligence​ ​confirms​ ​that​ ​the​ ​unnamed​ ​manufacturer​ ​in​ ​the​ ​Fruitello​ ​recall​ ​is​
+  ​Laminar​ ​Solutions.​ ​Like​ ​Cartn,​ ​they​ ​are​ ​a​ ​major​ ​rival​ ​providing​ ​both​ ​manufacturing​ ​and​
+   ​consultancy​​services.​​This​​incident​​highlights​​the​​significant​​liability​​risks​​associated​​with​
+​providing technical design specifications to consultancy clients.​
+
+​Supply Chain Review: Corema Industries​
+
+ ​ ollowing​ ​the​ ​news,​ ​we​ ​have​ ​conducted​ ​an​ ​urgent​ ​review​ ​of​ ​our​ ​contract​ ​with​ ​Corema​
+ F
+​Industries, a major polyethylene supplier. Two areas of concern have been identified:​
+
+    ​●​ ​Liability​ ​Clauses:​ ​These​ ​are​ ​currently​ ​too​ ​vague,​ ​creating​​ambiguity​​over​​financial​
+        ​responsibility in the event of material failure.​
+
+    ​●​ ​Quality​​Specifications:​​The​​contract​​does​​not​​clearly​​define​​the​​required​​grades​​or​
+        ​technical standards for materials supplied.​
+
+​Opportunity for Renegotiation​
+
+ ​ orema​ ​Industries​ ​has​ ​recently​ ​requested​ ​a​ ​meeting​ ​to​ ​revise​ ​their​ ​current​ ​pricing​ ​and​
+ C
+ ​supply​ ​volumes.​ ​The​ ​Board​ ​intends​ ​to​ ​use​ ​this​ ​as​ ​a​ ​trigger​ ​to​ ​renegotiate​ ​the​ ​entire​
+​contract to better protect Cartn’s interests.​
+
+
+
+
+​
+
+
+
+
+​© Astranti 2026​                                  ​4​
+​Management Case Study​                                                                        ​Mock Exam 3​
+
+
+​Task 2 - Unseen case material [45 minutes]​
+​You received the following email:​
+
+F​ rom: Elizabeth Maenda, Senior Financial Manager​
+ ​To: Financial Manager​
+  ​Subject: HoloScan​
+
+​Hi,​
+
+ ​ lease​​see​​the​​email​​below​​from​​Wofai​​Eko​​regarding​​HoloScan,​​a​​holographic​​visualisation​
+ P
+ ​technology​ ​that​ ​Wofai​ ​is​ ​proposing​ ​for​ ​application​ ​in​ ​our​ ​packaging​ ​design​ ​and​ ​advisory​
+​services.​
+
+​I would be grateful if you could assist with the following:​
+
+        ​●​ ​Evaluate​ ​the​ ​arguments​ ​both​ ​for​ ​and​ ​against​ ​regarding​ ​HoloScan​ ​as​​a​​disruptive​
+            ​technology.​
+
+                                                                                      ​[sub-task (a) = 40%]​
+
+        ​●​ ​Explain​ ​the​ ​key​ ​considerations​ ​when​ ​developing​ ​non-financial​ ​performance​
+             ​indicators​ ​to​ ​assess​ ​the​ ​value​ ​generated​ ​by​ ​the​ ​proposed​ ​HoloScan​ ​investment,​
+              ​focusing​​on​​areas​​such​​as​​customer​​and​​market​​impact,​​operational​​performance,​
+            ​and long-term development.​
+
+                                                                                      ​[sub-task (b) = 60%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                   ​5​
+​Management Case Study​                                                                            ​Mock Exam 3​
+
+
+​Reference material​
+​Email​
+​From: Wofai Eko, Director of Product Development​
+ ​To: All Board Members​
+  ​Cc: Senior Managers​
+   ​Subject: HoloScan — Holographic Visualisation Technology for Packaging Design​
+
+​Dear All,​
+
+​Following​ ​the​ ​Board's​ ​request​ ​to​ ​identify​ ​solutions​ ​to​ ​reduce​ ​the​ ​risk​ ​of​ ​errors​ ​in​ ​our​
+ ​product​ ​design​ ​and​ ​advisory​ ​services,​ ​I​ ​am​ ​pleased​ ​to​ ​present​ ​HoloScan​ ​as​ ​a​ ​potential​
+​response to this challenge.​
+
+​HoloScan​ ​is​ ​a​ ​holographic​ ​visualisation​ ​and​ ​3D​ ​modelling​ ​technology​ ​widely​ ​adopted​ ​in​
+ ​the​​aerospace​​industry,​​where​​it​​is​​used​​to​​create​​precise​​holographic​​representations​​of​
+  ​components​ ​before​ ​manufacture.​ ​Engineers​ ​use​ ​it​ ​to​ ​identify​ ​design​ ​flaws,​ ​material​
+   ​incompatibilities,​​and​​structural​​weaknesses​​early,​​reducing​​costly​​errors​​in​​safety-critical​
+​applications.​
+
+​In​ ​the​ ​context​ ​of​ ​our​ ​advisory​ ​services,​ ​HoloScan​ ​would​ ​allow​ ​our​ ​consultants​ ​to​ ​help​
+ ​customers​​visualise​​their​​requested​​packaging​​design​​in​​3D,​​enabling​​collaborative​​review​
+  ​and​ ​refinement​ ​of​ ​specifications​​before​​any​​physical​​work​​begins.​​This​​would​​reduce​​the​
+   ​risk​​of​​errors​​arising​​from​​miscommunication​​or​​unclear​​specifications,​​improve​​customer​
+​satisfaction, and minimise costly design iterations.​
+
+​The​ ​technology​ ​could​ ​also​ ​be​ ​used​ ​internally​ ​to​ ​simulate​ ​how​ ​different​ ​material​ ​layers​
+ ​interact​ ​under​ ​various​ ​conditions.​ ​For​ ​example,​ ​it​ ​could​ ​test​ ​how​ ​different​​polyethylene​
+  ​grades​ ​and​ ​thicknesses​ ​interact​ ​with​ ​other​ ​carton​ ​layers,​ ​ensuring​ ​specifications​ ​are​
+​technically sound before production begins.​
+
+​Whilst​ ​new​ ​to​ ​the​ ​food​ ​packaging​ ​industry,​ ​HoloScan's​ ​underlying​ ​technology​ ​is​ ​well​
+​established. I would welcome the Board's support in exploring this further.​
+
+​Kind regards,​
+ ​Wofai​
+
+​
+
+
+
+
+​© Astranti 2026​                                   ​6​
+​Management Case Study​                                                                             ​Mock Exam 3​
+
+
+​Task 3 - Unseen case material [45 minutes]​
+​You received the following email:​
+
+F​ rom: Elizabeth Maenda, Senior Financial Manager​
+ ​To: Financial Manager​
+  ​Subject: HoloScan Investment — Financing Options​
+
+​Hi,​
+
+ ​ ollowing​ ​the​ ​Board's​ ​interest​ ​in​ ​progressing​ ​the​ ​HoloScan​ ​proposal,​ ​Finance​ ​Director​
+ F
+ ​Mario​ ​Bacquero​ ​has​ ​asked​ ​that​ ​we​ ​assess​ ​the​ ​most​ ​appropriate​ ​way​ ​to​ ​fund​ ​the​
+​investment, which is estimated to cost approximately H$5 million.​
+
+ ​ wo​ ​financing​ ​options​ ​have​ ​been​ ​identified​ ​for​ ​consideration.​ ​Please​ ​find​ ​attached​ ​a​
+ T
+​summary of the key terms of each option.​
+
+​I would be grateful if you could assist with the following:​
+
+        ​●​ ​Identify​ ​the​ ​characteristics​ ​of​ ​debt​ ​and​ ​equity​ ​that​​affect​​their​​suitability​​for​​the​
+             ​funding​ ​of​ ​the​​HoloScan​​investment​​and​​recommend​​the​​more​​suitable​​source​​of​
+            ​funds, stating reasons.​
+
+                                                                                           ​[sub-task (a) = 60%]​
+
+        ​●​ ​Evaluate how the funding of this investment will affect key accounting ratios.​
+
+                                                                                           ​[sub-task (b) = 40%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                     ​7​
+​Management Case Study​                                                                                 ​Mock Exam 3​
+
+
+​Reference material​
+​Financing Options and Ratios Summary - HoloScan Investment​
+
+​Option 1 — Bank Loan​
+
+​Cartn has received indicative terms from two lenders offering the following:​
+
+                                       ​Lender A​                                     ​Lender B​
+
+    ​Amount​                         ​H$5 million​                                  ​H$5 million​
+
+    ​Interest rate​           ​Fixed at 6% per annum​               ​Variable, currently at 4% per annum​
+
+    ​Term​                              ​5 years​                                      ​5 years​
+
+    ​Repayment​                        ​Monthly​                                      ​Monthly​
+
+​Both​ ​facilities​ ​would​ ​be​ ​secured​​against​​existing​​assets.​​Cartn's​​long-term​​loans​​stand​​at​
+​H$154.3 million.​
+
+​Option 2 — Rights Issue​
+
+​Cartn​ ​could​ ​raise​ ​H$5​ ​million​ ​through​ ​a​ ​rights​ ​issue,​ ​offering​ ​existing​ ​shareholders​ ​the​
+ ​right​ ​to​ ​subscribe​ ​for​ ​new​ ​shares​ ​at​ ​a​ ​discount​ ​to​ ​the​ ​current​ ​market​ ​price.​ ​The​​rights​
+  ​issue​ ​would​ ​be​ ​offered​ ​on​ ​a​ ​pro-rata​ ​basis​ ​to​ ​existing​ ​shareholders,​ ​preserving​ ​their​
+​proportionate ownership in the company.​
+
+​Current Ratios for Reference​
+
+                                                           ​2026​                              ​2025​
+
+    ​Current ratio​                                        ​2.04​                              ​1.91​
+
+    ​Gearing​                                          ​28.5%​                                ​31.4%​
+
+    ​Interest cover​                                       ​11.4​                               ​7.1​
+
+    ​ROCE​                                             ​20.7%​                                ​14.12%​
+
+
+​
+
+
+
+
+​© Astranti 2026​                                    ​8​
+​Management Case Study​                                                                        ​Mock Exam 3​
+
+
+​Task 4 - Unseen case material [45 minutes]​
+​You received the following email:​
+
+F​ rom: Elizabeth Maenda, Senior Financial Manager​
+ ​To: Financial Manager​
+  ​Subject: HoloScan — Pricing and Customer Communication​
+
+​Hi,​
+
+ ​ lease​ ​see​ ​the​ ​email​ ​below​ ​from​ ​Haitham​ ​Amer​ ​regarding​ ​the​ ​consultants’​ ​concerns​
+ P
+ ​around​ ​HoloScan​ ​and​ ​its​ ​proposed​ ​pricing.​ ​Finance​ ​Director​ ​Mario​ ​Baquero​​and​​I​​would​
+​like your assistance with the following:​
+
+        ​●​ ​Evaluate​ ​the​ ​benefits​ ​and​ ​drawbacks​ ​of​ ​bundled​ ​pricing​ ​and​ ​recommend​ ​the​
+             ​approach​ ​that​ ​should​ ​be​ ​taken​ ​to​ ​price​ ​consulting​ ​services​ ​after​ ​the​
+            ​implementation of HoloScan.​
+
+                                                                                      ​[sub-task (a) = 40%]​
+
+        ​●​ ​Identify​​customer​​needs​​and​​recommend​​how​​consultants​​should​​communicate​​to​
+             ​customers​ ​the​ ​decision​ ​to​ ​use​ ​HoloScan​ ​in​ ​design​ ​consultations,​ ​including​ ​any​
+            ​associated additional costs.​
+
+                                                                                      ​[sub-task (b) = 60%]​
+
+​ ind regards,​
+K
+​Elizabeth​
+
+
+
+
+​© Astranti 2026​                                   ​9​
+​Management Case Study​                                                                        ​Mock Exam 3​
+
+
+​Reference material​
+​Email​
+​From: Haitham Amer, Marketing Director​
+ ​To: Mario Bacquero, Finance Director​
+  ​Cc:​​Elizabeth Maenda, Senior Financial Manager​
+   ​Subject: HoloScan — Customer Acceptance and Pricing Concerns​
+
+​Dear Mario, Elizabeth,​
+
+​I​ ​am​ ​writing​ ​to​ ​raise​ ​some​ ​concerns​ ​that​ ​have​ ​emerged​ ​from​ ​conversations​ ​with​ ​our​
+ ​consultants​ ​regarding​ ​the​ ​proposed​ ​implementation​ ​of​ ​HoloScan​ ​in​ ​our​ ​design​
+​consultations.​
+
+​Whilst​​our​​consultants​​recognise​​the​​technical​​benefits​​of​​HoloScan,​​they​​have​​expressed​
+ ​concern​ ​that​ ​some​ ​customers​ ​may​ ​be​ ​resistant​ ​to​ ​its​ ​use​ ​during​ ​the​ ​consultation​ ​and​
+  ​design​ ​process.​ ​Customers​ ​who​ ​are​ ​accustomed​ ​to​ ​traditional​ ​design​ ​methods​ ​may​ ​be​
+   ​unfamiliar​ ​with​ ​holographic​ ​visualisation​ ​technology​ ​and​ ​may​ ​question​ ​its​ ​relevance​ ​or​
+​reliability in the context of food packaging design.​
+
+​A​ ​related​ ​concern​ ​is​ ​around​ ​pricing.​ ​Our​ ​consultancy​ ​fees​ ​are​ ​currently​ ​based​ ​on​
+ ​estimated​ ​time​ ​and​ ​engineer​​seniority,​​ranging​​from​​approximately​​H$150​​to​​H$400​​per​
+  ​hour.​​I​​understand​​the​​Finance​​Department​​is​​considering​​a​​bundled​​pricing​​approach​​to​
+   ​recover​ ​the​ ​HoloScan​ ​investment.​ ​This​ ​would​ ​absorb​ ​the​ ​technology​ ​cost​ ​into​ ​a​​revised​
+​range of approximately H$180 to H$450 per hour, rather than itemising it separately.​
+
+​Our​ ​consultants​ ​are​ ​unsure​ ​how​​to​​communicate​​this​​change.​​They​​worry​​that​​failing​​to​
+ ​explicitly​ ​inform​ ​customers​ ​of​ ​the​ ​basis​ ​for​ ​these​​higher​​fees​​could​​create​​resistance​​or​
+  ​jeopardise​ ​existing​ ​relationships.​​We​​need​​to​​develop​​a​​clear​​and​​consistent​​approach​​to​
+​both pricing and customer communication before the rollout.​
+
+​Kind regards,​
+ ​Haitham​
+
+
+​
+
+​
+
+​
+
+
+
+
+​© Astranti 2026​                                 ​10​
+​Management Case Study​                                                                                                                          ​Mock Exam 3​
+
+
+​Present value tables​
+​Present value of U$1 i.e. (1 + r)​​-n​ ​where r = interest rate, n = number of periods until payment or receipt.​
+
+                                                                            ​Interest rates (r)​
+​ eriod​
+P
+​s​
+ ​(n)​       ​1%​           ​2%​           ​3%​           ​4%​            ​5%​               ​6%​           ​7%​           ​8%​           ​9%​           ​10%​
+​​
+1              .​990​         .​980​         .​971​         .​962​              .​962​         .​943​         .​935​         .​926​         .​917​       .​909​
+​2​             ​.980​         ​.961​         ​.943​         ​.925​              ​.907​         ​.890​         ​.873​         ​.857​         ​.842​       ​.826​
+ ​3​             ​.971​         ​.942​         ​.915​         ​.889​              ​.864​         ​.840​         ​.816​         ​.794​         ​.772​       ​.751​
+  ​4​             ​.961​         ​.924​         ​.888​         ​.855​              ​.823​         ​.792​         ​.763​         ​.735​         ​.708​       ​.683​
+   ​5​             ​.951​         ​.906​         ​.863​         ​.822​              ​.784​         ​.747​         ​.713​         ​.681​         ​.650​       ​.621​
+
+​​
+6              .​942​         .​888​         .​837​         .​790​              .​746​         .​705​         .​666​         .​630​         .​596​       .​564​
+​7​             ​.933​         ​.871​         ​.813​         ​.760​                 ​.711​      ​.665​         ​.623​         ​.583​         ​.547​       ​.513​
+ ​8​             ​.923​         ​.853​         ​.789​         ​.731​             ​.677​          ​.627​         ​.582​         ​.540​         ​.502​       ​.467​
+  ​9​             ​.914​         ​.837​         ​.766​         ​.703​             ​.645​          ​.592​         ​.544​         ​.500​         ​.460​       ​.424​
+   ​10​            ​.905​         ​.820​         ​.744​         ​.676​             ​.614​          ​.558​         ​.508​         ​.463​         ​.422​       ​.386​
+
+​ 1​
+1              .​896​         .​804​         .​722​         .​650​              .​585​         .​527​         .​475​         .​429​         .​388​       .​350​
+​12​            ​.887​         ​.788​         ​.701​         ​.625​              ​.557​         ​.497​         ​.444​         ​.397​         ​.356​       ​.319​
+ ​13​            ​.879​         ​.773​         ​.681​         ​.601​              ​.530​         ​.469​         ​.415​         ​.368​         ​.326​       ​.290​
+  ​14​            ​.870​         ​.758​         ​.661​         ​.577​              ​.505​         ​.442​         ​.388​         ​.340​         ​.299​       ​.263​
+   ​15​            ​.861​         ​.743​         ​.642​         ​.555​              ​.481​         ​.417​         ​.362​         ​.315​         ​.275​       ​.239​
+
+​ 6​
+1              .​853​         .​728​         .​623​         .​534​              .​458​         .​394​         .​339​         .​292​         .​252​       .​218​
+​17​            ​.844​         ​.714​         ​.605​         ​.513​              ​.436​         ​.371​         ​.317​         ​.270​         ​.231​       ​.198​
+ ​18​            ​.836​         ​.700​         ​.587​         ​.494​              ​.416​         ​.350​         ​.296​         ​.250​         ​.212​       ​.180​
+  ​19​            ​.828​         ​.686​         ​.570​         ​.475​              ​.396​         ​.331​         ​.277​         ​.232​         ​.194​       ​.164​
+   ​20​            ​.820​         ​.673​         ​.554​         ​.456​              ​.377​         ​.312​         ​.258​         ​.215​         ​.178​       ​.149​
+
+
+
+                                                                            ​Interest rates (r)​
+​ eriod​
+P
+​s​
+ ​(n)​         ​11%​          ​12%​          ​13%​          ​14%​           ​15%​              ​16%​          ​17%​          ​18%​          ​19%​        ​20%​
+​​
+1              .​901​         .​893​         .​885​         .​877​              .​870​         .​862​         .​855​         .​847​         .​840​       .​833​
+​2​             ​.812​         ​.797​         ​.783​         ​.769​              ​.756​         ​.743​         ​.731​         ​.718​         ​.706​       ​.694​
+ ​3​             ​.731​         ​.712​         ​.693​         ​.675​              ​.658​         ​.641​         ​.624​         ​.609​         ​.593​       ​.579​
+  ​4​             ​.659​         ​.636​         ​.613​         ​.592​              ​.572​         ​.552​         ​.534​         ​.516​         ​.499​       ​.482​
+   ​5​             ​.593​         ​.567​         ​.543​         ​.519​              ​.497​         ​.476​         ​.456​         ​.437​         ​.419​       ​.402​
+
+​​
+6              .​535​         .​507​         .​480​         .​456​              .​432​         .​410​         .​390​         .​370​         .​352​       .​335​
+​7​             ​.482​         ​.452​         ​.425​         ​.400​              ​.376​         ​.354​         ​.333​         ​.314​         ​.296​       ​.279​
+ ​8​             ​.434​         ​.404​         ​.376​         ​.351​              ​.327​         ​.305​         ​.285​         ​.266​         ​.249​       ​.233​
+  ​9​             ​.391​         ​.361​         ​.333​         ​.308​              ​.284​         ​.263​         ​.243​         ​.225​         ​.209​       ​.194​
+   ​10​            ​.352​         ​.322​         ​.295​         ​.270​              ​.247​         ​.227​         ​.208​         ​.191​         ​.176​       ​.162​
+
+​ 1​
+1              .​317​         .​287​         .​261​         .​237​              .​215​         .​195​         .​178​         .​162​         .​148​       .​135​
+​12​            ​.286​         ​.257​         ​.231​         ​.208​              ​.187​         ​.168​         ​.152​         ​.137​         ​.124​          ​.112​
+ ​13​            ​.258​         ​.229​         ​.204​         ​.182​              ​.163​         ​.145​         ​.130​           ​.116​       ​.104​      ​.093​
+  ​14​            ​.232​         ​.205​         ​.181​         ​.160​              ​.141​         ​.125​          ​.111​       ​.099​          ​.088​      ​.078​
+   ​15​            ​.209​         ​.183​         ​.160​         ​.140​              ​.123​         ​.108​        ​.095​         ​.084​          ​.074​      ​.065​
+
+​ 6​
+1              .​188​         .​163​         .​141​         .​123​              .​107​         .​093​         .​081​         .​071​         .​062​       .​054​
+​17​            ​.170​         ​.146​         ​.125​         ​.108​              ​.093​         ​.080​         ​.069​         ​.060​         ​.052​       ​.045​
+ ​18​            ​.153​         ​.130​           ​.111​       ​.095​              ​.081​         ​.069​         ​.059​         ​.051​         ​.044​       ​.038​
+  ​19​            ​.138​          ​.116​       ​.098​          ​.083​              ​.070​         ​.060​         ​.051​         ​.043​         ​.037​       ​.031​
+   ​20​            ​.124​        ​.104​         ​.087​          ​.073​              ​.061​         ​.051​         ​.043​         ​.037​         ​.031​       ​.026​
+
+
+
+​© Astranti 2026​                                                        ​11​
+​Management Case Study​                                                                                                                ​Mock Exam 3​
+
+
+​Cumulative present value tables​
+​This​ ​table​ ​shows​ ​the​ ​Present​ ​Value​ ​of​​U$1​​per​​annum,​​Receivable​​or​​Payable​​at​​the​​end​​of​​each​​year​​for​​n​​years​
+
+
+
+
+                                                                        ​Interest rates (r)​
+​ eriods​
+P
+​(n)​               ​1%​          ​2%​          ​3%​          ​4%​           ​5%​            ​6%​           ​7%​          ​8%​          ​9%​         ​10%​
+ ​1​         ​ .990​
+             0             ​ .980​
+                           0             ​ .971​
+                                         0             ​ .962​
+                                                       0              ​ .952​
+                                                                      0               ​ .943​
+                                                                                      0              ​ .935​
+                                                                                                     0             ​ .926​
+                                                                                                                   0             ​ .917​
+                                                                                                                                 0             ​ .909​
+                                                                                                                                               0
+  ​2​        ​1.970​       ​1.942​       ​1.913​       ​1.886​        ​1.859​         ​1.833​        ​1.808​       ​1.783​       ​1.759​       ​1.736​
+   ​3​        ​2.941​       ​2.884​       ​2.829​       ​2.775​        ​2.723​         ​2.673​        ​2.624​       ​2.577​       ​2.531​       ​2.487​
+    ​4​        ​3.902​       ​3.808​       ​3.717​       ​3.630​        ​3.546​         ​3.465​        ​3.387​       ​3.312​       ​3.240​       ​3.170​
+     ​5​        ​4.853​       ​4.713​       ​4.580​       ​4.452​        ​4.329​         ​4.212​        ​4.100​       ​3.993​       ​3.890​       ​3.791​
+
+​​
+6            ​ .795​
+             5             ​ .601​
+                           5             ​ .417​
+                                         5             ​ .242​
+                                                       5              ​ .076​
+                                                                      5               ​ .917​
+                                                                                      4              ​ .767​
+                                                                                                     4             ​ .623​
+                                                                                                                   4             ​ .486​
+                                                                                                                                 4             ​ .355​
+                                                                                                                                               4
+​7​          ​6.728​       ​6.472​       ​6.230​       ​6.002​        ​5.786​         ​5.582​        ​5.389​       ​5.206​       ​5.033​       ​4.868​
+ ​8​          ​7.652​       ​7.325​       ​7.020​       ​6.733​        ​6.463​         ​6.210​        ​5.971​       ​5.747​       ​5.535​       ​5.335​
+  ​9​          ​8.566​       ​8.162​       ​7.786​       ​7.435​        ​7.108​         ​6.802​        ​6.515​       ​6.247​       ​5.995​       ​5.759​
+   ​10​         ​9.471​       ​8.983​       ​8.530​       ​8.111​        ​7.722​         ​7.360​        ​7.024​       ​6.710​       ​6.418​       ​6.145​
+
+​ 1​
+1            ​ 0.368​
+             1             ​ .787​
+                           9             ​ .253​
+                                         9             ​ .760​
+                                                       8              ​ .306​
+                                                                      8               ​ .887​
+                                                                                      7              ​ .499​
+                                                                                                     7             ​ .139​
+                                                                                                                   7             ​ .805​
+                                                                                                                                 6             ​ .495​
+                                                                                                                                               8
+​12​         ​11.255​      ​10.575​      ​9.954​       ​9.385​        ​8.863​         ​8.384​        ​7.943​       ​7.536​       ​7.161​       ​6.814​
+ ​13​         ​12.134​      ​11.348​      ​10.635​      ​9.986​        ​9.394​         ​8.853​        ​8.358​       ​7.904​       ​7.487​       ​7.103​
+  ​14​         ​13.004​      ​12.106​      ​11.296​      ​10.563​       ​9.899​         ​9.295​        ​8.745​       ​8.244​       ​7.786​       ​7.367​
+   ​15​         ​13.865​      ​12.849​      ​11.938​      ​11.118​       ​10.380​        ​9.712​        ​9.108​       ​8.559​       ​8.061​       ​7.606​
+
+​ 6​
+1            ​ 4.718​
+             1             ​ 3.578​
+                           1             ​ 2.561​
+                                         1             ​ 1.652​
+                                                       1              ​ 0.838​
+                                                                      1               ​10.106​       ​ .447​
+                                                                                                     9             ​ .851​
+                                                                                                                   8             ​ .313​
+                                                                                                                                 8             ​ .824​
+                                                                                                                                               7
+​17​         ​15.562​      ​14.292​      ​13.166​      ​12.166​       ​11.274​         ​10.477​      ​9.763​       ​9.122​       ​8.544​       ​8.022​
+ ​18​         ​16.398​      ​14.992​      ​13.754​      ​12.659​       ​11.690​         ​10.828​      ​10.059​      ​9.372​       ​8.756​       ​8.201​
+  ​19​         ​17.226​      ​15.679​      ​14.324​      ​13.134​       ​12.085​         ​11.158​      ​10.336​      ​9.604​       ​8.950​       ​8.365​
+   ​20​         ​18.046​      ​16.351​      ​14.878​      ​13.590​       ​12.462​         ​11.470​      ​10.594​      ​9.818​       ​9.129​       ​8.514​
+                                                                           ​Interest rates (r)​
+​ eriods​
+P
+​(n)​              ​11%​         ​12%​         ​13%​         ​14%​          ​15%​           ​16%​          ​17%​         ​18%​         ​19%​         ​20%​
+ ​1​         ​ .901​
+             0             ​ .893​
+                           0             ​ .885​
+                                         0             ​ .877​
+                                                       0              ​ .870​
+                                                                      0               ​ .862​
+                                                                                      0              ​ 685​
+                                                                                                     0             ​ .847​
+                                                                                                                   0             ​ .840​
+                                                                                                                                 0             ​ .833​
+                                                                                                                                               0
+  ​2​        ​1.713​       ​1.690​       ​1.668​       ​1.647​        ​1.626​         ​1.605​        ​1.585​       ​1.566​       ​1.547​       ​1.528​
+   ​3​        ​2.444​       ​2.402​       ​2.361​       ​2.322​        ​2.283​         ​2.246​        ​2.210​       ​2.174​       ​2.140​       ​2.106​
+    ​4​        ​3.102​       ​3.037​       ​2.974​       ​2.914​        ​2.855​         ​2.798​        ​2.743​       ​2.690​       ​2.639​       ​2.589​
+     ​5​        ​3.696​       ​3.605​       ​3.517​       ​3.433​        ​3.352​         ​3.274​        ​3.199​       ​3.127​       ​3.058​       ​2.991​
+
+​​
+6            ​ .231​
+             4             ​ .111​
+                           4             ​ .998​
+                                         3             ​ .889​
+                                                       3              ​ .784​
+                                                                      3               ​ .685​
+                                                                                      3              ​ .589​
+                                                                                                     3             ​ .498​
+                                                                                                                   3             ​ .410​
+                                                                                                                                 3             ​ .326​
+                                                                                                                                               3
+​7​          ​4.712​       ​4.564​       ​4.423​       ​4.288​        ​4.160​         ​4.039​        ​3.922​       ​3.812​       ​3.706​       ​3.605​
+ ​8​          ​5.146​       ​4.968​       ​4.799​       ​4.639​        ​4.487​         ​4.344​        ​4.207​       ​4.078​       ​3.954​       ​3.837​
+  ​9​          ​5.537​       ​5.328​       ​5.132​       ​4.946​        ​4.772​         ​4.607​        ​4.451​       ​4.303​       ​4.163​       ​4.031​
+   ​10​         ​5.889​       ​5.650​       ​5.426​       ​5.216​        ​5.019​         ​4.833​        ​4.659​       ​4.494​       ​4.339​       ​4.192​
+
+​ 1​
+1            ​ .207​
+             6             ​ .938​
+                           5             ​ .687​
+                                         5             ​ .453​
+                                                       5              ​ .234​
+                                                                      5               ​ .029​
+                                                                                      5              ​ .836​
+                                                                                                     4             ​ .656​
+                                                                                                                   4             ​ .486​
+                                                                                                                                 4             ​ .327​
+                                                                                                                                               4
+​12​         ​6.492​       ​6.194​       ​5.918​       ​5.660​        ​5.421​         ​5.197​        ​4.968​       ​4.793​       ​4.611​       ​4.439​
+ ​13​         ​6.750​       ​6.424​       ​6.122​       ​5.842​        ​5.583​         ​5.342​        ​5.118​       ​4.910​       ​4.715​       ​4.533​
+  ​14​         ​6.982​       ​6.628​       ​6.302​       ​6.002​        ​5.724​         ​5.468​        ​5.229​       ​5.008​       ​4.802​       ​4.611​
+   ​15​         ​7.191​       ​6.811​       ​6.462​       ​6.142​        ​5.847​         ​5.575​        ​5.324​       ​5.092​       ​4.876​       ​4.675​
+
+
+​ 6​
+1            ​ .379​
+             7             ​ .974​
+                           6             ​ .604​
+                                         6             ​ .265​
+                                                       6              ​ .954​
+                                                                      5               ​ .668​
+                                                                                      5              ​ .405​
+                                                                                                     5             ​ .162​
+                                                                                                                   5             ​ .938​
+                                                                                                                                 4             ​ .730​
+                                                                                                                                               4
+​17​         ​7.549​       ​7.120​       ​6.729​       ​6.373​        ​6.047​         ​5.749​        ​5.475​       ​5.222​       ​4.990​       ​4.775​
+ ​18​         ​7.702​       ​7.250​       ​6.840​       ​6.467​        ​6.128​         ​5.818​        ​5.534​       ​5.273​       ​5.033​       ​4.812​
+  ​19​         ​7.839​       ​7.366​       ​6.938​       ​6.550​        ​6.198​         ​5.877​        ​5.584​       ​5.316​       ​5.070​       ​4.843​
+   ​20​         ​7.963​       ​7.469​       ​7.025​       ​6.623​        ​6.259​         ​5.929​        ​5.628​       ​5.353​       ​5.101​       ​4.870​
+
+
+
+
+​© Astranti 2026​                                                    ​12​
+

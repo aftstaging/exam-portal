@@ -1,0 +1,1 @@
+ALTER TABLE `products` MODIFY COLUMN `accessDays` int NOT NULL DEFAULT 30;

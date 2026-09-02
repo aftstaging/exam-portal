@@ -1,0 +1,608 @@
+                                                                 Management Case
+MOCK EXAM B
+
+
+
+
+Management level
+Case study
+
+May & August 2026
+
+This examination is structured as follows:
+            Time for   Number of                   % time to
+ Section                             Number of
+           section      answer                   spend on each
+  (task)                             sub-tasks
+           (minutes)    screens                     sub-task
+                                                   (a) 60%
+    1         45            1                2
+                                                   (b) 40%
+                                                   (a) 60%
+              45            1                2
+    2                                              (b) 40%
+                                                   (a) 40%
+    3         45            1                2
+                                                   (b) 60%
+                                                   (a) 33%
+    4         45            1                2
+                                                   (b) 34%
+                                                   (c) 33%
+
+
+
+
+           Kaplan Publishing/Kaplan Financial
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+
+
+
+© Kaplan Financial Limited, 2026
+The text in this material and any others made available by any Kaplan Group company does not
+amount to advice on a particular matter and should not be taken as such. No reliance should be
+placed on the content as the basis for any investment or other decision or in connection with any
+advice given to third parties. Please consult your appropriate professional adviser as necessary.
+Kaplan Publishing Limited and all other Kaplan group companies expressly disclaim all liability to
+any person in respect of any losses or other claims, whether direct, indirect, incidental,
+consequential or otherwise arising in relation to the use of such materials.
+All rights reserved. No part of this examination may be reproduced or transmitted in any form or
+by any means, electronic or mechanical, including photocopying, recording, or by any information
+storage and retrieval system, without prior permission from Kaplan Publishing.
+
+
+
+2                                                                          K A P LA N P UB L I S H I N G
+                                                                                        MO CK B
+
+
+FORMULAE AND TABLES
+Annuity
+Present value of an annuity of £1 per annum, receivable or payable for n years, commencing in one
+year, discounted at r% per annum:
+
+    1      1 
+PV = 1 –          
+    r  [1 + r ] n 
+                  
+
+
+Perpetuity
+Present value of £1 per annum, payable or receivable in perpetuity, commencing in one year,
+discounted at r% per annum:
+       1
+PV =
+       r
+
+
+Growing Perpetuity
+Present value of £1 per annum, receivable or payable, commencing in one year, growing in
+perpetuity at a constant rate of g% per annum, discounted at r% per annum:
+        1
+PV =
+       r−g
+
+
+
+
+KAPLAN P UBLI S H I N G                                                                        3
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+
+Area under the normal curve
+This table gives the area under the normal curve between the mean and a point Z standard
+deviations above the mean. The corresponding area for deviations below the mean can be found
+by symmetry.
+
+
+
+
+                                                    0             Z-
+
+
+         (x – µ)
+    Z=              0.00    0.01    0.02    0.03        0.04   0.05    0.06    0.07      0.08       0.09
+           σ
+         0.0       .0000    .0040   .0080   .0120   .0159      .0199   .0239   .0279    .0319      .0359
+         0.1       .0398    .0438   .0478   .0517   .0557      .0596   .0636   .0675    .0714      .0753
+         0.2       .0793    .0832   .0871   .0910   .0948      .0987   .1026   .1064    .1103      .1141
+         0.3       .1179    .1217   .1255   .1293   .1331      .1368   .1406   .1443    .1480      .1517
+         0.4       .1554    .1591   .1628   .1664   .1700      .1736   .1772   .1808    .1844      .1879
+
+         0.5       .1915    .1950   .1985   .2019   .2054      .2088   .2123   .2157    .2190      .2224
+         0.6       .2257    .2291   .2324   .2357   .2389      .2422   .2454   .2486    .2518      .2549
+         0.7       .2580    .2611   .2642   .2673   .2704      .2734   .2764   .2794    .2823      .2852
+         0.8       .2881    .2910   .2939   .2967   .2995      .3023   .3051   .3078    .3106      .3133
+         0.9       .3159    .3186   .3212   .3238   .3264      .3289   .3315   .3340    .3365      .3389
+
+         1.0       .3413    .3438   .3461   .3485   .3508      .3531   .3554   .3577    .3599      .3621
+         1.1       .3643    .3665   .3686   .3708   .3729      .3749   .3770   .3790    .3810      .3830
+         1.2       .3849    .3869   .3888   .3907   .3925      .3944   .3962   .3980    .3997      .4015
+         1.3       .4032    .4049   .4066   .4082   .4099      .4115   .4131   .4147    .4162      .4177
+         1.4       .4192    .4207   .4222   .4236   .4251      .4265   .4279   .4292    .4306      .4319
+
+         1.5       .4332    .4345   .4357   .4370   .4382      .4394   .4406   .4418    .4430      .4441
+         1.6       .4452    .4463   .4474   .4485   .4495      .4505   .4515   .4525    .4535      .4545
+         1.7       .4554    .4564   .4573   .4582   .4591      .4559   .4608   .4616    .4625      .4633
+         1.8       .4641    .4649   .4656   .4664   .4671      .4678   .4686   .4693    .4699      .4706
+         1.9       .4713    .4719   .4726   .4732   .4738      .4744   .4750   .4756    .4762      .4767
+
+         2.0       .4772    .4778   .4783   .4788   .4793      .4798   .4803   .4808    .4812      .4817
+         2.1       .4821    .4826   .4830   .4831   .4838      .4842   .4856   .4850    .4854      .4857
+         2.2       .4861    .4865   .4868   .4871   .4875      .4878   .4881   .4884    .4887      .4890
+         2.3       .4893    .4896   .4898   .4901   .4904      .4906   .4909   .4911    .4913      .4916
+         2.4       .4918    .4920   .4922   .4925   .4927      .4929   .4931   .4932    .4934      .4936
+
+         2.5       .4938    .4940   .4941   .4943   .4945      .4946   .4948   .4949    .4951      .4952
+         2.6       .4953    .4955   .4956   .4957   .4959      .4960   .4961   .4962    .4963      .4964
+         2.7       .4965    .4966   .4967   .4968   .4969      .4970   .4971   .4972    .4973      .4974
+         2.8       .4974    .4975   .4976   .4977   .4977      .4978   .4979   .4980    .4980      .4981
+         2.9       .4981    .4982   .4983   .4983   .4984      .4984   .4985   .4985    .4986      .4986
+
+         3.0       .49865   .4987   .4987   .4988   .4988      .4989   .4989   .4989    .4990      .4990
+         3.1       .49903   .4991   .4991   .4991   .4992      .4992   .4992   .4992    .4993      .4993
+         3.2       .49931   .4993   .4994   .4994   .4994      .4994   .4994   .4995    .4995      .4995
+         3.3       .49952   .4995   .4995   .4996   .4996      .4996   .4996   .4996    .4996      .4997
+         3.4       .49966   .4997   .4997   .4997   .4997      .4997   .4997   .4997    .4997      .4998
+         3.5       .49977
+
+
+4                                                                              K A P LA N P UB L I S H I N G
+                                                                                         MO CK B
+
+Present value table
+Present value of £1 i.e. (1 + r)−n where r = interest rate, n = number of periods until payment or
+receipt.
+                                              Interest rates (r)
+  Periods
+    (n)       1%       2%      3%       4%       5%       6%        7%     8%      9%      10%
+     1       .990     .980    .971     .962     .962     .943      .935   .926    .917     .909
+     2       .980     .961    .943     .925     .907     .890      .873   .857    .842     .826
+     3       .971     .942    .915     .889     .864     .840      .816   .794    .772     .751
+     4       .961     .924    .888     .855     .823     .792      .763   .735    .708     .683
+     5       .951     .906    .863     .822     .784     .747      .713   .681    .650     .621
+
+     6       .942     .888    .837     .790     .746     .705      .666   .630    .596     .564
+     7       .933     .871    .813     .760     .711     .665      .623   .583    .547     .513
+     8       .923     .853    .789     .731     .677     .627      .582   .540    .502     .467
+     9       .914     .837    .766     .703     .645     .592      .544   .500    .460     .424
+    10       .905     .820    .744     .676     .614     .558      .508   .463    .422     .386
+
+    11       .896     .804    .722     .650     .585     .527      .475   .429    .388     .350
+    12       .887     .788    .701     .625     .557     .497      .444   .397    .356     .319
+    13       .879     .773    .681     .601     .530     .469      .415   .368    .326     .290
+    14       .870     .758    .661     .577     .505     .442      .388   .340    .299     .263
+    15       .861     .743    .642     .555     .481     .417      .362   .315    .275     .239
+
+    16       .853     .728    .623     .534     .458     .394      .339   .292    .252     .218
+    17       .844     .714    .605     .513     .436     .371      .317   .270    .231     .198
+    18       .836     .700    .587     .494     .416     .350      .296   .250    .212     .180
+    19       .828     .686    .570     .475     .396     .331      .277   .232    .194     .164
+    20       .820     .673    .554     .456     .377     .312      .258   .215    .178     .149
+
+                                              Interest rates (r)
+  Periods
+    (n)      11%      12%     13%      14%      15%      16%       17%    18%     19%      20%
+     1       .901     .893    .885     .877     .870     .862      .855   .847    .840     .833
+     2       .812     .797    .783     .769     .756     .743      .731   .718    .706     .694
+     3       .731     .712    .693     .675     .658     .641      .624   .609    .593     .579
+     4       .659     .636    .613     .592     .572     .552      .534   .516    .499     .482
+     5       .593     .567    .543     .519     .497     .476      .456   .437    .419     .402
+
+     6       .535     .507    .480     .456     .432     .410      .390   .370    .352     .335
+     7       .482     .452    .425     .400     .376     .354      .333   .314    .296     .279
+     8       .434     .404    .376     .351     .327     .305      .285   .266    .249     .233
+     9       .391     .361    .333     .308     .284     .263      .243   .225    .209     .194
+    10       .352     .322    .295     .270     .247     .227      .208   .191    .176     .162
+
+    11       .317     .287    .261     .237     .215     .195      .178   .162    .148     .135
+    12       .286     .257    .231     .208     .187     .168      .152   .137    .124     .112
+    13       .258     .229    .204     .182     .163     .145      .130   .116    .104     .093
+    14       .232     .205    .181     .160     .141     .125      .111   .099    .088     .078
+    15       .209     .183    .160     .140     .123     .108      .095   .084    .074     .065
+
+    16       .188     .163    .141     .123     .107     .093      .081   .071    .062     .054
+    17       .170     .146    .125     .108     .093     .080      .069   .060    .052     .045
+    18       .153     .130    .111     .095     .081     .069      .059   .051    .044     .038
+    19       .138     .116    .098     .083     .070     .060      .051   .043    .037     .031
+    20       .124     .104    .087     .073     .061     .051      .043   .037    .031     .026
+
+KAPLAN P UBLI S H I N G                                                                           5
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+Cumulative present value of 1.00 unit of currency per annum.
+                                                                              −n
+Receivable or payable at the end of each year for n years 1 − (1 + r)
+                                                                                   .
+                                                                       r
+                                                  Interest rates (r)
+    Periods
+      (n)      1%       2%       3%       4%       5%        6%            7%          8%        9%          10%
+       1       0.990    0.980    0.971    0.962    0.952     0.943         0.935       0.926     0.917       0.909
+       2       1.970    1.942    1.913    1.886    1.859     1.833         1.808       1.783     1.759       1.736
+       3       2.941    2.884    2.829    2.775    2.723     2.673         2.624       2.577     2.531       2.487
+       4       3.902    3.808    3.717    3.630    3.546     3.465         3.387       3.312     3.240       3.170
+       5       4.853    4.713    4.580    4.452    4.329     4.212         4.100       3.993     3.890       3.791
+
+       6       5.795    5.601    5.417    5.242    5.076     4.917         4.767       4.623     4.486       4.355
+       7       6.728    6.472    6.230    6.002    5.786     5.582         5.389       5.206     5.033       4.868
+       8       7.652    7.325    7.020    6.733    6.463     6.210         5.971       5.747     5.535       5.335
+       9       8.566    8.162    7.786    7.435    7.108     6.802         6.515       6.247     5.995       5.759
+      10       9.471    8.983    8.530    8.111    7.722     7.360         7.024       6.710     6.418       6.145
+
+      11      10.368    9.787    9.253    8.760    8.306     7.887         7.499       7.139     6.805       6.495
+      12      11.255   10.575    9.954    9.385    8.863     8.384         7.943       7.536     7.161       6.814
+      13      12.134   11.348   10.635    9.986    9.394     8.853         8.358       7.904     7.487       7.103
+      14      13.004   12.106   11.296   10.563    9.899     9.295         8.745       8.244     7.786       7.367
+      15      13.865   12.849   11.938   11.118   10.380     9.712         9.108       8.559     8.061       7.606
+
+      16      14.718   13.578   12.561   11.652   10.838    10.106      9.447          8.851     8.313       7.824
+      17      15.562   14.292   13.166   12.166   11.274    10.477      9.763          9.122     8.544       8.022
+      18      16.398   14.992   13.754   12.659   11.690    10.828     10.059          9.372     8.756       8.201
+      19      17.226   15.679   14.324   13.134   12.085    11.158     10.336          9.604     8.950       8.365
+      20      18.046   16.351   14.878   13.590   12.462    11.470     10.594          9.818     9.129       8.514
+
+                                                  Interest rates (r)
+    Periods
+      (n)      11%      12%      13%      14%      15%        16%           17%         18%       19%        20%
+       1      0.901    0.893    0.885    0.877    0.870      0.862         0.855       0.847     0.840      0.833
+       2      1.713    1.690    1.668    1.647    1.626      1.605         1.585       1.566     1.547      1.528
+       3      2.444    2.402    2.361    2.322    2.283      2.246         2.210       2.174     2.140      2.106
+       4      3.102    3.037    2.974    2.914    2.855      2.798         2.743       2.690     2.639      2.589
+       5      3.696    3.605    3.517    3.433    3.352      3.274         3.199       3.127     3.058      2.991
+
+       6      4.231    4.111    3.998    3.889    3.784      3.685         3.589       3.498     3.410      3.326
+       7      4.712    4.564    4.423    4.288    4.160      4.039         3.922       3.812     3.706      3.605
+       8      5.146    4.968    4.799    4.639    4.487      4.344         4.207       4.078     3.954      3.837
+       9      5.537    5.328    5.132    4.946    4.772      4.607         4.451       4.303     4.163      4.031
+      10      5.889    5.650    5.426    5.216    5.019      4.833         4.659       4.494     4.339      4.192
+
+      11      6.207    5.938    5.687    5.453    5.234      5.029         4.836       4.656     4.486      4.327
+      12      6.492    6.194    5.918    5.660    5.421      5.197         4.968       4.793     4.611      4.439
+      13      6.750    6.424    6.122    5.842    5.583      5.342         5.118       4.910     4.715      4.533
+      14      6.982    6.628    6.302    6.002    5.724      5.468         5.229       5.008     4.802      4.611
+      15      7.191    6.811    6.462    6.142    5.847      5.575         5.324       5.092     4.876      4.675
+
+      16      7.379    6.974    6.604    6.265    5.954      5.668         5.405       5.162     4.938      4.730
+      17      7.549    7.120    6.729    6.373    6.047      5.749         5.475       5.222     4.990      4.775
+      18      7.702    7.250    6.840    6.467    6.128      5.818         5.534       5.273     5.033      4.812
+      19      7.839    7.366    6.938    6.550    6.198      5.877         5.584       5.316     5.070      4.843
+      20      7.963    7.469    7.025    6.623    6.259      5.929         5.628       5.353     5.101      4.870
+
+6                                                                                       K A P LA N P UB L I S H I N G
+                                                         Cost---
+                                                         Production costs----current set up---toyota Hilux as fortuner
+                                                         New machinery and equipment----extimate these costs
+                                                         Personnel in the production               MO CK B
+                                                         Plan for overtime
+               TASK 1 (45 minutes)
+                                                         Distributions costs-------current channels
+               TRIGGER
+                                                         Marketed - - - -channels and associated
+               Elizabeth Maenda, Cartn’s Senior Financial Manager, stops by your workspace and hands you an
+               extract from a competitor’s annual report, which includes some segmental analysis data:
+
+               “Over the last couple of years, Pack-Up has begun producing and selling semi-rigid trays and boxes
+               as well as cartons and tubs in the Harrland market. Its results for trays have been very promising.
+               Cartn’s Board is considering moving into this attractive market. We would initially limit ourselves
+               to sales in Harrland, with the scope of expanding the project to other countries if it is successful.
+Drivers of revenue
+Demand/quantity-----------research
+Price-------price penetration-----price
+               Mario Baquero, our Financeskim---
+                                          Director, has asked me to prepare a briefing for further discussion and
+               I need you to draft the following sections:
+differentiate our trays----chrge high
+               - Firstly, identify and evaluate the challenges associated with predicting costs and revenues for this
+               new range.
+
+                                                                                                [sub-task (a) = 60%]
+
+                - Secondly, evaluate the usefulness of Pack-Up’s segmental analysis as a basis for addressing those
+               challenges.”
+
+                                                                                                [sub-task (b) = 40%]
+
+
+
+
+               KAPLAN P UBLI S H I N G                                                                             7
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+REFERENCE MATERIAL
+
+
+Extract from Pack-Up annual report – segmental analysis of performance:
+
+
+    Item                             Year ended 31/03/26          Year ended 31/03/25
+                                      H$ millions       %         H$ millions          %
+    Revenue
+    Cartons                              84.6         32.2%           81.5          35.2%
+    Tubs                                 73.1         27.8%           68.4          29.5%
+    Trays                                57.4         21.8%           35.5          15.3%
+    Boxes                                47.9         18.2%           46.3          20.0%
+                                        263.0                        231.7
+                                                                                             zero sum game
+    Gross profit
+    Cartons                              17.6         30.1%           17.1          35.9%
+    Tubs                                 14.7         25.1%           13.8          29.0%
+    Trays                                15.7         26.8%           6.5           13.7%
+    Boxes                                10.5         17.9%           10.2          21.4%
+                                         58.5                         47.6
+
+
+
+
+TASK
+
+
+Prepare the work that Elizabeth has requested.                        (Time 45 minutes)
+
+8                                                                         K A P LA N P UB L I S H I N G
+                                                                                         MO CK B
+
+
+TASK 2 (45 minutes)
+
+TRIGGER
+
+A month has passed. Cartn’s Board has decided to proceed with the development of the range of
+semi-rigid trays. You receive the following email:
+
+To: Financial Manager
+
+From: Elizabeth Maenda
+
+Date: Today
+
+Subject: Cartn trays
+
+I have attached a copy of a Board minute from the last meeting when the production of trays was
+discussed. I need two things from you:
+
+- Recommend, with reasons, the ways in which we might improve the Product Development team’s
+engagement with the development of this range of products.
+
+                                   60% x 25 = 15 marks                       [sub-task (a) = 60%]
+
+ - Identify the challenges associated with setting a suitable transfer price for the time spent by
+Production department staff assisting the Product Development team and recommend, with
+reasons, how those challenges might be overcome.
+
+                                                                             [sub-task (b) = 40%]
+
+Regards,
+
+Elizabeth
+
+
+
+
+KAPLAN P UBLI S H I N G                                                                         9
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+REFERENCE MATERIAL
+
+
+Extract from Board minutes                  Ways:
+                                            1. Incentives----motivate
+
+Wofai Eko, Director of Product Development, was invited to report on the progress his Product
+Development team has made relating to Cartn’s new range of semi-rigid trays. He brought the
+following matters to the Board’s attention:                                          Moving out
+                                                                                                comfort zone--
+                                                                                                Resitance to change
+ - Product Development team staff tasked with allocating time to work on this project have proved
+reluctant to focus on it. Most of the team have been with the company for many years developing
+our cartons and tubs and this is the first major change for some time in the products we offer.
+
+Mr Eko believes that the team have the necessary technical expertise to source appropriate
+materials and create good quality trays, but they lack the necessary interest to concentrate on the
+task.
+
+ - Mr Eko’s Product Development team has been struggling to obtain the necessary cooperation
+from the Production department. The team requires the expertise of the Production department
+to help identify and solve problems associated with manufacturing the trays. For example, the
+production machinery will need the capacity to change the moulding pattern of the trays
+dependent on customer needs. The team requires input from Production to determine the best,
+most efficient production machinery that should be selected to produce the trays. Set what type of goals?
+                                                                                        Set common goals
+ - Larisa Nikitina, the Production Manager, complained that the Product Development department
+makes too many requests for assistance, and she has told her staff to ignore any further questions
+relating to tray production until an acceptable transfer price for Production Department staff time
+can be put in place. Without such a transfer price, she said, it is impossible to meet strict production
+cost targets.                Transfer price to be set
+At present, the Production department is only permitted to charge the Product Development
+department for the salary costs associated with time spent on providing advice. Ms Nikitina believes
+that the Product Development department finds it cheap and convenient to pass all problems to
+Production instead of dealing with simple matters internally. There are also concerns about the
+effectiveness of the Production department caused by this distraction from their own work.
+
+Ms Nikitina has suggested that the Product Development department should engage a specialist
+consultancy firm to advise on the issues they encounter.
+
+
+TASK
+Prepare the work that Elizabeth has requested.                              (Time 45 minutes)
+
+
+
+
+10                                                                             K A P LA N P UB L I S H I N G
+                                                                                           MO CK B
+
+
+TASK 3 (45 minutes)
+
+TRIGGER
+
+A month has passed. Cartn’s Board has resolved the problems that threatened to delay the design
+of the new range of trays. You receive the following email:
+
+
+From: Elizabeth Maenda
+
+To: Financial Manager
+
+Subject: Cartn trays
+
+Hi,
+
+I have forwarded an email that I have received from Mario Baquero.
+
+Mario requires a response from me. I need your help with the following:
+
+- Firstly, please identify and evaluate the factors associated with debt and equity that are relevant
+to Cartn’s decision concerning the financing of the new plant and equipment and the inventory.
+Your evaluation should take Cartn’s current financial position into account.
+
+                                                                                [sub-task (a) = 40%]
+
+- Secondly, identify the impact that the new range will have on our integrated reporting capitals:
+Financial, Manufactured, Intellectual, Human, Social and Relationship, and Natural.
+
+                                                                                [sub-task (b) = 60%]
+
+Elizabeth
+
+
+
+
+KAPLAN P UBLI S H I N G                                                                           11
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+REFERENCE MATERIAL
+
+
+
+
+To: Elizabeth Maenda, Senior Financial Manager
+
+From: Mario Baquero, Finance Director
+
+Fwd: Cartn trays
+
+Hi Elizabeth,
+
+The initial development work on the Cartn tray products is now complete. We will manufacture the
+trays from an innovative, environmentally friendly material produced by a new supplier. The
+material is produced from agricultural waste (wheat straw), which is durable and safe to use in
+microwaves.
+
+We will need to invest in some new plant and equipment to produce the trays, which require
+moulding to designs that are bespoke to customer requirements.
+
+Alison Cruikshank, our Operations Director, estimates that the new equipment will require an
+investment of H$35 million. We will also require a further H$10m for the additional inventory of
+raw materials for the range, although we expect this value to decrease over time as our production
+process becomes more efficient.
+
+The Board has decided to include the development and production of tray products in our
+Integrated Report within the next annual financial statements and reports. As you know, this will
+require the consideration of six capitals: Financial, Manufactured, Intellectual, Human, Social and
+Relationship, and Natural.
+
+Mario
+
+
+
+
+TASK
+Prepare a response to Elizabeth’s request.                                       (Time 45 minutes)
+
+
+
+
+12                                                                          K A P LA N P UB L I S H I N G
+                                                                                           MO CK B
+
+
+TASK 4 (45 minutes)
+
+TRIGGER
+
+Two weeks later, Elizabeth Maenda stops by your workspace. She places a document on your
+desk:
+
+“Our Product Development Department has overcome its initial problems relating to the
+production of trays. We still have to make some important decisions about this product range.
+
+I have attached an extract of the recent Board minutes.
+
+I have to brief Mario on several issues before the next Board meeting. I need you to draft a paper
+for me that covers the following:
+
+- Firstly, our Board has still not made a final decision on whether to focus on food manufacturers or
+food consumers in the final development and marketing of the range of trays.
+
+Please explain how that decision will affect the management of the project to develop and launch
+the range.
+
+                                                                                [sub-task (a) = 33%]
+
+ - Secondly, discuss the approaches that the Board should take with regard to setting prices for the
+range of trays if the decision is to place food consumers as the focus of the range.
+
+                                                                                [sub-task (b) = 34%]
+
+ - Thirdly, identify the key product and product reputation risks associated with developing this
+range for both a focus on food manufacturers and consumers in its promotion, justifying your
+selection.”
+
+                                                                                [sub-task (c) = 33%]
+
+
+
+
+KAPLAN P UBLI S H I N G                                                                           13
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+REFERENCE MATERIAL
+
+
+
+Extract from Board Minutes
+
+
+Haitham Amer, Marketing Director: “Let me read you an extract from Harrland Food Retailers
+Magazine that we should consider:
+
+      One of the latest trends identified by market research is that many consumers are prioritising
+      purchases whereby secondary packaging is kept to a minimum or not present at all. They feel
+      that it is important that this more environmentally friendly approach is taken by food
+      manufacturers. Consumer groups are lobbying for the reduction of secondary packaging and
+      an online Parliamentary petition about it has generated enough signatures to require the
+      Harrland government to debate it.
+
+      We spoke to the Sales Director of Abacab Chilled Products, who said “we have led the field
+      in moving to more environmentally friendly materials in the packaging of our products.
+      However, secondary packaging acts as protection for the food and gives us the ability to
+      provide other valuable information to consumers, such as nutrition information and cooking
+      instructions that are easy to read. It’s possible to reduce the amount of secondary packaging,
+      but this would most likely increase the price of the food because of the changes we would
+      need to make to primary packaging.”
+
+We should discuss whether to focus our tray design on reducing the need for secondary packaging
+to appeal to consumers and potentially get ahead of changes in legislation, instead of appealing
+only to the needs of food manufacturers, or whether to produce two types of products so that we
+can appeal to both consumers and food producers.”
+
+Alison Cruikshank, Operations Director: “That would potentially lead to changes in the production
+process, including the ability to print directly onto the material of the trays themselves, which was
+not planned for. It would be inefficient and require too much factory space to develop two ranges,
+at least initially.”
+
+Haitham Amer, Marketing Director: “We need to decide soon. We are about to produce some
+prototype designs and start the process of locking in our production process requirements for
+them.”
+
+
+TASK
+Prepare the work that Elizabeth has requested.                            (Time 45 minutes)
+
+
+
+
+14                                                                           K A P LA N P UB L I S H I N G
+

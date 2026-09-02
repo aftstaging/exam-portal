@@ -1,0 +1,1223 @@
+​Management Case Study​                      ​Mock Exam 4​
+
+
+
+
+            ​CIMA Management Case Study​
+
+
+                          ​Mock Exam​​4​
+                             ​Cartn​
+
+
+                     ​Suggested Solutions​
+
+
+
+
+​© Astranti 2026​             ​12​
+​Management Case Study​                                                                                   ​Mock Exam 4​
+
+
+​How to use Astranti Solutions​
+​What an Astranti Solution is for​
+
+ ​ ur​ ​solutions​ ​are​ ​designed​ ​to​ ​be​ ​perfect​ ​answers​​.​ ​That​ ​means​ ​that​ ​they​ ​cover​ ​every​
+ O
+​possible point in depth in order to serve as a learning tool.​
+
+ ​ his​​is​​so​​that​​when​​you​​review​​your​​own​​solutions​​against​​ours,​​you​​can​​see​​what​​you​​got​
+ T
+ ​right​ ​and​ ​what​ ​you​​got​​wrong.​​What​​you​​covered​​in​​enough​​depth​​and​​what​​you​​missed​
+​out.​
+
+​What an Astranti Solution is NOT for​
+
+​Our solutions are not an example of what you should be able to achieve in the exam!​
+
+ ​ hen​​you​​sit​​the​​real​​exam,​​you​​simply​​won’t​​have​​the​​time​​to​​write​​an​​answer​​as​​long​
+ W
+ ​as​ ​ours​​.​ ​Perhaps​ ​you’ll​ ​cover​ ​75%​ ​of​ ​it​ ​and​ ​this​ ​is​ ​completely​ ​fine​ ​as​ ​long​ ​as​ ​you​ ​have​
+​answered the question.​
+
+​CIMA solutions​
+
+ ​ ou​​may​​have​​noticed​​our​​solutions​​differ​​from​​the​​CIMA​​solutions.​​CIMA​​solutions​​to​​past​
+ Y
+​exams are simply examples of a script that might have passed.​
+
+ ​ ur​ ​solutions​ ​go​ ​above​ ​and​ ​beyond​ ​and​ ​are​ ​examples​ ​of​ ​answers​ ​which​ ​could​ ​earn​ ​top​
+ O
+​marks. We also provide mock debrief videos to help you improve your answers.​
+
+
+
+
+​© Astranti 2026​                                      ​13​
+​Management Case Study​                                                                               ​Mock Exam 4​
+
+
+​Task 1 – Solution​
+​Sub-task (a) – 40%: Digital Data Sources​
+​1ai – Identifying digital data sources to investment appraisals​
+
+​A​ ​capital​ ​investment​ ​of​ ​H$15​ ​million​ ​represents​ ​a​ ​significant​ ​allocation​ ​of​ ​Cartn’s​
+ ​resources​ ​and​ ​carries​ ​substantial​ ​risk​ ​given​ ​the​ ​innovative​ ​nature​ ​of​ ​digital​ ​coating.​
+  ​Standard​ ​investment​ ​appraisals​ ​often​ ​suffer​ ​from​ ​optimism​ ​bias​ ​or​ ​rely​ ​on​ ​static​
+​manufacturer estimates.​
+
+​By​ ​leveraging​ ​digital​ ​data​ ​sources,​ ​the​ ​finance​ ​team​ ​can​ ​move​ ​toward​ ​a​ ​more​​dynamic,​
+ ​data-driven​​appraisal.​​This​​ensures​​that​​the​​NPV​​calculation​​reflects​​the​​actual​​operational​
+​environment of Cartn‘s 27 factories, rather than theoretical ideals.​
+
+​Internal IoT and sensor data from prototype testing​
+
+​Cartn​ ​could​ ​utilise​ ​real-time​ ​data​ ​captured​ ​by​ ​the​ ​Internet​ ​of​ ​Things​ ​(IoT)​ ​sensors​
+​currently installed on the Bio-Shield prototype machines.​
+
+​Traditional​ ​estimates​ ​for​ ​operating​ ​costs​ ​are​ ​often​ ​based​ ​on​ ​best-case​ ​manufacturer​
+ ​specifications.​ ​By​ ​extracting​ ​data​ ​directly​ ​from​ ​the​ ​prototype’s​ ​sensors,​ ​we​ ​can​ ​obtain​
+  ​precise​​measurements​​on​​electricity​​consumption​​per​​unit,​​the​​actual​​speed​​of​​the​​digital​
+   ​nozzles,​​and​​the​​exact​​downtime​​caused​​by​​the​​sensor​​calibration​​errors​​noted​​in​​the​​QC​
+​report.​
+
+​Instead​ ​of​ ​asking​ ​a​​floor​​manager​​for​​a​​rough​​estimate​​of​​how​​often​​the​​machine​​stops,​
+ ​the​​finance​​team​​pulls​​the​​data​​directly​​from​​the​​prototype’s​​cloud​​dashboard.​​This​​digital​
+  ​log​​records​​every​​micro-stop​​-​​even​​those​​lasting​​only​​30​​seconds​​-​​that​​a​​human​​operator​
+​might fail to record in a manual logbook.​
+
+​For​​example,​​the​​IoT​​data​​could​​reveal​​that​​every​​time​​the​​machine​​switches​​from​​a​​1-litre​
+ ​carton​​to​​a​​0.2-litre​​carton,​​the​​digital​​nozzles​​require​​a​​15-minute​​recalibration​​period​​due​
+  ​to​ ​sensor​ ​sensitivity.​ ​This​ ​results​ ​in​ ​an​ ​actual​ ​production​ ​speed​ ​of​ ​only​ ​8,500​ ​units​ ​per​
+​hour - 15% lower than the manufacturer's best-case claim.​
+
+​This​​allows​​for​​a​​much​​more​​granular​​and​​accurate​​calculation​​of​​operating​​cash​​flows.​​It​
+ ​reduces​ ​the​ ​risk​ ​of​ ​the​ ​Board​ ​approving​ ​an​ ​investment​ ​based​ ​on​ ​underestimated​
+  ​maintenance​​or​​energy​​costs,​​ensuring​​the​​H$15​​million​​spend​​is​​anchored​​in​​operational​
+​reality.​
+
+​External big data / Market sentiment analysis​
+
+
+
+​© Astranti 2026​                                    ​14​
+​Management Case Study​                                                                            ​Mock Exam 4​
+
+​Cartn​ ​could​ ​employ​ ​Web-Scraping​ ​or​ ​Social​ ​Media​ ​Analytics​ ​to​ ​quantify​ ​the​ ​Green​
+ ​Premium​ ​consumers​ ​are​ ​willing​ ​to​ ​pay.​ ​The​ ​financial​ ​viability​ ​of​ ​Bio-Shield​ ​depends​ ​on​
+  ​whether​ ​Cartn’s​ ​customers​ ​can​ ​justify​ ​the​ ​higher​ ​cost​ ​of​ ​biodegradable​ ​packaging​ ​to​
+​retailers.​
+
+​By​ ​analysing​ ​big​ ​data​ ​from​ ​global​ ​consumer​ ​trends​ ​and​ ​discussions,​ ​Cartn​ ​can​ ​model​
+​different demand elasticities.​
+
+​Instead​ ​of​ ​relying​ ​on​ ​anecdotal​ ​evidence​ ​from​ ​the​ ​marketing​ ​director,​​the​​finance​​team​
+ ​can​​perform​​a​​sensitivity​​analysis​​on​​sales​​volumes​​based​​on​​verified​​market​​appetite.​​This​
+​ensures the revenue side of the NPV is not over-inflated by green-washing assumptions.​
+
+​For​ ​example,​ ​Cartn​ ​could​ ​scrape​ ​retail​ ​pricing​ ​data​ ​from​ ​Harrlandian​ ​supermarket​
+ ​websites​ ​to​ ​compare​ ​the​ ​price​ ​elasticity​ ​of​ ​eco-friendly​ ​milk​ ​brands​ ​versus​ ​standard​
+​brands.​
+
+​If​ ​the​ ​digital​ ​data​ ​shows​ ​that​ ​green​ ​brands​ ​lose​ ​40%​ ​of​ ​their​ ​volume​ ​when​ ​priced​ ​10%​
+ ​higher​ ​than​ ​standard​ ​cartons,​ ​the​ ​finance​ ​team​ ​can​ ​identify​ ​a​ ​clear​ ​price​ ​ceiling​ ​for​
+  ​Bio-Shield.​​This​​moves​​the​​discussion​​from​​the​​Marketing​​Director's​​optimism​​to​​empirical​
+​evidence.​
+
+​This​ ​data​ ​allows​ ​for​ ​a​ ​sensitivity​ ​analysis​ ​where​ ​Cartn​ ​can​ ​test​ ​the​ ​NPV's​ ​robustness​
+ ​against​​a​​smaller-than-expected​​green​​premium.​​This​​prevents​​Cartn​​from​​over-investing​
+  ​in​ ​capacity​ ​for​ ​a​ ​high-priced​ ​product​ ​that​ ​the​ ​average​ ​consumer​ ​-​ ​despite​ ​their​ ​best​
+​intentions - might find too expensive at the checkout.​
+
+​External cloud-based commodity price indices​
+
+​Cartn​ ​could​ ​look​ ​towards​ ​accessing​ ​real-time,​ ​cloud-based​ ​data​ ​feeds​ ​from​ ​global​
+ ​commodity​ ​markets​ ​for​ ​starch-based​ ​polymers​ ​vs.​ ​traditional​ ​polyethylene.​ ​By​ ​using​
+  ​digital​ ​price​ ​indices,​ ​Cartn​ ​can​ ​track​ ​historical​ ​volatility​ ​and​​forecast​​future​​price​​trends​
+​for these raw materials compared to fossil-fuel-based plastics.​
+
+​For​​example,​​Cartn​​could​​integrate​​real-time​​API​​feeds​​from​​global​​agricultural​​commodity​
+ ​exchanges​​to​​track​​the​​price​​of​​industrial-grade​​corn​​starch​​-​​the​​primary​​raw​​material​​for​
+​the Bio-Shield coating.​
+
+​By​ ​comparing​ ​this​ ​digital​ ​data​ ​to​ ​the​ ​historical​ ​price​ ​of​ ​crude​ ​oil​ ​(the​ ​driver​ ​for​
+ ​polyethylene),​ ​the​ ​finance​ ​team​ ​can​ ​identify​ ​the​ ​correlation​ ​risk.​ ​If​ ​the​​data​​shows​​that​
+  ​starch​ ​prices​ ​are​ ​highly​ ​sensitive​ ​to​ ​climate​ ​events​ ​or​ ​crop​ ​yields,​ ​Cartn​ ​can​ ​identify​
+​periods where their production costs might spike, even if oil prices remain low.​
+
+​This​ ​allows​ ​the​ ​finance​ ​team​ ​to​ ​advise​ ​the​ ​Board​ ​on​ ​risk​ ​mitigation​ ​strategies,​ ​such​ ​as​
+ ​entering​​into​​forward​​contracts​​or​​fixed-price​​agreements​​with​​starch​​suppliers.​​By​​using​
+
+
+​© Astranti 2026​                                  ​15​
+​Management Case Study​                                                                                 ​Mock Exam 4​
+
+ c​ loud-based​​data​​to​​prove​​that​​the​​H$15​​million​​investment​​is​​vulnerable​​to​​crop​​volatility,​
+  ​Cartn​ ​moves​ ​from​ ​a​ ​best​ ​guess​ ​to​ ​a​ ​sophisticated​ ​scenario​ ​plan​ ​that​ ​protects​ ​their​
+​long-term margins.​
+
+
+​Sub-task (b) – 60%: Value management techniques​
+​1bi – Recommending quality and value management techniques​
+
+​The​ ​transition​ ​from​ ​traditional​ ​plastic​ ​lamination​ ​to​ ​digital​ ​bio-coating​ ​introduces​ ​both​
+ ​financial​ ​and​ ​technical​ ​complexities.​ ​To​ ​ensure​ ​the​ ​Bio-Shield​ ​project​ ​contributes​ ​to​
+  ​sustainable​ ​value​ ​creation,​ ​Cartn​ ​must​ ​balance​ ​cost​ ​efficiency​ ​with​ ​uncompromising​
+​quality.​
+
+​Value​ ​Engineering​ ​will​​allow​​Cartn​​to​​optimise​​the​​product's​​design​​and​​cost​​base​​before​
+ ​full-scale​ ​manufacturing​ ​begins,​ ​while​ ​Total​ ​Quality​ ​Management​ ​(TQM)​ ​will​ ​foster​ ​a​
+  ​culture​ ​of​ ​right​ ​first​ ​time,​ ​addressing​ ​the​ ​technical​ ​failures​ ​identified​ ​in​ ​the​ ​recent​ ​QC​
+​report.​
+
+​Application of Value Engineering (VE) to coating thickness​
+
+​Cartn​​could​​apply​​value​​engineering​​to​​find​​the​​optimum​​coating​​thickness​​that​​maintains​
+​UHT integrity while minimising material use.​
+
+​Value​​engineering​​focuses​​on​​providing​​the​​necessary​​function​​(protecting​​food​​at​​135°C)​
+ ​at​​the​​lowest​​cost​​without​​sacrificing​​quality.​​Since​​the​​starch-based​​material​​is​​expensive​
+  ​and​ ​thins​ ​during​ ​UHT​ ​processing,​ ​Cartn​ ​engineers​ ​should​ ​collaborate​ ​with​ ​the​ ​finance​
+   ​team​ ​to​ ​redesign​ ​the​ ​application​ ​process​ ​-​ ​perhaps​ ​increasing​ ​the​ ​coating​ ​only​ ​at​ ​the​
+​critical seams while keeping it thinner on flat surfaces.​
+
+​For​ ​example,​ ​Cartn​ ​should​​perform​​a​​functional​​cost​​analysis​​on​​the​​Bio-Shield​​carton​​to​
+​determine if a uniform coating is necessary across the entire surface.​
+
+​Since​​the​​starch-based​​material​​is​​more​​expensive,​​the​​team​​should​​use​​the​​digital​​nozzles​
+ ​to​ ​apply​ ​a​ ​thicker,​ ​heat-resistant​ ​layer​ ​only​ ​to​ ​the​ ​seams​ ​and​ ​seals​ ​that​ ​failed​ ​at​ ​135°C,​
+​while maintaining a thinner layer on the flat panels.​
+
+​This​ ​prevents​ ​over-engineering​ ​and​ ​keeps​ ​the​ ​unit​ ​cost​ ​of​ ​the​ ​Bio-Shield​ ​carton​
+ ​competitive.​ ​By​ ​optimising​ ​the​ ​material​ ​distribution,​ ​Cartn​ ​can​ ​resolve​ ​the​ ​technical​
+  ​failures​​identified​​in​​the​​QC​​report​​without​​further​​bloating​​the​​production​​cost,​​ensuring​
+   ​the​​H$15​​million​​potential​​investment​​delivers​​a​​better​​outcome​​compared​​to​​a​​standard,​
+​non-optimised production line.​
+
+​
+
+
+​© Astranti 2026​                                     ​16​
+​Management Case Study​                                                                          ​Mock Exam 4​
+
+​TQM: Quality at source and empowerment​
+
+​Cartn​ ​could​ ​also​ ​implement​ ​quality​ ​at​ ​source​ ​by​ ​training​ ​factory​ ​operators​ ​to​ ​interpret​
+​the digital nozzle sensor data in real-time.​
+
+​In​​this​​respect,​​total​​quality​​management​​(TQM)​​moves​​away​​from​​inspecting-in​​quality​​at​
+ ​the​​end​​of​​the​​line​​and​​builds​​it​​into​​the​​product.​​Operators​​should​​be​​empowered​​to​​halt​
+  ​production​​and​​recalibrate​​sensors​​the​​moment​​the​​digital​​dashboard​​shows​​a​​deviation.​
+​This shifts the culture from doing what we're told to one of professional ownership.​
+
+​For​​example,​​Cartn​​could​​implement​​Statistical​​Process​​Control​​(SPC)​​dashboards​​at​​every​
+ ​Bio-Shield​ ​workstation,​ ​giving​ ​operators​ ​the​ ​autonomy​​to​​halt​​production​​the​​moment​​a​
+​sensor drift is detected.​
+
+​By​ ​shifting​ ​the​ ​responsibility​ ​for​ ​quality​ ​from​ ​a​ ​separate​ ​inspection​ ​department​ ​to​ ​the​
+ ​operators​ ​themselves,​ ​Cartn​ ​addresses​ ​and​ ​potentially​ ​lowers​ ​the​ ​4%​ ​leakage​ ​rate​
+​mentioned in the QC report before it becomes a mass-production failure.​
+
+​This​​reduces​​internal​​failure​​costs​​of​​scrap​​and​​rework,​​while​​supporting​​Cartn’s​​long-term​
+ ​sustainability​ ​strategy.​ ​By​ ​ensuring​ ​that​​quality​​is​​built-in​​rather​​than​​inspected-in,​​Cartn​
+  ​minimises​ ​the​ ​carbon​ ​footprint​ ​of​ ​wasted​ ​starch-materials​ ​and​ ​energy,​ ​helping​ ​the​
+​company reach its goal of reducing emissions below the current 24.0 g CO2e per carton​
+
+​Total Quality Management: Kaizen and continuous improvement​
+
+​Another​ ​element​ ​of​ ​total​ ​quality​ ​management​ ​would​ ​be​ ​to​ ​establish​ ​a​ ​Kaizen​ ​Feedback​
+ ​Loop​​between​​the​​800-strong​​consultancy​​division​​and​​the​​manufacturing​​factories.​​This​
+​draws on the total quality management philosophy of continuous improvement.​
+
+​Cartn‘s​​consultants,​​who​​design​​packaging​​equipment​​at​​client​​sites,​​will​​see​​firsthand​​how​
+ ​the​ ​Bio-Shield​ ​cartons​ ​perform​ ​in​ ​real-world​ ​conditions.​ ​This​ ​data​​should​​be​​fed​​back​​to​
+  ​the​​director​​of​​product​​development​​to​​make​​incremental​​software​​updates​​to​​the​​digital​
+​nozzles.​
+
+​For​ ​example,​ ​Cartn​ ​could​ ​establish​ ​a​ ​formal​ ​monthly​ ​Field-to-Factory​ ​forum​ ​where​
+ ​consultancy​ ​engineers​ ​share​ ​data​ ​on​ ​how​ ​Bio-Shield​ ​cartons​ ​perform​​during​​high-speed​
+​filling at client sites.​
+
+​By​​Cartn​​using​​their​​800​​consultancy​​staff​​as​​eyes​​and​​ears​​in​​the​​field,​​they​​can​​identify​
+ ​real-world​ ​issues​ ​-​ ​such​ ​as​ ​the​ ​thinning​ ​at​ ​135°C​ ​occurring​ ​more​ ​frequently​ ​on​ ​certain​
+  ​types​​of​​filling​​machinery​​-​​and​​feed​​this​​back​​to​​the​​manufacturing​​team​​for​​immediate,​
+​incremental adjustments to the digital nozzle settings.​
+
+
+
+
+​© Astranti 2026​                                  ​17​
+​Management Case Study​                                                                      ​Mock Exam 4​
+
+​This​ ​creates​ ​a​ ​competitive​ ​advantage​ ​that​ ​is​ ​difficult​ ​for​ ​the​ ​other​ ​five​ ​large​
+ ​manufacturers​​to​​replicate.​​By​​constantly​​refining​​the​​bonding​​of​​the​​bio-layers​​based​​on​
+  ​field​ ​data,​ ​Cartn​ ​ensures​ ​that​ ​its​ ​products​ ​are​ ​the​ ​most​ ​reliable​ ​in​ ​the​ ​market,​
+​strengthening its long-term partnership with major food producers.​
+
+
+
+
+​© Astranti 2026​                               ​18​
+​Management Case Study​                                                                            ​Mock Exam 4​
+
+
+​Task 2 – Solution​
+​Sub-task (a) – 60%: Business Models​
+​2ai – Evaluate circular business model​
+
+​The​ ​transition​ ​to​ ​a​ ​circular​ ​business​ ​model​ ​represents​ ​a​ ​shift​ ​from​ ​selling​ ​a​ ​physical​
+ ​product​ ​to​ ​managing​ ​a​​resource's​​lifecycle.​​For​​Cartn,​​this​​means​​moving​​away​​from​​the​
+  ​linear​​consumption​​of​​paperboard​​and​​aluminium​​and​​instead​​creating​​value​​by​​retaining​
+​ownership or oversight of the materials after the consumer has used them.​
+
+​Resource efficiency and cost decoupling​
+
+​The​ ​circular​ ​model​ ​creates​ ​value​​by​​decoupling​​Cartn's​​growth​​from​​the​​volatility​​of​​raw​
+ ​material​ ​prices.​ ​As​ ​in​ ​a​ ​linear​ ​model,​ ​Cartn​​has​​to​​take​​the​​market​​price​​for​​paperboard​
+  ​and​ ​aluminium.​ ​However,​ ​by​ ​recovering​ ​fibres​ ​through​ ​the​ ​'Take-Back'​ ​scheme,​ ​Cartn​
+​creates a secondary internal supply chain.​
+
+​For​ ​example,​ ​Cartn​ ​can​ ​use​ ​the​ ​Take-Back​ ​scheme​ ​to​ ​create​ ​a​ ​natural​ ​hedge​ ​against​
+ ​volatility​ ​in​ ​the​ ​global​ ​paper​ ​pulp​ ​market.​ ​By​ ​recovering​ ​fibres​ ​from​ ​used​ ​Bio-Shield​
+  ​cartons,​​Cartn​​builds​​a​​secondary​​inventory​​of​​raw​​materials.​​This​​allows​​the​​company​​to​
+   ​substitute​​expensive​​raw​​materials​​with​​recovered​​fibres​​in​​non-food-contact​​applications,​
+​such as the outer structural layers of frozen food tubs or transit packaging.​
+
+​This​ ​decouples​ ​Cartn’s​​profit​​margins​​from​​external​​commodity​​price​​shocks.​​If​​pulp​​and​
+ ​other​​raw​​material​​prices​​rise​​by​​20%,​​Cartn’s​​cost​​of​​sales​​only​​rises​​by​​a​​fraction​​of​​that​
+  ​amount​​because​​they​​are​​sourcing​​a​​portion​​of​​their​​raw​​material​​from​​their​​own​​recycled​
+   ​loop.​ ​This​ ​protects​ ​profit​ ​margins​ ​and​ ​ensures​ ​Cartn​ ​remains​ ​the​ ​lowest-cost​ ​provider​
+​even during resource shortages.​
+
+​Brand differentiation and customer loyalty​
+
+​This​ ​model​ ​enhances​ ​the​ ​perceived​ ​quality​ ​of​ ​Cartn’s​ ​products,​ ​allowing​ ​for​ ​a​ ​price​
+ ​premium​ ​and​ ​deeper​ ​customer​ ​integration.​ ​By​ ​partnering​ ​with​ ​retailers​ ​for​ ​collection,​
+  ​Cartn​ ​becomes​ ​an​ ​essential​ ​part​ ​of​ ​the​ ​retailer's​ ​own​ ​Environmental,​ ​Social,​ ​and​
+   ​Governance​ ​(ESG)​ ​targets.​ ​This​ ​stickiness​ ​makes​ ​it​ ​harder​ ​for​ ​competitors​ ​to​ ​displace​
+​Cartn.​
+
+​For​​example,​​Cartn​​can​​use​​the​​Bio-Shield​​range​​to​​transition​​from​​a​​transactional​​supplier​
+ ​to​ ​a​ ​strategic​ ​ESG​ ​partner​ ​for​ ​major​ ​retailers​ ​like​ ​Harr-Foods.​ ​By​ ​providing​ ​a​ ​Take-Back​
+  ​infrastructure​ ​and​ ​the​ ​associated​ ​environmental​ ​impact​ ​data,​ ​Cartn​ ​aligns​ ​its​ ​business​
+​model with the retailer's corporate sustainability goals.​
+
+
+​© Astranti 2026​                                  ​19​
+​Management Case Study​                                                                                  ​Mock Exam 4​
+
+​This​​creates​​high​​switching​​costs​​for​​Cartn’s​​customers,​​as​​once​​a​​retailer​​has​​integrated​
+ ​Cartn’s​ ​recycling​ ​data​ ​into​ ​their​ ​public​ ​ESG​ ​reporting,​ ​they​ ​are​ ​less​ ​likely​ ​to​ ​switch​ ​to​ ​a​
+​lower-cost competitor who does not offer a circular solution.​
+
+​This​​differentiation​​justifies​​a​​price​​premium​​for​​the​​Bio-Shield​​product,​​protecting​​Cartn’s​
+ ​profit​ ​margins.​ ​Furthermore,​ ​the​ ​stickiness​ ​of​ ​the​ ​partnership​ ​ensures​ ​revenue​ ​stability​
+  ​through​ ​long-term​ ​exclusive​ ​contracts,​ ​which​ ​enhances​ ​the​ ​company's​ ​valuation​ ​and​
+   ​provides​ ​a​ ​sustainable​ ​competitive​ ​advantage​ ​over​ ​the​ ​other​ ​five​ ​large​ ​global​
+​manufacturers.​
+
+​​Mitigation of end-of-life sustainability risks​
+
+​The​​circular​​business​​model​​addresses​​the​​recycling​​difficulty​​in​​Harrland​​and​​reduces​​the​
+​risk of future plastic taxes or legislative penalties.​
+
+​Cartn's​​traditional​​cartons​​are​​a​​laminated​​sandwich​​of​​paper,​​aluminium,​​and​​plastic,​​and​
+ ​these​ ​are​ ​often​ ​dumped​ ​in​ ​a​ ​landfill​​site​​because​​local​​governments​​lack​​the​​facilities​​to​
+​separate them.​
+
+​By​ ​taking​ ​responsibility​ ​for​ ​the​ ​end-of-life​ ​disposal,​​Cartn​​preemptively​​manages​​the​​risk​
+​that its products will be banned or heavily taxed by the Harrlandian government.​
+
+​Legislators​ ​are​ ​increasingly​ ​shifting​ ​the​ ​financial​ ​burden​ ​of​ ​waste​ ​disposal​ ​from​ ​the​
+ ​taxpayer​​to​​the​​manufacturer.​​By​​taking​​responsibility​​for​​the​​end-of-life​​of​​the​​Bio-Shield​
+  ​cartons​ ​now,​ ​Cartn​ ​ensures​ ​its​ ​business​ ​model​ ​remains​ ​viable​ ​even​ ​if​ ​the​ ​government​
+​introduces heavy landfill levies or plastic taxes on non-recycled packaging.​
+
+​This​​creates​​financial​​value​​for​​shareholders​​by​​shielding​​the​​company​​from​​unpredictable​
+ ​legal​ ​liabilities​ ​and​ ​tax​ ​penalties.​ ​It​ ​also​ ​addresses​ ​the​ ​recycling​ ​difficulty​ ​in​ ​Harrland,​
+  ​effectively​​future-proofing​​Cartn's​​market​​share​​against​​competitors​​who​​remain​​stuck​​in​
+​an unsustainable linear model that may eventually be banned or taxed out of existence.​
+
+​
+
+
+​Sub-task (b) – 40%: Managing stakeholders​
+​2bi​ ​–​ ​Identify​ ​the​ ​key​ ​stakeholders​​and​​approriate​​communication​
+​strategies​
+
+​The​ ​transition​ ​to​​Bio-Shield​​and​​the​​circular​​model​​involves​​high​​levels​​of​​uncertainty.​​By​
+ ​using​ ​Mendelow’s​ ​Matrix,​ ​Cartn​ ​can​ ​categorise​ ​stakeholders​ ​based​ ​on​ ​their​ ​power​ ​and​
+  ​interest.​​Effective​​communication​​is​​not​​a​​one-size-fits-all​​approach;​​it​​must​​be​​tailored​​to​
+
+
+
+​© Astranti 2026​                                     ​20​
+​Management Case Study​                                                                            ​Mock Exam 4​
+
+ a​ ddress​​the​​specific​​fears​​and​​motivations​​of​​each​​group​​to​​maintain​​Cartn’s​​social​​license​
+​to operate.​
+
+​Environmental groups (High interest and High power)​
+
+​These​​are​​key​​players​​who​​can​​damage​​Cartn’s​​reputation​​if​​they​​perceive​​the​​scheme​​as​
+ ​greenwashing.​ ​The​ ​communication​ ​to​ ​these​ ​groups​ ​needs​ ​to​ ​be​ ​technical​ ​and​
+  ​transparent.​ ​They​ ​require​ ​proof​ ​that​ ​the​ ​downcycling​ ​is​ ​a​ ​transitional​ ​step​ ​toward​ ​full​
+​circularity.​
+
+​For​​example,​​Cartn​​could​​engage​​environmental​​groups​​through​​a​​Technical​​Forum​​led​​by​
+​Wofai Eko, focusing on life cycle assessment transparency.​
+
+​These​ ​stakeholders​ ​are​ ​highly​ ​influential​ ​and​ ​will​ ​quickly​​spot​​greenwashing.​​By​​showing​
+ ​that​ ​re-pulping​ ​for​ ​secondary​ ​packaging​ ​still​ ​reduces​ ​CO2e​ ​by​ ​30%​ ​compared​ ​to​
+  ​landfilling,​ ​Cartn​ ​provides​ ​these​ ​groups​ ​with​ ​hard​ ​data,​ ​turning​ ​them​ ​from​ ​critics​ ​into​
+​informed observers and reducing the risk of negative press.​
+
+​This​ ​communication​ ​strategy​ ​turns​ ​a​ ​major​ ​reputational​ ​risk​ ​into​ ​a​ ​strategic​ ​alliance.​​If​
+ ​critical​ ​environmental​ ​groups​​publicly​​acknowledge​​that​​Cartn’s​​scheme​​is​​a​​scientifically​
+  ​sound​​transition​​toward​​circularity,​​it​​neutralises​​press​​hostility​​and​​provides​​social​​proof​
+   ​to​ ​retailers​ ​and​ ​consumers​ ​that​ ​the​ ​Bio-Shield​ ​investment​ ​is​ ​a​ ​genuine​ ​sustainability​
+​breakthrough.​
+
+​Small dairy farmers (High interest and Low power)​
+
+​While​ ​these​ ​farmers​ ​are​ ​technically​ ​of​ ​low​ ​power​ ​on​ ​Mendelow’s​ ​Matrix​ ​as​ ​they​ ​don't​
+ ​provide​​the​​massive​​volumes​​of​​the​​conglomerates,​​they​​still​​retain​​high​​interest​​because​
+​Cartn is likely their primary packaging partner.​
+
+​Their​​primary​​fear​​is​​financial​​survival.​​Cartn​​could​​communicate​​with​​small​​dairy​​farmers​
+ ​by​ ​providing​ ​a​ ​tailored​ ​Bio-Shield​ ​Economic​ ​Impact​ ​Statement​ ​that​ ​demonstrates​ ​the​
+​long-term return on investment of switching to circular packaging.​
+
+​These​ ​farmers​ ​fear​ ​that​ ​the​ ​H$15m​ ​investment​ ​in​ ​Bio-Shield​ ​will​ ​be​ ​recovered​ ​through​
+ ​higher​​prices​​that​​favour​​large​​conglomerates.​​By​​using​​management​​accounting​​to​​show​
+  ​how​ ​the​ ​green​ ​premium​ ​paid​ ​by​ ​retailers​ ​will​ ​eventually​ ​flow​ ​back​ ​to​ ​the​ ​farmer,​ ​Cartn​
+​replaces fear with a clear business case for survival.​
+
+​This​ ​strategy​ ​protects​ ​Cartn’s​ ​customer​ ​diversity.​ ​By​ ​implementing​ ​a​ ​subsidised​ ​tiered​
+ ​subscription​ ​that​ ​will​ ​benefit​ ​the​​small​​dairy​​farmers,​​Cartn​​ensures​​that​​small​​farmers​​-​
+  ​who​​often​​have​​the​​strongest​​artisan​​brand​​appeal​​-​​stay​​within​​the​​Cartn​​ecosystem.​​This​
+   ​maintains​ ​the​ ​perceived​ ​quality​ ​of​​Cartn’s​​customer​​base​​and​​prevents​​a​​public​​backlash​
+​that could damage the Group’s reputation for fairness and sustainability.​
+
+
+​© Astranti 2026​                                   ​21​
+​Management Case Study​                                                                             ​Mock Exam 4​
+
+​Supermarket retailers (High power and High interest)​
+
+​In​​Mendelow's​​Matrix,​​supermarket​​retailers​​are​​the​​ultimate​​key​​players​​with​​high​​power​
+ ​and​ ​high​ ​interest.​ ​Without​ ​them,​ ​the​ ​circular​ ​part​ ​of​ ​the​ ​business​ ​model​ ​fails​ ​because​
+​Cartn has no way to physically reach the consumer to "take back" the material​
+
+​They​​are​​concerned​​with​​the​​operational​​footprint​​of​​collection​​points​​and​​the​​impact​​on​
+ ​their​​shoppers’​​experience.​​In​​terms​​of​​communication,​​Cartn​​could​​utilise​​a​​Key​​Account​
+  ​Management​ ​(KAM)​ ​strategy​ ​with​ ​major​ ​retailers,​ ​offering​ ​them​ ​a​ ​sustainability​
+​dashboard API as a digital incentive for participating in the Take-Back scheme.​
+
+​Retailers​ ​are​ ​high-power​ ​stakeholders​ ​who​ ​view​ ​floor​ ​space​ ​as​ ​a​ ​premium​ ​asset.​ ​By​
+ ​providing​ ​a​ ​digital​ ​tool​ ​that​ ​allows​ ​them​ ​to​ ​gamify​ ​recycling​ ​for​ ​their​ ​shoppers​ ​and​
+  ​capture​ ​real-time​ ​data​ ​for​ ​their​ ​own​ ​sustainability​ ​reports,​ ​Cartn​ ​transforms​ ​the​
+​collection bin from an operational burden into a marketing and ESG asset for the retailer.​
+
+​This​ ​ensures​ ​the​ ​logistical​ ​success​ ​of​ ​the​ ​circular​ ​model.​ ​By​ ​aligning​ ​Cartn’s​ ​business​
+ ​model​ ​with​ ​the​ ​retailer’s​ ​own​ ​strategic​ ​goals,​ ​it​ ​creates​ ​a​ ​barrier​ ​to​​entry​​for​​the​​other​
+  ​five​​major​​manufacturers​​who​​lack​​the​​digital​​integration​​to​​offer​​retailers​​a​​similar​​level​
+​of transparent, real-time sustainability data.​
+
+​
+
+
+
+
+​© Astranti 2026​                                   ​22​
+​Management Case Study​                                                                             ​Mock Exam 4​
+
+
+​Task 3 – Solution​
+​Sub-task (a) – 40%: Risk evaluation techniques​
+​3ai​​–​​Recommend​​and​​explain​​the​​application​​of​​sensitivity​​analysis​
+​and scenario planning​
+
+​The​ ​transition​ ​to​ ​a​ ​circular​ ​business​ ​model​ ​is​ ​no​ ​longer​ ​a​ ​theoretical​ ​exercise;​ ​the​ ​22%​
+ ​pilot​ ​result​ ​and​ ​the​ ​H$2.8​ ​million​ ​IT​ ​overrun​ ​prove​ ​that​ ​the​ ​project​ ​is​ ​at​ ​a​ ​financial​
+  ​crossroads.​​To​​advise​​the​​Board,​​we​​must​​move​​away​​from​​best-case​​projections​​and​​use​
+   ​Sensitivity​ ​Analysis​ ​and​ ​Scenario​ ​Planning​ ​to​ ​determine​​the​​project's​​break-even​​survival​
+​points in a hostile regulatory environment.​
+
+​Sensitivity analysis on the recovery rate​
+
+​Cartn​​should​​use​​sensitivity​​analysis​​to​​determine​​the​​financial​​tipping​​point​​of​​the​​project​
+ ​now​ ​that​ ​this​ ​new​ ​information​ ​has​ ​come​ ​to​ ​light.​ ​Cartn​ ​currently​ ​has​ ​three​ ​conflicting​
+  ​numbers:​ ​the​ ​original​ ​40%​ ​viability​ ​target,​ ​the​ ​22%​ ​pilot​ ​reality,​ ​and​ ​the​ ​50%​ ​tax​
+   ​exemption​​threshold.​​Sensitivity​​analysis​​will​​show​​how​​the​​NPV​​fluctuates​​as​​the​​project​
+​moves between these percentages.​
+
+​Cartn​ ​should​ ​calculate​ ​the​ ​NPV​ ​at​ ​22%,​​40%,​​and​​50%​​return​​rates.​​If​​the​​analysis​​shows​
+ ​that​ ​the​ ​project​​loses​​H$100,000​​in​​NPV​​for​​every​​1%​​drop​​below​​the​​50%​​tax-exemption​
+  ​threshold,​​the​​Board​​will​​realise​​that​​the​​22%​​pilot​​result​​is​​not​​just​​a​​minor​​setback,​​but​​a​
+​deal-breaker that requires an immediate redesign of the collection logistics.​
+
+​For​​example,​​the​​sensitivity​​analysis​​could​​reveal​​that​​at​​a​​22%​​recovery​​rate,​​the​​project's​
+ ​NPV​ ​drops​ ​to​ ​-H$3.5​ ​million.​ ​This​ ​is​ ​primarily​ ​driven​ ​by​ ​the​ ​H$500/tonne​ ​tax​ ​penalty​
+  ​incurred​​for​​failing​​to​​meet​​the​​50%​​threshold,​​combined​​with​​the​​fact​​that​​Cartn‘s​​fixed​
+   ​logistics​ ​costs​ ​are​ ​being​ ​spread​ ​over​ ​a​ ​much​​smaller​​volume​​of​​recovered​​material.​​This​
+​turns the Bio-Shield from a high-margin innovation into a loss-making liability.​
+
+​However,​ ​Cartn​ ​might​ ​find​ ​that​ ​if​ ​they​ ​spend​ ​H$1​ ​million​ ​on​ ​a​ ​massive​ ​marketing​
+ ​campaign​​and​​high-visibility​​Smart​​Bins​​to​​push​​the​​rate​​from​​22%​​to​​51%,​​the​​NPV​​jumps​
+​from a loss of H$3.5m to a profit of H$2m (a total value swing of H$5.5m).​
+
+​Scenario planning: Green leadership vs. The regulation trap​
+
+​While​ ​sensitivity​ ​analysis​ ​tests​​the​​recovery​​rate​​in​​isolation,​​scenario​​planning​​combines​
+ ​multiple​ ​variables​ ​to​ ​create​ ​a​ ​narrative.​ ​Cartn​ ​should​ ​use​ ​scenario​ ​planning​ ​to​ ​model​
+  ​multiple​ ​futures​ ​where​ ​tax​ ​legislation,​ ​consumer​ ​adoption,​ ​and​ ​competitive​ ​response​
+
+
+
+​© Astranti 2026​                                   ​23​
+​Management Case Study​                                                                             ​Mock Exam 4​
+
+ i​ntersect.​​This​​allows​​the​​Board​​to​​evaluate​​if​​the​​Bio-Shield​​range​​remains​​a​​viable​​project​
+​under different external pressures.​
+
+​Cartn​​needs​​to​​see​​how​​their​​$15​​million​​investment​​performs​​if​​the​​government​​remains​
+ ​strict​ ​(50%​ ​threshold)​ ​while​ ​consumers​ ​remain​ ​indifferent​ ​and​ ​competitors​ ​slash​​prices​
+  ​on​​traditional​​packaging.​​This​​helps​​identify​​at​​what​​point​​the​​current​​strategy​​should​​be​
+​abandoned in favour of a plan B.​
+
+​For​ ​example,​ ​Cartn​ ​should​ ​model​ ​a​ ​regulation​ ​trap​ ​scenario​​to​​test​​the​​resilience​​of​​the​
+ ​Bio-Shield​​business​​model​​against​​a​​combination​​of​​low​​consumer​​adoption​​and​​strict​​tax​
+  ​legislation.​​By​​combining​​variables​​-​​such​​as​​the​​22%​​pilot​​return​​rate​​and​​the​​H$500​​per​
+   ​tonne​​plastic​​tax​​-​​the​​Finance​​team​​can​​visualise​​a​​world​​where​​Cartn​​is​​double-penalised:​
+​once by the tax and once by the high fixed costs of the logistics infrastructure.​
+
+​This​​stress​​test​​is​​more​​valuable​​than​​a​​simple​​sensitivity​​analysis​​because​​it​​accounts​​for​
+ ​the​​interdependency​​of​​external​​risks.​​This​​enables​​strategic​​agility.​​If​​the​​regulation​​trap​
+  ​scenario​ ​shows​ ​that​​the​​project​​becomes​​cash-flow​​negative​​within​​two​​years,​​the​​Board​
+​can proactively decide to pivot the project towards an alternative viable model.​
+
+​For​​example,​​if​​the​​50%​​target​​is​​unachievable,​​Cartn​​should​​stop​​the​​H$2.8m​​IT​​spend​​and​
+ ​instead​ ​re-invest​ ​in​ ​R&D​ ​to​ ​make​ ​Bio-Shield​ ​100%​ ​compostable,​ ​seeking​ ​a​ ​different​ ​tax​
+  ​exemption​ ​that​ ​doesn't​ ​rely​ ​on​ ​consumer​ ​behaviour.​ ​This​ ​protects​ ​shareholder​​value​​by​
+   ​preventing​ ​sunk​ ​cost​ ​fallacy​ ​and​ ​ensuring​ ​that​ ​Cartn’s​ ​capital​ ​is​ ​allocated​ ​to​ ​the​ ​most​
+​resilient long-term solution.​
+
+​
+
+
+​Sub-task (b) – 60%: Project management tools​
+​3bi​​–​​Evaluate​​and​​recommend​​three​​project​​management​​tools​​or​
+​techniques​
+
+ ​ he​ ​Bio-Shield​ ​IT​ ​project​ ​is​ ​currently​​suffering​​from​​a​​governance​​void.​​With​​the​​budget​
+ T
+ ​ballooning​ ​from​ ​H$1.2m​ ​to​ ​H$2.8m​ ​and​ ​unauthorised​ ​email-based​ ​scope​ ​changes,​ ​the​
+  ​project​ ​is​ ​at​ ​risk​ ​of​ ​total​ ​failure.​ ​Cartn​ ​must​ ​implement​ ​rigid​ ​controls​ ​to​ ​realign​ ​the​
+​Marketing, Logistics, and IT departments.​
+
+​A Formal Change Control Board (CCB)​
+
+ ​ artn​ ​must​ ​immediately​ ​implement​ ​a​ ​Change​ ​Control​ ​Board​ ​(CCB)​ ​to​ ​halt​ ​scope​ ​creep​
+ C
+ ​from​ ​the​ ​Marketing​ ​department.​ ​The​ ​project​ ​committee​ ​revealed​ ​that​​Haitham​​Amer​​is​
+​requesting Individual Carbon Credits without a formal cost assessment.​
+
+
+
+​© Astranti 2026​                                   ​24​
+​Management Case Study​                                                                               ​Mock Exam 4​
+
+ ​ very​ ​project​ ​is​ ​managed​ ​within​ ​the​ ​triple​ ​constraint​ ​of​ ​time,​ ​cost,​ ​and​ ​quality.​ ​If​ ​you​
+ E
+ ​increase​​the​​scope​​by​​adding​​personalised​​carbon​​tracking,​​it​​must​​impact​​either​​the​​cost​
+​or the time.​
+
+ ​ y​ ​having​ ​a​ ​change​ ​control​ ​board​ ​in​ ​place​ ​-​ ​consisting​ ​of​ ​Mario​ ​(Finance),​ ​Wofai​
+ B
+ ​(Product),​ ​and​ ​the​​Project​​Lead​​–​​they​​must​​approve​​or​​reject​​every​​change​​based​​on​​its​
+​impact on the triple constraint of time, cost, and quality.​
+
+ ​ or​ ​example,​ ​the​ ​current​ ​H$1.6​​million​​budget​​overrun​​suggests​​that​​project​​boundaries​
+ F
+ ​are​​being​​ignored.​​By​​requiring​​a​​formal​​impact​​assessment​​for​​every​​new​​feature​​-​​such​
+  ​as​ ​the​ ​individual​ ​carbon​ ​credits​​-​​the​​CCB​​ensures​​that​​the​​Board​​only​​approves​​changes​
+   ​that​ ​have​ ​a​ ​clear​ ​return​ ​on​ ​investment​ ​or​ ​are​ ​essential​ ​for​ ​hitting​ ​the​ ​50%​ ​regulatory​
+​recovery target.​
+
+ ​ his​ ​restores​ ​financial​ ​discipline​ ​to​ ​the​ ​project.​ ​It​ ​prevents​ ​death​ ​by​ ​a​ ​thousand​ ​cuts,​
+ T
+ ​where​​small,​​unauthorised​​changes​​aggregate​​into​​massive​​delays.​​The​​CCB​​ensures​​the​​IT​
+  ​system​ ​is​ ​ready​ ​for​ ​the​ ​Bio-Shield​ ​launch,​ ​maintaining​ ​the​ ​project's​ ​viability​ ​and​
+​preventing further erosion of the H$15 million capital investment.​
+
+​Critical Path Analysis (CPA) & Resource levelling​
+
+ ​ he​ ​critical​ ​path​ ​is​ ​the​ ​longest​ ​sequence​ ​of​ ​dependent​ ​tasks​ ​in​​a​​project.​​If​​any​​task​​on​
+ T
+​this path is delayed by a single day, the entire project is delayed by a day.​
+
+ I​n​​Cartn’s​​case,​​the​​IT/Logistics​​deadlock​​is​​likely​​sitting​​right​​on​​the​​critical​​path.​​Tasks​​off​
+  ​the​ ​critical​ ​path​ ​have​ ​float​ ​(i.e.​ ​extra​ ​time),​ ​meaning​ ​delays​ ​there​ ​don't​ ​hurt​ ​the​ ​final​
+   ​deadline.​ ​However,​ ​the​ ​IT​ ​Tracking​ ​System​ ​is​ ​a​ ​prerequisite​ ​for​ ​the​ ​Bio-Shield​ ​launch;​
+​therefore, its delay is currently pushing back the H$15 million revenue stream.​
+
+ I​n​ ​this​ ​situation,​ ​Cartn​ ​should​ ​use​ ​critical​ ​path​ ​analysis​ ​(CPA)​ ​to​ ​pinpoint​ ​the​ ​specific​
+  ​technical​ ​dependencies​ ​causing​ ​the​ ​3-month​ ​delay​ ​and​ ​apply​ ​Resource​ ​Levelling​ ​to​
+​recover the schedule.​
+
+ I​n​​a​​complex​​project​​like​​the​​Bio-Shield​​infrastructure,​​many​​tasks​​can​​happen​​in​​parallel.​
+  ​By​ ​identifying​ ​the​ ​critical​ ​path,​ ​the​ ​project​ ​manager​ ​can​ ​see​​which​​tasks​​have​​float​​and​
+   ​which​ ​are​ ​bottlenecks.​ ​This​ ​allows​ ​the​ ​Board​ ​to​ ​move​ ​resources​ ​-​ ​such​ ​as​ ​personnel​ ​or​
+​equipment - away from non-urgent tasks and toward the critical IT/Logistics interface.​
+
+ ​ his​ ​enables​ ​schedule​ ​recovery​ ​without​ ​necessarily​ ​increasing​ ​the​ ​H$2.8​​million​​budget.​
+ T
+ ​By​ ​moving​ ​internal​ ​experts​ ​to​ ​solve​ ​the​ ​deadlock​ ​in​ ​real-time,​ ​Cartn​ ​reduces​ ​the​
+  ​time-to-market​ ​for​ ​Bio-Shield.​ ​This​ ​ensures​ ​the​ ​company​ ​can​ ​begin​​capturing​​the​​Green​
+   ​Premium​ ​and​ ​meeting​ ​the​ ​50%​ ​tax-exemption​ ​target​ ​sooner,​ ​protecting​ ​the​ ​project’s​
+​overall profitability.​
+
+
+
+​© Astranti 2026​                                    ​25​
+​Management Case Study​                                                                             ​Mock Exam 4​
+
+ ​A Risk Register & Red-Amber-Green (RAG) Reporting​
+
+ ​ ​ ​risk​ ​register​ ​quantifies​ ​threats​ ​using​​impact​​and​​probability.​​Since​​the​​22%​​pilot​​result​
+ A
+ ​makes​ ​the​ ​plastic​ ​tax​ ​a​ ​high-impact,​ ​high-probability​ ​event,​ ​it​ ​should​ ​be​ ​classified​ ​as​ ​a​
+​critical risk.​
+
+​The RAG (Red-Amber-Green) status provides an instant visual hierarchy:​
+
+      ​●​ ​RED:​ ​Immediate​ ​threat​ ​to​ ​the​ ​project’s​ ​viability​​(i.e.​​the​​50%​​Tax​​Threshold).​​This​
+          ​would require Board-level intervention.​
+
+      ​●​ ​AMBER:​ ​Potential​ ​for​ ​delay​ ​or​ ​cost​ ​overrun​ ​(i.e.​​the​​IT/Logistics​​deadlock).​​Needs​
+          ​departmental management to resolve.​
+
+      ​●​ ​GREEN: Managed risk within acceptable tolerances (i.e. sourcing paperboard).​
+
+ ​ he​​risks​​identified​​in​​the​​register​​have​​an​​owner​​assigned​​to​​each​​one,​​therefore​​making​
+ T
+ ​key​ ​individuals​ ​accountable.​​By​​implementing​​a​​risk​​register​​with​​RAG​​reporting,​​Guiquan​
+  ​Li​ ​doesn't​ ​have​ ​to​ ​hunt​ ​through​ ​50-page-plus​ ​reports;​​he​​can​​look​​at​​the​​dashboard​​and​
+   ​see​ ​exactly​ ​where​ ​the​ ​H$15​ ​million​ ​capital​ ​is​ ​at​​risk​​and​​who​​is​​responsible​​for​​resolving​
+​the risk.​
+
+ I​n​ ​this​ ​case,​ ​it’s​ ​highly​ ​recommended​ ​that​ ​Cartn​ ​implement​ ​a​ ​dynamic​ ​risk​ ​register​
+  ​utilising​ ​Red-Amber-Green​ ​(RAG)​ ​reporting​ ​to​ ​categorise​ ​and​ ​manage​ ​the​ ​high-impact​
+​regulatory and operational threats facing the Bio-Shield project.​
+
+ ​ ​ ​project​ ​of​ ​this​ ​scale​ ​often​ ​suffers​ ​from​ ​information​ ​overload,​ ​so​ ​RAG​ ​reporting​​distils​
+ A
+ ​complex​ ​issues,​ ​like​ ​the​ ​50%​ ​tax-exemption​ ​threshold,​ ​into​ ​a​ ​simple​ ​visual​ ​format​ ​that​
+  ​forces​​the​​Board​​to​​focus​​on​​the​​most​​critical​​threats​​first.​​Assigning​​a​​specific​​risk​​owner​
+   ​(i.e.​​Alison​​for​​logistics),​​it​​creates​​clear​​accountability​​for​​mitigation​​rather​​than​​allowing​
+​risks to remain unaddressed in project meetings.​
+
+ ​ y​​regularly​​reviewing​​the​​RED​​risks,​​Guiquan​​Li​​can​​ensure​​that​​capital​​is​​being​​deployed​
+ B
+ ​to​ ​the​ ​most​ ​urgent​ ​problems,​ ​such​ ​as​ ​fixing​ ​the​ ​22%​ ​return​ ​rate.​ ​This​ ​prevents​ ​a​ ​slow,​
+  ​invisible​​failure​​of​​the​​project​​and​​ensures​​that​​Cartn’s​​H$15​​million​​investment​​is​​actively​
+​defended against external regulatory shocks.​
+
+​
+
+​
+
+​.​
+
+​
+
+
+​© Astranti 2026​                                   ​26​
+​Management Case Study​                                                                               ​Mock Exam 4​
+
+
+​Task 4 – Solution​
+​Sub-task (a) – 60%: Accounting Treatment​
+​4ai​​–​​Accounting​​treatments​​for​​extruders​​and​​site​​clean-up​​(IAS​​36,​
+​IAS 16, IAS 37)​
+
+​The​​transition​​of​​Plant​​Alpha​​is​​a​​significant​​accounting​​event​​that​​requires​​Cartn​​to​​move​
+ ​beyond​ ​routine​ ​bookkeeping​ ​and​ ​apply​ ​prudence​ ​and​ ​fair​ ​presentation​ ​under​ ​IFRS.​ ​As​
+  ​Cartn​ ​decommissions​ ​legacy​ ​plastic​ ​assets​ ​and​ ​publicly​ ​commits​ ​to​ ​environmental​
+   ​restoration,​​its​​financial​​statements​​must​​accurately​​reflect​​the​​economic​​reality​​of​​these​
+​'sunsetting' operations.​
+
+​Failing​ ​to​ ​recognise​ ​these​ ​impairments​ ​and​ ​provisions​ ​now​ ​would​ ​mislead​ ​our​
+​shareholders regarding the true cost of our transition to Bio-Shield.​
+
+​Traditional extruders: Accounting treatment​
+
+​Cartn​​must​​immediately​​conduct​​an​​Impairment​​Test​​under​​IAS​​36​​as​​the​​Board’s​​decision​
+ ​to​ ​cease​ ​plastic​ ​production​ ​and​ ​move​ ​to​ ​Bio-Shield​ ​technology​ ​is​ ​a​ ​clear​ ​indicator​ ​of​
+  ​impairment.​ ​Cartn​ ​must​ ​compare​ ​the​ ​H$8.4​ ​million​ ​carrying​ ​amount​ ​to​ ​the​ ​asset's​
+   ​recoverable​​amount,​​i.e.​​the​​higher​​of​​its​​fair​​value​​less​​costs​​to​​sell​​and​​its​​current​​value​
+​in use.​
+
+​Given​ ​the​ ​impending​​obsolescence​​and​​the​​scrap​​quote​​of​​only​​H$200,000​​in​​18​​months,​
+ ​its​​current​​fair​​value​​on​​the​​open​​market​​will​​be​​very​​low.​​Therefore,​​Cartn​​must​​calculate​
+  ​the​​value​​in​​use​​based​​on​​the​​cash​​flows​​generated​​by​​the​​machines​​over​​their​​remaining​
+   ​18​ ​months.​ ​If​ ​that​ ​value​ ​in​ ​use​ ​is,​ ​for​ ​instance,​ ​H$5​ ​million,​ ​Cartn​ ​must​ ​recognise​ ​an​
+​immediate impairment loss of H$3.4 million in the statement of profit or loss.​
+
+​Following​​that,​​Cartn​​must​​perform​​a​​revision​​of​​useful​​life​​and​​residual​​value​​under​​IAS​​16.​
+​In​​Cartn's​​case,​​the​​shift​​from​​plastic​​to​​Bio-Shield​​is​​a​​significant​​change​​in​​the​​expected​
+​pattern of consumption, which triggers a mandatory revision of its usefulness.​
+
+​The​ ​remaining​​H$5​​million​​carrying​​amount​​must​​be​​depreciated​​down​​to​​its​​H$200,000​
+​residual​​(scrap)​​value​​over​​the​​new​​18-month​​timeline.​​This​​depreciable​​amount​​of​​H$4.8​
+​million equates to a H$266.6k monthly charge to the profit and loss.​
+
+​
+
+
+
+
+​© Astranti 2026​                                    ​27​
+​Management Case Study​                                                                                ​Mock Exam 4​
+
+​All​ ​in​ ​all,​ ​Cartn’s​ ​impact​ ​on​ ​their​ ​P&L​ ​will​ ​be​ ​a​ ​significant​ ​one-off​ ​impairment​ ​charge​ ​of​
+ ​H$3.4​ ​million​ ​and​ ​higher​ ​monthly​ ​depreciation​ ​expenses​ ​of​ ​H$266.6k​ ​that​ ​will​ ​sharply​
+  ​reduce​​operating​​profit​​in​​the​​short​​term.​​Meanwhile,​​the​​carrying​​amount​​of​​non-current​
+   ​assets​ ​will​​decrease​​rapidly,​​ensuring​​that​​Cartn‘s​​balance​​sheet​​isn't​​inflated​​by​​obsolete​
+​technology as they pivot to the Bio-Shield technology.​
+
+​Under​ ​IAS​ ​36​ ​and​ ​IAS​ ​16,​ ​Cartn​ ​are​ ​required​ ​to​ ​revise​ ​the​ ​useful​ ​life​ ​now,​ ​otherwise​ ​it​
+ ​would​​face​​adverse​​audit​​opinions​​and​​potential​​fines​​by​​the​​Harrlandian​​Stock​​Exchange​
+  ​and​ ​financial​ ​authorities.​ ​Cartn​ ​would​ ​also​ ​be​ ​hit​ ​with​ ​a​ ​massive​ ​loss​ ​on​ ​disposal​ ​in​ ​18​
+   ​months​ ​when​ ​they​ ​throw​ ​the​ ​machines​ ​away.​ ​Revising​ ​the​ ​life​ ​now​ ​effectively​ ​smooths​
+​that hit over the next 18 months and keeps their professional reputation intact.​
+
+​Site decontamination: Recognition of a provision​
+
+​Cartn​ ​must​ ​recognise​ ​a​ ​provision​ ​for​ ​the​ ​H$3.2​ ​million​ ​clean-up​ ​cost​ ​under​ ​IAS​ ​37​
+​Provisions, Contingent Liabilities and Contingent Assets.​
+
+​While​​there​​is​​no​​legal​​requirement​​to​​clean​​the​​site​​yet,​​the​​CEO’s​​televised​​commitment​
+ ​has​​created​​a​​Constructive​​Obligation.​​Cartn​​has​​signalled​​to​​the​​public​​that​​it​​will​​accept​
+  ​this​ ​responsibility,​ ​leaving​ ​the​ ​company​ ​with​ ​no​ ​realistic​ ​alternative​ ​but​ ​to​ ​settle​ ​the​
+​obligation.​
+
+​With​​that​​in​​mind,​​Cartn​​must​​record​​the​​obligation​​at​​its​​present​​value.​​Since​​the​​H$3.2​
+ ​million​​is​​payable​​in​​two​​years,​​we​​would​​discount​​this​​figure​​using​​a​​pre-tax​​discount​​rate.​
+  ​If​ ​we​ ​assume​ ​a​ ​discount​ ​rate​ ​of​ ​5%,​ ​Cartn​ ​would​ ​record​ ​an​ ​initial​ ​provision​ ​of​
+​approximately H$2.9 million today.​
+
+​In​ ​terms​ ​of​ ​impact​ ​on​ ​the​ ​financial​ ​statements,​ ​Cartn​ ​will​ ​recognise​ ​a​ ​H$2.9​ ​million​
+ ​liability​​immediately​​that​​will​​increase​​Cartn's​​debt-to-equity​​ratio.​​If​​Cartn​​has​​strict​​bank​
+​covenants regarding debt levels, this could technically put those covenants at risk.​
+
+​On​​the​​profit​​and​​loss​​statement,​​Cartn​​will​​recognise​​an​​immediate​​H$2.9​​million​​expense​
+ ​for​ ​the​ ​initial​ ​provision.​ ​Additionally,​ ​as​ ​the​ ​payment​ ​date​ ​moves​ ​closer,​ ​Cartn​ ​will​
+  ​recognise​ ​a​​finance​​cost​​(unwinding​​of​​the​​discount),​​which​​will​​marginally​​impact​​profit​
+​over the next two years.​
+
+​By​ ​recognising​ ​this​ ​now,​ ​Cartn​ ​are​ ​essentially​ ​pre-paying​ ​the​ ​reputational​ ​cost​ ​of​ ​the​
+ ​transition.​ ​It​ ​shows​ ​investors​ ​that​ ​their​​green​​commitment​​isn't​​just​​a​​marketing​​slogan​
+​from Haitham Amer, but a recorded financial reality that Cartn are prepared to fund.​
+
+​The​ ​combined​ ​impact​ ​of​ ​these​ ​treatments​ ​will​ ​be​ ​a​ ​short-term​ ​reduction​ ​in​ ​reported​
+ ​profits​​and​​a​​decrease​​in​​net​​assets.​​However,​​this​​is​​essential​​for​​the​​fair​​presentation​​of​
+  ​the​​accounts.​​By​​clearing​​the​​decks​​of​​legacy​​plastic-related​​costs​​now,​​Cartn​​ensure​​that​
+   ​when​ ​the​ ​Bio-Shield​ ​range​ ​launches​ ​in​ ​full,​ ​its​ ​future​ ​profitability​ ​is​ ​not​ ​masked​ ​by​ ​the​
+
+
+​© Astranti 2026​                                    ​28​
+​Management Case Study​                                                                              ​Mock Exam 4​
+
+ l​ingering​​costs​​of​​obsolete​​machinery​​or​​undisclosed​​environmental​​liabilities.​​This​​builds​
+  ​trust​ ​with​ ​investors​ ​who​ ​are​ ​specifically​ ​looking​ ​at​​their​​ESG​​(Environmental,​​Social,​​and​
+​Governance) performance.​
+
+​
+
+
+​Sub-task (b) – 40%: Stakeholder management​
+​4bi – Recommending resolution strategies for stakeholder conflict​
+
+ ​ he​ ​current​ ​impasse​ ​between​ ​the​ ​sales​ ​and​ ​production​ ​departments​ ​threatens​ ​the​
+ T
+ ​operational​ ​success​ ​of​ ​the​ ​Bio-Shield​ ​rollout.​ ​While​ ​Haitham​ ​Amer​ ​is​ ​understandably​
+  ​protective​ ​of​ ​his​ ​market​ ​share,​ ​and​ ​Alison​ ​Cruikshank​ ​is​ ​rightly​ ​focused​ ​on​ ​legal​
+​compliance, their inability to collaborate has created a strategic bottleneck.​
+
+​Confronting / Problem-solving (The win-win approach)​
+
+ ​ o​ ​resolve​ ​this,​ ​the​ ​project​ ​sponsor​​and​​lead​​must​​move​​from​​a​​compromise​​mindset​​to​
+ T
+ ​an​ ​integrating​ ​strategy,​ ​aligning​ ​both​ ​leaders​ ​behind​ ​the​ ​singular​ ​goal​ ​of​ ​long-term​
+​success of the Bio-Shield project.​
+
+ ​ ales​ ​need​ ​a​ ​marketable​ ​price,​ ​and​ ​production​ ​needs​ ​regulatory​ ​compliance.​ ​These​ ​are​
+ S
+ ​not​​mutually​​exclusive.​​Instead​​of​​a​​compromise,​​where​​both​​lose,​​the​​Board​​should​​force​
+​a deep-dive into the Bio-Shield cost structure to find value engineering opportunities.​
+
+ ​ or​​example,​​Cartn​​could​​task​​the​​consultancy​​sales​​team​​to​​work​​with​​production​​to​​see​
+ F
+ ​if​ ​the​ ​advisory​​service​​can​​be​​bundled​​with​​the​​high-cost​​Bio-Shield​​cartons.​​Instead​​of​​a​
+  ​compromise​ ​that​ ​might​ ​lead​ ​to​ ​subpar​ ​product​ ​quality,​ ​integration​ ​seeks​ ​to​ ​satisfy​ ​the​
+   ​underlying​​interests​​of​​both​​departments.​​By​​leveraging​​Cartn's​​800​​engineers​​to​​provide​
+    ​free​​transition​​support​​to​​customers,​​they​​provide​​a​​value-added​​service​​that​​justifies​​the​
+​price premium to the customer.​
+
+ ​ his​ ​gives​ ​the​ ​sales​ ​team​ ​a​ ​win,​ ​i.e.​ ​a​ ​sellable​ ​package​ ​and​ ​also​ ​production​ ​a​ ​win​ ​as​
+ T
+ ​compliance​ ​is​ ​met.​ ​By​ ​reframing​ ​the​ ​25%​ ​price​ ​increase​ ​as​ ​an​ ​investment​ ​in​​regulatory​
+  ​insurance,​ ​sales​ ​can​ ​use​ ​production’s​ ​compliance​ ​requirements​ ​as​ ​a​ ​competitive​
+   ​advantage​​rather​​than​​a​​burden.​​This​​turns​​a​​departmental​​conflict​​into​​a​​unified​​market​
+​strategy.​
+
+​Alignment of incentives (Creating goal congruence)​
+
+ ​ he​​Board​​could​​implement​​a​​Shared​​Reward​​System​​and​​Joint​​KPIs​​that​​tie​​the​​bonuses​​of​
+ T
+ ​both​ ​Haitham​ ​(Sales)​ ​and​ ​Alison​ ​(Production)​ ​to​​the​​successful​​and​​profitable​​transition​
+​of the Bio-Shield range.​
+
+
+​© Astranti 2026​                                    ​29​
+​Management Case Study​                                                                             ​Mock Exam 4​
+
+ ​ urrently,​ ​the​ ​conflict​ ​is​ ​fueled​​by​​a​​lack​​of​​goal​​congruence.​​Haitham​​is​​likely​​measured​
+ C
+ ​on​ ​sales​ ​volume​ ​and​ ​revenue​ ​(which​ ​is​ ​harder​ ​with​ ​a​ ​25%​ ​price​ ​hike),​ ​while​ ​Alison​ ​is​
+  ​measured​ ​on​ ​regulatory​ ​compliance​ ​and​ ​production​ ​efficiency.​ ​They​ ​are​ ​literally​ ​being​
+   ​paid​ ​to​ ​fight​ ​each​ ​other.​ ​By​ ​creating​ ​joint​ ​KPIs,​ ​the​ ​Board​ ​forces​ ​them​ ​to​ ​collaborate​
+​because one cannot achieve their bonus without the help of the other.​
+
+ ​ or​ ​example,​ ​instead​ ​of​ ​separate​ ​departmental​ ​targets,​ ​the​ ​Board​ ​could​ ​introduce​ ​a​
+ F
+​Bio-Shield Profitability & Compliance Tier for the annual bonus targets:​
+
+    ​1.​ ​The​ ​Sales​ ​Metric:​ ​Haitham’s​​bonus​​is​​no​​longer​​based​​on​​total​​volume,​​but​​on​​the​
+          ​contribution​ ​margin​ ​of​ ​Bio-Shield​​units.​​This​​encourages​​him​​to​​stop​​complaining​
+           ​about​ ​the​ ​price​ ​and​ ​start​ ​finding​ ​high-value​ ​customers​ ​who​ ​appreciate​ ​the​
+         ​plastic-free brand.​
+
+    ​2.​ ​The​ ​Production​ ​Metric:​ ​Alison’s​ ​bonus​ ​is​​tied​​to​​target​​costing.​​She​​is​​rewarded​​if​
+          ​she​​can​​work​​with​​her​​engineers​​to​​reduce​​the​​25%​​cost​​premium​​through​​better​
+         ​manufacturing efficiencies over the next 18 months.​
+
+    ​3.​ ​The​ ​"Clawback"​ ​Clause:​ ​If​ ​the​ ​company​ ​fails​ ​to​ ​meet​ ​the​ ​Harrland​ ​government​
+         ​plastic ban deadline, then both directors lose 50% of their total bonus.​
+
+ ​ nce​ ​Haitham​ ​and​ ​Alison​ ​realise​ ​their​ ​personal​ ​financial​​outcomes​​are​​linked,​​the​​blame​
+ O
+ ​game​ ​stops.​ ​Haitham​ ​will​ ​stop​ ​viewing​ ​Alison​ ​as​ ​a​ ​saboteur​ ​and​ ​start​ ​viewing​ ​her​ ​as​ ​a​
+  ​partner​ ​who​ ​can​ ​help​ ​him​ ​lower​ ​costs​ ​to​ ​make​ ​the​ ​product​ ​more​ ​sellable.​ ​Conversely,​
+   ​Alison​​will​​view​​Haitham’s​​market​​feedback​​as​​essential​​data​​for​​her​​production​​planning.​
+    ​This​​turns​​the​​current​​dysfunctional​​conflict​​into​​functional​​collaboration​​focused​​on​​the​
+​company's bottom line.​
+
+
+​
+
+
+
+
+​© Astranti 2026​                                   ​30​
+​Management Case Study​                                                                             ​Mock Exam 4​
+
+
+​Marking Matrix​
+​Task​   ​Topic​                                                           ​Core activity​   ​%​    ​Marks​ ​Total​
+
+​1a​     I​dentifying​ ​digital​ ​data​ ​sources​ ​to​ ​investment​              ​A​         ​40​       ​10​
+          ​appraisals​
+
+​1b​                                                                             ​C​         ​60​       ​15​   ​25​
+         ​ ecommending​ ​quality​ ​and​ ​value​ ​management​
+         R
+         ​techniques​
+
+
+​2a​     ​Evaluate circular business model​                                      ​A​         ​60​       ​15​
+                                                                                                               ​25​
+​2b​     I​dentify​ ​the​ ​key​ ​stakeholders​ ​and​ ​appropriate​               ​E​         ​40​       ​10​
+          ​communication strategies​
+
+​3a​     ​ ecommend​ ​and​ ​explain​ ​the​ ​application​ ​of​ ​the​
+         R                                                                       ​D​         ​40​       ​10​
+         ​sensitivity analysis and scenario planning.​
+                                                                                                               ​25​
+​3b​     ​ valuate​​and​​recommend​​three​​project​​management​
+         E                                                                       ​B​         ​60​       ​15​
+         ​tools or techniques.​
+
+​4a​     ​ pplying​ ​IAS​ ​36,​ ​IAS​ ​16​ ​and​ ​IAS​ ​37​ ​accounting​
+         A                                                                       ​D​         ​60​       ​15​
+         ​standards​
+                                                                                                               ​25​
+​4b​     ​ ecommending​ ​resolution​ ​strategies​ ​for​ ​stakeholder​
+         R                                                                       ​E​         ​40​       ​10​
+         ​conflicts​
+
+                                                                                                               ​100​
+
+
+
+
+​© Astranti 2026​                                      ​31​
+​Management Case Study​                                                                       ​Mock Exam 4​
+
+
+​Marking guidance​
+
+
+  ​Task 1​
+
+
+
+    ​(a)​      ​A. Evaluate opportunities to add value​                                             ​40%​
+
+
+
+    ​(b)​      ​C. Manage performance and costs to create sustainable value​                        ​60%​
+
+
+
+
+  ​A. Evaluate opportunities to add value​                                                       ​40%​
+
+
+
+  ​1ai - Identifying digital data sources​                                                     ​10 marks​
+
+
+
+                 ​No rewardable material​                                                                ​0​
+
+
+                 ​ ne​ ​digital​ ​data​​source​​provided,​​no​​or​​little​​application​​to​
+                 O
+   ​Level 1​                                                                                         ​1-3​
+                 ​the scenario.​
+
+
+                 ​ ne​ ​or​ ​two​ ​digital​ ​data​ ​sources​ ​provided,​ ​with​ ​some​
+                 O
+   ​Level 2​                                                                                         ​4-6​
+                 ​application to the scenario.​
+
+
+                 ​ hree​ ​or​ ​more​ ​digital​ ​data​ ​sources​ ​provided,​ ​with​ ​strong​
+                 T
+   ​Level 3​                                                                                        ​7-10​
+                 ​application to the scenario.​
+
+
+
+
+​© Astranti 2026​                               ​32​
+​Management Case Study​                                                              ​Mock Exam 4​
+
+
+
+
+  ​C. Manage performance and costs to create sustainable value​                         ​60%​
+
+
+
+  ​1bi - Recommending quality and value management techniques​                        ​15 marks​
+
+
+
+               ​No rewardable material​                                                         ​0​
+
+
+               ​ eak​ ​recommendation​ ​of​ ​up​ ​to​ ​one​ ​technique.​ ​No​
+               W
+   ​Level 1​                                                                                ​1-5​
+               ​application to scenario.​
+
+
+               ​ ne​ ​or​ ​two​ ​recommendations​ ​provided,​ ​with​ ​some​
+               O
+   ​Level 2​                                                                                ​6-10​
+               ​application to the scenario.​
+
+
+               ​ wo​ ​or​ ​more​ ​recommendations​ ​provided​ ​for​ ​both​ ​Value​
+               T
+  ​Level 3​    ​Engineering​ ​and​ ​TQM,​ ​with​ ​strong​ ​application​ ​to​ ​the​         ​11-15​
+                ​scenario.​
+
+
+
+
+​© Astranti 2026​                          ​33​
+​Management Case Study​                                                                       ​Mock Exam 4​
+
+
+
+
+  ​Task 2​
+
+
+
+    ​(a)​      ​A. Evaluate opportunities to add value​                                             ​60%​
+
+
+
+    ​(b)​      ​E. Manage internal and external stakeholders​                                       ​40%​
+
+
+
+
+  ​A. Evaluate opportunities to add value​                                                       ​60%​
+
+
+
+  ​2ai - Evaluate circular business model​                                                     ​15 marks​
+
+
+
+                 ​No rewardable material​                                                                ​0​
+
+
+                 ​ eak​ ​evaluation​ ​of​ ​business​ ​model,​ ​with​ ​little​ ​to​ ​no​
+                 W
+   ​Level 1​                                                                                         ​1-5​
+                 ​application to scenario.​
+
+
+                 ​ ood​ ​evaluation​ ​of​ ​the​ ​business​ ​model​ ​and​ ​explanation​​of​
+                 G
+   ​Level 2​                                                                                         ​6-10​
+                 ​sustainable value, with some application to the scenario.​
+
+
+                 ​ trong,​ ​comprehensive​ ​evaluation​ ​of​ ​the​ ​circular​ ​business​
+                 S
+   ​Level 3​     ​model​ ​and​ ​clear​ ​explanation​ ​of​ ​sustainable​ ​value​ ​creation,​        ​11-15​
+                  ​with strong application to the scenario.​
+
+
+
+
+​© Astranti 2026​                               ​34​
+​Management Case Study​                                                                   ​Mock Exam 4​
+
+
+
+
+  ​E. Manage internal and external stakeholders​                                             ​40%​
+
+
+
+   2​ bi​ ​-​ ​Identify​ ​the​ ​key​ ​stakeholders​ ​and​ ​appropriate​ ​communication​
+                                                                                           ​10 marks​
+  ​strategies​
+
+
+
+                ​No rewardable material​                                                             ​0​
+
+
+
+   ​Level 1​    ​Surface-level suggestion of the key stakeholders.​                              ​1-3​
+
+
+                ​ takeholders​ ​identified​ ​with​ ​some​ ​reasoning​ ​and​
+                S
+   ​Level 2​                                                                                     ​4-6​
+                ​application to the scenario.​
+
+
+                ​ erceptive​ ​identification​ ​of​ ​the​ ​stakeholders​ ​with​ ​strong​
+                P
+   ​Level 3​                                                                                     ​7-10​
+                ​application to the scenario.​
+
+
+
+
+​© Astranti 2026​                             ​35​
+​Management Case Study​                                                                  ​Mock Exam 4​
+
+
+
+
+  ​Task 3​
+
+
+
+    ​(a)​      ​D. Measure performance​                                                        ​40%​
+
+
+
+   ​(b)​       ​B. Implement senior management decisions​                                      ​60%​
+
+
+
+
+  ​D. Measure performance​                                                                  ​40%​
+
+
+
+   ​ ai​​Recommend​​and​​explain​​the​​application​​of​​sensitivity​​analysis​​and​
+   3
+                                                                                          ​10 marks​
+  ​scenario planning​
+
+
+
+                 ​No rewardable material​                                                           ​0​
+
+
+                 ​ eak​ ​recommendation(s)​ ​with​ ​no​ ​application​ ​to​ ​the​
+                 W
+   ​Level 1​                                                                                    ​1-3​
+                 ​scenario​
+
+
+                 ​ lear​ ​recommendation(s)​ ​with​ ​some​ ​application​ ​to​ ​the​
+                 C
+   ​Level 2​                                                                                    ​4-6​
+                 ​scenario​
+
+
+                 ​ trong​ ​recommendation(s)​ ​with​ ​strong​ ​application​ ​to​ ​the​
+                 S
+   ​Level 3​                                                                                    ​7-10​
+                 ​scenario​
+
+
+
+
+​© Astranti 2026​                             ​36​
+​Management Case Study​                                                                    ​Mock Exam 4​
+
+
+
+
+  ​B. Implement senior management decisions​                                                  ​60%​
+
+
+
+   ​ bi​ ​-​ ​Evaluate​ ​and​ ​recommend​ ​three​ ​project​ ​management​ ​tools​ ​or​
+   3
+                                                                                            ​15 marks​
+  ​techniques.​
+
+
+
+                ​No rewardable material​                                                              ​0​
+
+
+                ​ valuates​ ​and​ ​recommends​ ​one​ ​project​ ​management​ ​tool​
+                E
+   ​Level 1​    ​or​​technique.​​The​​explanation​​is​​weak​​or​​generic,​​with​​little​          ​1-5​
+                 ​to no application to the scenario.​
+
+
+                ​ valuates​ ​and​​recommends​​two​​project​​management​​tools​
+                E
+   ​Level 2​    ​or​ ​techniques.​ ​The​ ​explanation​ ​is​ ​clear,​ ​with​ ​some​                ​6-10​
+                 ​application to the scenario.​
+
+
+                ​ valuates​ ​and​ ​recommends​ ​three​ ​appropriate​ ​project​
+                E
+                ​management​ ​tools​ ​or​ ​techniques.​ ​The​ ​explanation​ ​is​
+   ​Level 3​                                                                                     ​11-15​
+                 ​comprehensive,​ ​with​ ​strong,​ ​in-depth​ ​application​ ​to​
+                  ​managing the project’s specific risks and challenges.​
+
+
+
+
+​© Astranti 2026​                             ​37​
+​Management Case Study​                                                               ​Mock Exam 4​
+
+
+
+  ​Task 4​
+
+
+
+    ​(a)​      ​D. Measure performance​                                                     ​60%​
+
+
+
+   ​(b)​       ​E. Manage internal and external stakeholders​                               ​40%​
+
+
+
+
+  ​D. Measure performance​                                                               ​60%​
+
+
+
+  ​4ai - Applying IAS 36, IAS 16 and IAS 37 accounting treatments​                     ​15 marks​
+
+
+
+                 ​No rewardable material​                                                        ​0​
+
+
+                 ​ eak​ ​application​ ​of​ ​accounting​ ​standards.​
+                 W                                                             ​No​
+   ​Level 1​                                                                                 ​1-5​
+                 ​recommendation or application to scenario.​
+
+
+                 ​ ood​ ​application​ ​of​ ​accounting​ ​standards​ ​with​ ​some​
+                 G
+   ​Level 2​                                                                                 ​6-10​
+                 ​recommendation or application to scenario.​
+
+
+                 ​ trong​ ​application​ ​of​ ​accounting​ ​standards​ ​with​ ​good​
+                 S
+   ​Level 3​                                                                                ​11-15​
+                 ​recommendation or application to scenario.​
+
+
+
+
+​© Astranti 2026​                           ​38​
+​Management Case Study​                                                                ​Mock Exam 4​
+
+
+
+
+  ​E. Manage internal and external stakeholders​                                          ​40%​
+
+
+
+  ​4bi - Recommending resolution strategies for stakeholder conflict​                   ​10 marks​
+
+
+
+               ​No rewardable material​                                                           ​0​
+
+
+               ​ eak​ ​evaluation​ ​of​ ​stakeholder​ ​conflict.​
+               W                                                                ​No​
+   ​Level 1​                                                                                  ​1-3​
+               ​recommendation or application to scenario.​
+
+
+               ​ ne​ ​or​ ​two​ ​strategies​ ​evaluated​ ​with​ ​a​ ​recommendation​
+               O
+   ​Level 2​                                                                                  ​4-6​
+               ​and some application to the scenario.​
+
+
+               ​ wo​ ​clear​ ​conflict​ ​resolution​ ​strategies​ ​evaluated​ ​and​
+               T
+  ​Level 3​                                                                                   ​7-10​
+               ​recommended with strong application to the scenario.​
+
+
+
+
+​© Astranti 2026​                           ​39​
+

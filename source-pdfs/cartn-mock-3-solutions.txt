@@ -1,0 +1,1325 @@
+​Management Case Study​                      ​Mock Exam 3​
+
+
+
+
+            ​CIMA Management Case Study​
+
+
+                          ​Mock Exam​​3​
+                             ​Cartn​
+
+
+                     ​Suggested Solutions​
+
+
+
+
+​© Astranti 2026​             ​13​
+​Management Case Study​                                                                                   ​Mock Exam 3​
+
+
+​How to use Astranti Solutions​
+​What an Astranti Solution is for​
+
+ ​ ur​ ​solutions​ ​are​ ​designed​ ​to​ ​be​ ​perfect​ ​answers​​.​ ​That​ ​means​ ​that​ ​they​ ​cover​ ​every​
+ O
+​possible point in depth in order to serve as a learning tool.​
+
+ ​ his​​is​​so​​that​​when​​you​​review​​your​​own​​solutions​​against​​ours,​​you​​can​​see​​what​​you​​got​
+ T
+ ​right​ ​and​ ​what​ ​you​​got​​wrong.​​What​​you​​covered​​in​​enough​​depth​​and​​what​​you​​missed​
+​out.​
+
+​What an Astranti Solution is NOT for​
+
+​Our solutions are not an example of what you should be able to achieve in the exam!​
+
+ ​ hen​​you​​sit​​the​​real​​exam,​​you​​simply​​won’t​​have​​the​​time​​to​​write​​an​​answer​​as​​long​
+ W
+ ​as​ ​ours​​.​ ​Perhaps​ ​you’ll​ ​cover​ ​75%​ ​of​ ​it​ ​and​ ​this​ ​is​ ​completely​ ​fine​ ​as​ ​long​ ​as​ ​you​ ​have​
+​answered the question.​
+
+​CIMA solutions​
+
+ ​ ou​​may​​have​​noticed​​our​​solutions​​differ​​from​​the​​CIMA​​solutions.​​CIMA​​solutions​​to​​past​
+ Y
+​exams are simply examples of a script that might have passed.​
+
+ ​ ur​ ​solutions​ ​go​ ​above​ ​and​ ​beyond​ ​and​ ​are​ ​examples​ ​of​ ​answers​ ​which​ ​could​ ​earn​ ​top​
+ O
+​marks. We also provide mock debrief videos to help you improve your answers.​
+
+
+
+
+​© Astranti 2026​                                      ​14​
+​Management Case Study​                                                                              ​Mock Exam 3​
+
+
+​Task 1 – Solution​
+​Sub-task (a) – 60%: Risks​
+​1ai – Product reputation​
+
+​The​ ​Fruitello​ ​recall​ ​demonstrates​ ​how​ ​a​ ​technical​ ​error​ ​in​ ​packaging​ ​design,​ ​such​​as​​an​
+ ​incorrect​ ​polyethylene​ ​specification,​ ​can​ ​lead​ ​to​ ​contamination​ ​and​ ​large-scale​ ​product​
+  ​failure.​ ​As​ ​Cartn​ ​provides​ ​advisory​ ​services​ ​to​ ​customers​ ​on​ ​packaging​ ​design​ ​and​
+​processes, a similar failure could directly damage its reputation in the market.​
+
+​Compliance and safety​
+
+​This​ ​risk​ ​is​ ​especially​ ​significant​ ​given​ ​that​ ​we​ ​operate​ ​in​ ​the​ ​food​ ​packaging​ ​industry,​
+ ​where​ ​safety​ ​and​ ​quality​ ​are​ ​paramount.​ ​Customers​ ​depend​ ​on​ ​our​ ​expertise​ ​to​​ensure​
+  ​that​ ​our​ ​packaging​ ​designs​ ​preserve​ ​product​ ​integrity​ ​and​ ​comply​ ​with​ ​stringent​ ​food​
+   ​safety​ ​and​ ​regulatory​ ​requirements.​ ​Any​ ​failure​ ​to​ ​meet​ ​these​ ​standards​ ​could​ ​lead​ ​to​
+​regulatory scrutiny, penalties, or product recalls affecting both Cartn and its customers.​
+
+​Spread of reputation damage​
+
+​Reputational​ ​damage​ ​could​ ​spread​ ​quickly,​ ​particularly​ ​across​ ​key​ ​sectors​ ​such​ ​as​ ​dairy​
+ ​and​ ​fruit​ ​juice,​ ​where​ ​product​ ​safety​ ​is​ ​highly​ ​sensitive.​ ​In​ ​addition,​ ​social​ ​media​ ​could​
+  ​amplify​ ​negative​ ​publicity​ ​far​ ​beyond​ ​traditional​ ​media​ ​coverage,​ ​making​ ​it​​significantly​
+​harder for us to control the narrative and protect our brand.​
+
+​Financial implications​
+
+​Reputational​ ​damage​ ​also​ ​has​ ​direct​ ​financial​ ​implications.​ ​It​ ​may​ ​lead​ ​to​ ​declining​
+ ​revenues,​ ​reduced​ ​market​ ​share,​ ​and​ ​increased​ ​costs​ ​associated​ ​with​ ​recalls,​
+  ​investigations,​​and​​compensation​​claims.​​In​​addition,​​Cartn​​may​​face​​difficulties​​obtaining​
+   ​or​ ​renewing​ ​professional​ ​indemnity​ ​insurance,​ ​or​ ​be​ ​subject​ ​to​ ​significantly​ ​higher​
+​premiums, further increasing financial pressure.​
+
+​Competitive advantage and human capital​
+
+​Our​​competitive​​advantage​​is​​closely​​linked​​to​​our​​reputation​​for​​innovation​​and​​reliability​
+ ​in​ ​packaging​ ​design​ ​and​​consultancy.​​A​​high-profile​​failure​​could​​weaken​​this​​positioning​
+​and allow competitors to capitalise on our difficulties to gain market share.​
+
+​Finally,​ ​adverse​ ​publicity​ ​could​ ​undermine​ ​our​ ​ability​ ​to​ ​attract​ ​and​​retain​​skilled​​design​
+ ​and​​technical​​personnel,​​who​​are​​essential​​to​​delivering​​high​​quality​​advisory​​services.​​This​
+
+
+
+​© Astranti 2026​                                   ​15​
+​Management Case Study​                                                                               ​Mock Exam 3​
+
+ i​s​ ​particularly​ ​significant​ ​given​​the​​specialised​​nature​​of​​packaging​​design,​​as​​well​​as​​the​
+​increasing emphasis on sustainability and innovation within the industry.​
+
+​1aii – Contractual inadequacy​
+
+​Supplier liability and accountability​
+
+​If​ ​our​ ​supplier​ ​contracts​ ​are​ ​vague​​or​​incomplete,​​there​​may​​be​​uncertainty​​over​​who​​is​
+ ​responsible​ ​when​ ​a​ ​failure​ ​occurs.​ ​A​ ​key​ ​issue​ ​is​ ​the​ ​absence​ ​of​ ​clearly​ ​defined​ ​liability​
+  ​clauses.​ ​Without​ ​explicit​ ​terms,​ ​we​ ​may​ ​be​ ​held​ ​responsible​ ​for​ ​defects​ ​even​​where​​the​
+   ​root​ ​cause​ ​lies​ ​with​ ​suppliers,​ ​such​ ​as​ ​Corema​ ​Industries,​ ​or​ ​incorrect​ ​use​ ​by​ ​the​
+​customer. This creates the risk of costly legal disputes and compensation claims.​
+
+​Our​ ​dependence​ ​on​ ​key​ ​suppliers​ ​heightens​ ​this​ ​risk.​ ​Without​ ​clearly​ ​defined​ ​supplier​
+ ​responsibilities​ ​and​ ​quality​ ​standards,​ ​we​ ​may​ ​bear​ ​the​ ​consequences​ ​of​ ​failures​
+  ​originating​ ​upstream​ ​in​ ​the​ ​supply​ ​chain.​ ​By​​including​​audit​​rights​​in​​supplier​​contracts,​
+​we would be able to monitor supplier compliance and reduce the likelihood of defects.​
+
+​Customer disputes​
+
+​Weak​​contractual​​terms​​can​​also​​lead​​to​​disputes​​with​​customers.​​Without​​clearly​​defined​
+ ​dispute-resolution​ ​mechanisms,​ ​disagreements​ ​may​ ​escalate​ ​into​ ​litigation,​ ​which​ ​is​
+​costly, time-consuming, and damaging to business relationships.​
+
+​Clarity of advisory & manufacturing roles​
+
+​When​ ​providing​ ​design​ ​and​ ​advisory​ ​services,​ ​we​ ​must​ ​clearly​ ​disclose​ ​our​ ​role​ ​so​
+ ​customers​ ​understand​ ​whether​ ​we​ ​are​ ​solely​ ​providing​ ​advisory​ ​services​ ​or​ ​also​
+  ​manufacturing​ ​the​ ​packaging.​ ​Where​ ​Cartn​ ​is​ ​not​ ​the​​manufacturer,​​customers​​need​​to​
+   ​pay​​close​​attention​​to​​the​​specifications​​and​​quality​​of​​the​​packaging​​provided.​​Even​​when​
+    ​Cartn​ ​is​ ​manufacturing,​ ​operational​ ​errors,​ ​cost-cutting,​ ​or​ ​miscommunication​ ​with​
+​customers could still affect product quality.​
+
+​Ultimately,​​the​​risk​​of​​contractual​​inadequacy​​works​​both​​ways:​​unclear​​terms​​can​​expose​
+ ​us​ ​to​ ​liability​ ​from​ ​suppliers​ ​or​ ​customers.​ ​Clear,​ ​comprehensive​ ​agreements​ ​are​
+  ​therefore​ ​essential​ ​to​ ​protect​ ​all​ ​parties​ ​and​ ​minimise​ ​legal,​ ​financial,​ ​and​ ​operational​
+​exposure.​
+
+
+
+
+​© Astranti 2026​                                    ​16​
+​Management Case Study​                                                                         ​Mock Exam 3​
+
+
+​Sub-task (b) – 40%: Negotiations​
+​1bi – Negotiations​
+
+​We​ ​should​ ​adopt​ ​a​ ​structured​ ​negotiation​ ​approach​ ​when​ ​renegotiating​ ​terms​ ​with​
+​Corema Industries.​
+
+​Preparation​
+
+​Before​​entering​​negotiations,​​we​​should​​clearly​​identify​​our​​key​​objectives.​​In​​light​​of​​the​
+ ​risks​ ​highlighted​ ​by​ ​the​ ​Fruitello​​recall,​​priority​​should​​be​​given​​to​​strengthening​​liability​
+  ​clauses​​and​​ensuring​​detailed​​material​​specifications,​​particularly​​for​​polyethylene​​used​​in​
+​food packaging.​
+
+​We​ ​should​ ​also​ ​assess​​our​​current​​reliance​​on​​Corema​​and​​consider​​alternative​​suppliers​
+ ​to​ ​improve​ ​our​ ​bargaining​ ​position.​ ​Understanding​ ​Corema’s​ ​objectives,​ ​particularly​ ​its​
+  ​desire​ ​to​ ​revise​ ​pricing​ ​and​ ​supply​ ​volumes,​ ​will​​allow​​us​​to​​anticipate​​Corema’s​​position​
+​and develop a more balanced and informed negotiation strategy.​
+
+​Negotiation and discussion​
+
+​During​ ​negotiations,​ ​Cartn​ ​should​​prioritise​​establishing​​specific,​​measurable​​terms.​​This​
+ ​includes​ ​defining​ ​material​ ​specifications,​ ​delivery​ ​schedules,​ ​and​ ​quality​ ​standards.​ ​We​
+  ​should​​also​​establish​​warranties​​or​​indemnities​​for​​defective​​materials,​​and​​clarify​​liability​
+   ​in​​the​​event​​of​​product​​failure​​or​​failure​​to​​meet​​order​​expectations.​​The​​Fruitello​​incident​
+​illustrates why these protections are essential.​
+
+​Bargaining and trade-offs​
+
+​Cartn​ ​should​ ​leverage​ ​its​ ​understanding​ ​of​ ​Corema’s​ ​priorities​ ​to​ ​negotiate​ ​effectively,​
+ ​aligning​ ​incentives​ ​to​ ​create​ ​mutual​ ​benefit.​ ​By​ ​framing​ ​discussions​ ​around​ ​shared​
+  ​advantages,​ ​we​ ​could​ ​encourage​ ​Corema​ ​to​ ​adopt​ ​terms​ ​that​ ​protect​ ​both​ ​parties​ ​and​
+​support a collaborative approach to quality and delivery.​
+
+​While​​Corema​​may​​seek​​higher​​prices​​or​​revised​​volumes,​​we​​could​​offer​​concessions​​such​
+ ​as​​longer-term​​purchase​​commitments​​or​​stable​​demand​​in​​exchange​​for​​stronger​​quality​
+​guarantees, enhanced testing procedures, and clearer liability terms.​
+
+​Agreement and implementation​
+
+​Once​ ​terms​ ​are​ ​agreed,​ ​they​ ​should​ ​be​ ​clearly​ ​documented​ ​in​ ​a​ ​formal​ ​contract​ ​with​
+ ​precise​​wording​​to​​avoid​​ambiguity.​​Performance​​measures​​identified​​during​​negotiations​
+
+
+
+
+​© Astranti 2026​                                 ​17​
+​Management Case Study​                                                                         ​Mock Exam 3​
+
+ (​ such​ ​as​ ​material​ ​specifications,​ ​delivery​ ​expectations,​ ​quality​ ​standards)​ ​should​ ​be​
+​included along with monitoring mechanisms.​
+
+​The​​contract​​should​​also​​include​​exit​​clauses,​​allowing​​Cartn​​to​​terminate​​the​​agreement​
+​in the event of repeated quality failures or non-compliance with agreed terms.​
+
+​Relationship management​
+
+​As​ ​Corema​ ​is​ ​a​ ​major​ ​supplier,​ ​maintaining​ ​a​ ​collaborative​ ​partnership​ ​is​ ​essential.​ ​The​
+ ​aim​​is​​to​​create​​a​​win-win​​situation​​that​​balances​​our​​objectives​​with​​Corema’s​​priorities.​
+  ​This​ ​can​ ​be​ ​achieved​ ​through​ ​regular​ ​communication,​ ​joint​ ​performance​ ​reviews,​ ​and​
+​proactive planning to address potential quality, delivery, or regulatory issues.​
+
+​Clear​ ​escalation​ ​procedures​ ​should​ ​be​ ​established​ ​so​ ​that​ ​any​ ​problems​ ​are​ ​resolved​
+​quickly and constructively, minimising disruption and protecting the relationship.​
+
+
+
+
+​© Astranti 2026​                                 ​18​
+​Management Case Study​                                                                           ​Mock Exam 3​
+
+
+​Task 2 – Solution​
+​Sub-task (a) – 40%: Disruptive technology​
+​2ai – Arguments in favour​
+
+​Workflow transformation and efficiency​
+
+​HoloScan​ ​has​ ​the​ ​potential​ ​to​ ​disrupt​ ​the​ ​packaging​ ​industry​ ​by​ ​allowing​ ​design​ ​and​
+ ​technical​​teams​​to​​identify​​potential​​flaws​​before​​physical​​prototypes​​or​​production​​trials.​
+  ​Traditionally,​ ​errors​ ​are​ ​often​ ​discovered​ ​late,​ ​requiring​ ​costly​ ​and​ ​time-consuming​
+   ​corrections.​ ​Early​ ​digital​ ​detection​ ​could​ ​reduce​ ​reliance​ ​on​ ​physical​ ​prototyping,​
+​potentially changing the standard workflow across the industry.​
+
+​Technical benchmarking and material integrity​
+
+​By​​simulating​​how​​different​​material​​layers​​perform,​​HoloScan​​ensures​​that​​specifications​
+ ​are​ ​technically​ ​sound.​​For​​example,​​it​​can​​test​​how​​varying​​material​​grades​​interact​​with​
+  ​different​ ​carton​ ​layer​ ​thicknesses,​ ​helping​ ​prevent​ ​structural​ ​or​ ​safety​ ​issues.​ ​If​ ​widely​
+   ​adopted,​ ​this​ ​capability​ ​could​ ​set​ ​a​ ​higher​ ​technical​ ​benchmark​ ​for​ ​packaging​ ​design,​
+​prompting competitors to adopt similar digital tools.​
+
+​Evolving the consultancy value proposition​
+
+​HoloScan​ ​also​ ​provides​ ​customers​ ​with​ ​3D​ ​holographic​ ​visualisations,​ ​enabling​
+ ​collaborative​ ​review​ ​and​ ​refinement​ ​of​​designs.​​Customers​​can​​request​​modifications​​or​
+  ​test​ ​alternative​ ​options​ ​directly​ ​within​ ​the​ ​simulation,​ ​which​ ​could​ ​transform​ ​the​
+​traditional client-consultant interaction model into a more interactive, iterative process.​
+
+​Strategic differentiation and market leadership​
+
+​Adopting​ ​HoloScan​ ​positions​ ​Cartn​ ​as​ ​an​ ​innovative​ ​leader​ ​in​ ​packaging​ ​design​ ​and​
+ ​consultancy.​ ​By​ ​leveraging​ ​advanced​ ​technology​ ​to​​minimise​​errors,​​the​​company​​would​
+  ​differentiate​ ​itself​ ​from​​competitors​​and​​signal​​to​​both​​customers​​and​​regulators​​that​​it​
+   ​prioritises​ ​quality,​ ​safety,​​and​​proactive​​risk​​management.​​We​​could​​potentially​​influence​
+​broader industry practices and standards.​
+
+
+
+
+​© Astranti 2026​                                  ​19​
+​Management Case Study​                                                                         ​Mock Exam 3​
+
+
+​2aii – Arguments against​
+
+​Barriers to entry and adoption costs​
+
+​Despite​​its​​potential,​​HoloScan​​may​​not​​be​​disruptive​​if​​adoption​​is​​limited.​​Implementing​
+ ​the​ ​technology​ ​requires​ ​substantial​ ​investment​​in​​hardware,​​software,​​and​​staff​​training,​
+  ​as​ ​well​ ​as​ ​ongoing​ ​maintenance​ ​and​ ​integration​ ​into​ ​existing​ ​workflows.​ ​Smaller​
+   ​companies​ ​or​ ​traditional​ ​manufacturers​ ​may​ ​find​ ​these​ ​costs​ ​prohibitive,​ ​limiting​ ​the​
+​technology’s industry-wide impact.​
+
+​Change management and cultural resistance​
+
+​HoloScan​ ​represents​ ​a​ ​fundamentally​ ​different​ ​approach​ ​to​ ​visualising​ ​and​ ​testing​
+ ​designs,​ ​which​ ​could​ ​meet​ ​resistance​ ​from​ ​staff​ ​accustomed​​to​​conventional​​processes.​
+  ​This​​could​​slow​​productivity​​temporarily​​and​​reduce​​confidence​​in​​the​​technology​​during​
+​early adoption.​
+
+​Industry-specific uncertainty and "proven-tech" risk​
+
+​Since​ ​HoloScan​ ​is​ ​new​ ​to​ ​food​ ​packaging,​ ​there​ ​is​ ​also​ ​limited​ ​evidence​ ​of​ ​HoloScan’s​
+ ​effectiveness​ ​in​ ​the​ ​food​ ​packaging​ ​sector,​ ​with​ ​few​ ​comparable​ ​case​ ​studies​ ​available.​
+  ​There​​is​​also​​a​​risk​​that​​initial​​assumptions​​about​​efficiency​​gains​​or​​error​​reduction​​may​
+​not be fully realised.​
+
+​Operational dependency and system integration​
+
+​Reliance​ ​on​ ​HoloScan​ ​as​​a​​single​​technology​​for​​critical​​design​​decisions​​could​​introduce​
+ ​risks​ ​like​ ​technical​ ​issues,​ ​software​ ​bugs,​ ​or​ ​system​ ​downtime.​ ​Integration​ ​with​ ​existing​
+​CAD systems and workflows may create operational bottlenecks if not carefully managed.​
+
+​Consequently,​ ​while​ ​HoloScan​ ​has​ ​clear​ ​disruptive​ ​potential,​ ​its​ ​impact​ ​on​ ​the​ ​broader​
+ ​industry​ ​depends​ ​on​ ​adoption​ ​rates,​ ​cost-effectiveness,​ ​and​ ​successful​ ​integration​ ​with​
+​existing design practices.​
+
+
+​Sub-task​ ​(b)​ ​–​ ​60%:​ ​Non-financial​ ​performance​
+​indicators (NFPIs)​
+​2bi – Customer and market impact​
+
+​Competitiveness​
+
+
+
+​© Astranti 2026​                                 ​20​
+​Management Case Study​                                                                             ​Mock Exam 3​
+
+​HoloScan​ ​has​​the​​potential​​to​​strengthen​​our​​competitive​​position​​by​​differentiating​​our​
+ ​advisory​ ​services​ ​in​ ​a​ ​market​ ​where​ ​design​ ​reliability​ ​is​ ​critical.​ ​NFPIs​ ​could​ ​include​​the​
+  ​number​ ​of​ ​new​ ​customers​ ​won,​ ​success​ ​rates​ ​in​ ​tenders,​ ​or​ ​customer​ ​retention​ ​levels​
+​where HoloScan is used.​
+
+​This​ ​is​ ​particularly​ ​relevant​ ​given​ ​increasing​ ​industry​ ​scrutiny​ ​following​ ​high-profile​
+ ​failures​ ​such​ ​as​ ​the​ ​Fruitello​ ​recall,​ ​where​ ​customers​ ​may​ ​prioritise​ ​suppliers​ ​with​
+​stronger design assurance capabilities.​
+
+​By​​being​​an​​early​​adopter,​​Cartn​​can​​also​​gain​​a​​first-mover​​advantage.​​NFPIs​​such​​as​​the​
+ ​proportion​ ​of​ ​customers​ ​choosing​ ​HoloScan-enabled​ ​services​ ​or​ ​the​ ​success​ ​rate​ ​of​
+  ​projects​ ​using​ ​the​ ​technology​ ​reflect​ ​the​ ​competitive​ ​edge​ ​achieved​​through​​innovative​
+​design leadership.​
+
+​Customer satisfaction​
+​HoloScan​ ​enhances​ ​collaboration​ ​by​ ​allowing​ ​customers​ ​to​ ​visualise​ ​designs​ ​in​ ​3D​ ​and​
+ ​engage​ ​more​ ​effectively​ ​in​ ​the​ ​design​ ​process.​ ​It​ ​also​ ​enables​ ​customers​ ​to​ ​test​ ​and​
+  ​refine​ ​designs​ ​iteratively​ ​before​ ​committing​ ​to​ ​mass​ ​producing,​ ​ensuring​ ​specifications​
+​are fully validated before production begins.​
+
+​NFPIs​ ​could​ ​include​ ​customer​ ​satisfaction​ ​scores,​ ​the​ ​proportion​ ​of​ ​designs​ ​approved​
+ ​without​ ​modification,​ ​and​ ​feedback​ ​on​ ​the​ ​clarity​ ​of​ ​communication.​ ​Improved​
+  ​performance​ ​in​ ​these​ ​measures​ ​would​ ​indicate​ ​stronger​ ​customer​ ​relationships​ ​and​
+​increased confidence in our advisory services.​
+
+​2bii – Operational performance​
+
+​Productivity​
+
+​A​ ​key​ ​benefit​ ​of​ ​HoloScan​ ​is​ ​improved​ ​efficiency​ ​in​ ​the​ ​design​ ​process.​ ​NFPIs​ ​should​
+ ​measure​ ​the​ ​time​ ​taken​ ​from​ ​initial​ ​concept​ ​to​ ​final​ ​approval,​ ​as​ ​well​ ​as​​the​​number​​of​
+  ​design​ ​iterations​ ​required​​before​​a​​specification​​is​​finalised.​​These​​indicators​​help​​assess​
+​whether HoloScan reduces delays caused by miscommunication or unclear specifications.​
+
+​By​ ​enabling​ ​consultants​ ​to​ ​identify​ ​and​ ​resolve​ ​issues​ ​at​ ​an​ ​early​ ​stage​ ​through​
+ ​holographic​ ​simulation,​ ​HoloScan​ ​should​ ​reduce​ ​reliance​ ​on​ ​physical​ ​prototyping​ ​and​
+  ​minimise​ ​rework.​ ​This​ ​is​ ​particularly​ ​important​ ​given​ ​that​ ​late-stage​ ​design​ ​errors​ ​can​
+​result in significant delays, additional costs, and reputational damage.​
+
+​Quality​
+
+
+
+​© Astranti 2026​                                   ​21​
+​Management Case Study​                                                                           ​Mock Exam 3​
+
+​NFPIs​​could​​include​​the​​number​​of​​potential​​design​​issues​​flagged​​during​​simulation,​​such​
+ ​as​ ​mismatched​ ​material​ ​layers​ ​or​ ​incorrect​ ​specifications,​ ​as​ ​well​ ​as​ ​the​ ​proportion​ ​of​
+  ​designs​ ​approved​ ​after​ ​the​ ​first​ ​simulation.​ ​This​ ​approach​ ​captures​ ​the​ ​value​ ​of​ ​early​
+​error detection without relying on rare actual failures.​
+
+​A​ ​reduction​​in​​iterations​​or​​flagged​​issues​​would​​indicate​​that​​HoloScan​​is​​strengthening​
+ ​quality​ ​control​ ​and​ ​reducing​ ​the​ ​likelihood​ ​of​ ​costly​ ​production​ ​errors​ ​or​​recalls,​​linking​
+​directly to the risks highlighted by the Fruitello incident.​
+
+​2biii – Long-term development​
+
+​Personnel​
+​The​ ​success​ ​of​ ​HoloScan​ ​depends​ ​on​ ​how​ ​effectively​ ​employees​ ​adopt​ ​and​ ​integrate​ ​it​
+ ​into​ ​their​ ​work.​ ​NFPIs​ ​should​ ​track​ ​staff​ ​training​ ​completion,​ ​utilisation​ ​rates​ ​across​
+​projects, and employee feedback on the system.​
+
+​Given​ ​that​ ​our​ ​advisory​ ​services​ ​rely​ ​heavily​ ​on​ ​skilled​ ​design​​and​​technical​​consultants,​
+ ​high​​adoption​​rates​​would​​demonstrate​​that​​the​​technology​​is​​being​​embedded​​into​​core​
+  ​processes​ ​and​ ​contributing​ ​to​ ​sustained​ ​value​ ​creation.​ ​Low​ ​usage​ ​could​ ​indicate​
+​resistance or training gaps, highlighting areas requiring additional support.​
+
+​Innovation​
+​Measuring​ ​innovation​ ​is​ ​inherently​ ​challenging​ ​because​ ​its​ ​value​ ​is​ ​often​ ​intangible​ ​and​
+ ​may​​only​​become​​apparent​​over​​time.​​It​​is​​therefore​​important​​that​​NFPIs​​in​​this​​category​
+  ​are​​forward-looking​​and​​capture​​both​​the​​outputs​​of​​HoloScan-enabled​​innovation​​and​​its​
+​contribution to our long-term competitive positioning.​
+
+​NFPIs​ ​in​ ​this​ ​category​ ​could​ ​track​ ​the​ ​number​ ​of​ ​new​ ​design​ ​solutions​ ​or​ ​packaging​
+ ​concepts​ ​generated​ ​using​ ​HoloScan,​ ​the​ ​speed​ ​at​ ​which​ ​innovative​ ​designs​ ​move​ ​from​
+  ​concept​ ​to​ ​customer​ ​approval,​ ​and​ ​contributions​ ​to​ ​intellectual​ ​property​​or​​proprietary​
+​methodologies that strengthen our competitive edge.​
+
+
+
+
+​© Astranti 2026​                                  ​22​
+​Management Case Study​                                                                                   ​Mock Exam 3​
+
+
+​Task 3 – Solution​
+​Sub-task (a) – 60%: Sources of funding​
+​3ai – Sources of funding​
+
+​Debt options​
+
+​Under​ ​the​ ​debt​ ​option,​ ​we​ ​can​ ​choose​ ​between​ ​a​ ​variable​ ​interest​ ​rate​ ​loan​ ​at​​4%​​or​​a​
+ ​fixed​ ​rate​ ​loan​ ​at​ ​6%.​ ​The​ ​variable​ ​option​ ​is​ ​initially​ ​attractive​ ​due​ ​to​ ​its​ ​lower​ ​interest​
+  ​rate,​ ​which​ ​would​ ​reduce​ ​finance​ ​expenses​ ​and​ ​help​ ​maintain​ ​profitability​ ​in​ ​the​ ​short​
+   ​term.​​However,​​it​​exposes​​us​​to​​interest​​rate​​risk,​​as​​rates​​may​​increase​​over​​the​​five-year​
+​term, leading to higher and unpredictable finance costs.​
+
+​In​ ​contrast,​ ​the​ ​fixed-rate​ ​loan​ ​provides​ ​certainty​ ​over​ ​interest​ ​payments,​ ​allowing​ ​for​
+ ​more​ ​reliable​ ​financial​ ​planning​ ​and​ ​reducing​ ​the​ ​risk​ ​of​ ​unexpected​ ​cost​ ​increases.​
+  ​However,​​the​​fixed​​rate​​is​​higher​​than​​the​​current​​variable​​rate,​​making​​it​​more​​expensive​
+   ​in​ ​the​ ​short​ ​term.​ ​Both​ ​options​ ​require​ ​monthly​ ​repayments​ ​secured​ ​against​ ​existing​
+​assets, reducing financial flexibility.​
+
+​Although​ ​our​ ​current​ ​interest​ ​cover​ ​of​ ​11.4​ ​indicates​ ​that​ ​we​ ​can​ ​comfortably​ ​meet​
+ ​additional​ ​interest​ ​payments,​ ​taking​ ​on​ ​further​ ​debt​ ​would​ ​increase​ ​gearing​ ​from​ ​the​
+​current level of 28.5% to 29.2% and expose the company to more financial risk.​
+
+​Equity​
+​Equity​ ​finance,​ ​through​ ​a​ ​rights​ ​issue,​ ​avoids​ ​these​ ​risks​ ​by​ ​eliminating​ ​mandatory​
+ ​repayments​ ​and​ ​interest​ ​obligations,​ ​making​ ​it​ ​more​ ​suitable​ ​for​ ​an​ ​investment​ ​with​
+  ​uncertain​ ​outcomes.​ ​As​ ​the​ ​rights​ ​issue​ ​is​ ​offered​ ​on​ ​a​ ​pro-rata​ ​basis,​ ​existing​
+​shareholders can maintain their proportionate ownership, limiting dilution of control.​
+
+​In​ ​addition,​ ​it​ ​would​ ​improve​ ​our​ ​gearing​ ​position​​and​​strengthen​​our​​financial​​stability.​
+ ​However,​​equity​​finance​​is​​generally​​considered​​more​​expensive​​than​​debt​​in​​the​​long​​run.​
+​It may also dilute earnings per share, reducing short-term shareholder returns.​
+
+​Another​ ​key​ ​consideration​ ​is​ ​the​ ​impact​ ​of​ ​the​ ​funding​ ​choice​ ​on​ ​flexibility​ ​to​ ​invest​ ​in​
+ ​future​ ​growth​​opportunities.​​Debt​​financing,​​while​​potentially​​cheaper​​in​​the​​short​​term,​
+  ​commits​ ​the​ ​company​​to​​fixed​​repayments,​​which​​may​​constrain​​cash​​flow​​and​​limit​​the​
+​ability to respond to unexpected investment needs or market changes.​
+
+
+
+
+​© Astranti 2026​                                      ​23​
+​Management Case Study​                                                                             ​Mock Exam 3​
+
+​Equity​ ​financing,​ ​by​ ​contrast,​ ​preserves​ ​cash​ ​flow​ ​and​ ​provides​​a​​buffer​​for​​uncertainty,​
+ ​allowing​ ​Cartn​ ​to​ ​pursue​ ​additional​ ​innovation​ ​or​ ​expansion​ ​initiatives​ ​without​ ​the​
+​pressure of mandatory interest payments.​
+
+​​3aii – Recommendation​
+
+​On​​balance,​​I​​would​​suggest​​that​​a​​rights​​issue​​is​​the​​most​​appropriate​​source​​of​​finance​
+​for the HoloScan investment.​
+
+​Alignment with project lifecycle and returns​
+​This​ ​is​ ​primarily​ ​because​ ​the​ ​investment​ ​is​ ​innovative​ ​and​ ​its​ ​benefits​ ​are​ ​likely​ ​to​ ​be​
+ ​realised​ ​over​ ​the​ ​long​ ​term,​ ​meaning​ ​that​ ​committing​ ​to​ ​fixed​ ​or​ ​variable​ ​debt​
+  ​repayments​​would​​expose​​us​​to​​unnecessary​​financial​​risk.​​The​​five-year​​repayment​​term​
+   ​of​ ​the​ ​loan​ ​may​ ​not​ ​align​ ​well​ ​with​ ​the​ ​timeline​ ​over​ ​which​ ​HoloScan's​ ​benefits​ ​are​
+    ​expected​ ​to​ ​materialise,​ ​creating​ ​a​ ​mismatch​ ​between​ ​cash​ ​outflows​ ​on​ ​debt​ ​servicing​
+​and cash inflows from the investment.​
+
+​Mitigating the risks of innovative investment​
+​It​​is​​also​​important​​to​​note​​that​​the​​benefits​​of​​HoloScan​​are​​somewhat​​uncertain,​​as​​the​
+ ​investment​ ​represents​​an​​enhancement​​to​​existing​​services​​rather​​than​​the​​launch​​of​​an​
+  ​entirely​ ​new​ ​service.​ ​While​ ​it​ ​is​ ​expected​ ​to​ ​improve​ ​quality,​ ​efficiency,​ ​and​ ​customer​
+   ​satisfaction,​​the​​financial​​and​​operational​​returns​​may​​be​​gradual​​and​​difficult​​to​​quantify​
+    ​initially.​ ​This​ ​uncertainty​ ​reinforces​ ​the​ ​need​ ​for​ ​a​​flexible​​financing​​approach​​that​​does​
+​not place undue pressure on cash flow.​
+
+​Whilst​​we​​could​​service​​additional​​debt,​​the​​risk​​of​​increasing​​gearing​​is​​amplified​​by​​the​
+ ​uncertainty​ ​around​ ​the​ ​timing​ ​of​ ​HoloScan's​ ​returns.​ ​The​ ​absence​ ​of​ ​mandatory​
+  ​payments​​under​​a​​rights​​issue​​provides​​the​​flexibility​​needed​​to​​implement​​the​​technology​
+​without cash flow pressure.​
+
+​Strategic signaling and market confidence​
+
+​Furthermore,​ ​a​ ​rights​ ​issue​ ​signals​​to​​existing​​shareholders​​that​​the​​Board​​is​​committed​
+ ​to​ ​funding​ ​strategic​ ​investments​ ​responsibly,​ ​without​ ​overleveraging​ ​the​ ​business.​ ​This​
+  ​may​ ​support​ ​long-term​ ​shareholder​ ​confidence​ ​in​ ​the​ ​Cartn’s​ ​management​ ​of​
+​innovation-led growth.​
+
+​Since​​equity​​holders​​bear​​the​​final​​risk​​associated​​with​​investing,​​some​​shareholders​​may​
+ ​be​​hesitant​​to​​participate​​if​​they​​perceive​​HoloScan​​as​​a​​risky​​investment.​​This​​could​​make​
+  ​it​​challenging​​to​​raise​​the​​full​​amount​​through​​a​​rights​​issue,​​and​​the​​Board​​may​​need​​to​
+​communicate the rationale and long-term benefits to secure shareholder support.​
+
+
+​© Astranti 2026​                                   ​24​
+​Management Case Study​                                                                              ​Mock Exam 3​
+
+
+​Sub-task (b) – 40%: Ratio analysis​
+​3bi – Ratios if financed by bank loans​
+
+​Gearing​
+
+​If​ ​the​ ​HoloScan​ ​investment​ ​is​ ​financed​ ​through​ ​a​ ​bank​ ​loan,​ ​our​ ​gearing​ ​ratio​ ​would​
+ ​increase​ ​from​ ​28.5%​ ​to​ ​29.2%.​ ​The​ ​loan​ ​principal​ ​remains​ ​the​ ​same​ ​whether​ ​a​ ​fixed​ ​or​
+​variable interest rate is chosen, so repayment obligations would be unchanged.​
+
+​This​​shift​​indicates​​a​​higher​​level​​of​​financial​​risk,​​as​​a​​larger​​proportion​​of​​the​​company’s​
+ ​capital​​structure​​would​​be​​tied​​to​​fixed​​repayments​​regardless​​of​​performance.​​Although​
+  ​we​ ​have​ ​successfully​ ​reduced​ ​our​ ​gearing​ ​from​ ​31.4%,​ ​taking​ ​on​ ​additional​ ​debt​ ​would​
+   ​partially​​reverse​​this​​improvement,​​reducing​​some​​of​​the​​financial​​stability​​gains​​achieved​
+​in recent periods.​
+
+​Interest cover​
+
+​Interest​​cover,​​currently​​strong​​at​​11.4,​​would​​fall​​because​​additional​​interest​​costs​​reduce​
+ ​the​​margin​​by​​which​​operating​​profit​​can​​cover​​finance​​expenses.​​However,​​given​​that​​the​
+  ​proposed​​borrowing​​of​​H$5​​million​​is​​small​​relative​​to​​existing​​debt​​of​​H$154.3​​million,​​the​
+​impact is likely to be limited in the short term.​
+
+​The​​extent​​of​​the​​impact​​on​​interest​​cover​​will​​also​​depend​​on​​whether​​the​​loan​​is​​fixed​​or​
+ ​variable.​ ​A​ ​fixed​ ​rate​ ​would​ ​provide​ ​certainty​ ​over​ ​financing​ ​costs​ ​and​ ​allow​ ​us​ ​to​ ​plan​
+  ​more​ ​effectively,​ ​whereas​ ​a​ ​variable​ ​rate​ ​introduces​ ​uncertainty,​ ​as​ ​rising​ ​interest​ ​rates​
+​could further weaken interest cover over time.​
+
+​ROCE​
+
+​In​​terms​​of​​performance,​​return​​on​​capital​​employed​​(ROCE)​​may​​decline​​initially​​because​
+ ​the​​investment​​increases​​the​​capital​​base​​before​​the​​benefits​​of​​HoloScan​​are​​realised.​​It​
+  ​is​ ​important​ ​to​ ​recognise​ ​that​ ​HoloScan​ ​represents​ ​an​ ​enhancement​ ​to​ ​existing​ ​rather​
+   ​than​ ​a​ ​wholly​ ​new​​revenue-generating​​product.​​The​​efficiency​​gains,​​improved​​reliability,​
+    ​and​ ​customer​ ​collaboration​ ​benefits​ ​may​ ​therefore​​take​​time​​to​​materialise​​and​​may​​be​
+​difficult to quantify in the short term.​
+
+
+
+
+​© Astranti 2026​                                   ​25​
+​Management Case Study​                                                                        ​Mock Exam 3​
+
+
+​Liquidity​
+
+​Liquidity​ ​would​ ​also​ ​be​ ​affected,​ ​as​ ​regular​ ​loan​ ​repayments​ ​create​ ​ongoing​ ​cash​
+ ​outflows.​ ​This​ ​could​ ​place​ ​pressure​ ​on​ ​working​ ​capital​ ​management,​ ​particularly​ ​if​ ​the​
+​investment does not generate immediate cash inflows.​
+
+​3bii – Ratios if financed by equity​
+
+​If​ ​the​ ​HoloScan​​investment​​is​​financed​​through​​a​​rights​​issue,​​the​​effect​​on​​our​​financial​
+​ratios reflects a shift towards a more conservative capital structure.​
+
+​Gearing​
+​Gearing​ ​would​ ​decrease​ ​to​ ​28.3%,​ ​as​ ​the​ ​injection​ ​of​ ​equity​ ​increases​​the​​proportion​​of​
+ ​funding​​that​​does​​not​​require​​fixed​​repayments,​​reducing​​financial​​risk.​​This​​is​​particularly​
+  ​important​ ​for​ ​an​ ​innovative​ ​investment​ ​such​ ​as​ ​HoloScan,​ ​where​ ​returns​ ​are​ ​less​
+​predictable and may take time to materialise.​
+
+​Interest cover​
+​Interest​ ​cover​ ​would​ ​remain​ ​unchanged,​ ​as​ ​no​​additional​​interest​​is​​incurred,​​preserving​
+​the company’s strong capacity to meet its financing obligations.​
+
+​ROCE​
+​However,​ ​this​ ​improved​ ​stability​ ​comes​ ​with​ ​trade-offs.​ ​ROCE​ ​may​​fall​​in​​the​​short​​term​
+ ​because​​the​​increase​​in​​equity​​raises​​the​​level​​of​​capital​​employed​​without​​an​​immediate​
+  ​increase​​in​​operating​​profit.​​This​​reflects​​a​​timing​​issue​​rather​​than​​poor​​performance,​​as​
+​the benefits of design accuracy and customer collaboration are likely to emerge gradually.​
+
+​Liquidity​
+​Liquidity​ ​is​ ​strengthened​ ​because​ ​the​ ​absence​ ​of​ ​mandatory​ ​repayments​ ​allows​ ​us​ ​to​
+ ​retain​ ​cash​ ​and​ ​focus​ ​on​ ​successfully​ ​implementing​ ​HoloScan,​ ​providing​ ​flexibility​ ​to​
+​manage the investment even if the benefits are incremental or take time to fully realise.​
+
+​
+
+
+
+
+​© Astranti 2026​                                ​26​
+​Management Case Study​                                                                                ​Mock Exam 3​
+
+
+​Task 4 – Solution​
+​Sub-task (a) – 40%: Pricing​
+​4ai – Benefits and drawbacks of bundled pricing​
+
+​Benefits​
+​A​ ​bundled​ ​approach​ ​allows​ ​Cartn​ ​to​ ​position​ ​HoloScan​ ​as​ ​an​ ​integral​ ​part​ ​of​ ​its​
+ ​consultancy​ ​service​ ​rather​ ​than​ ​an​ ​optional​ ​add-on.​ ​This​ ​is​ ​particularly​ ​important​​given​
+  ​that​ ​some​ ​customers​ ​may​ ​be​ ​unfamiliar​ ​with​ ​the​ ​technology​ ​and​ ​may​ ​question​ ​its​
+​relevance.​
+
+​By​​incorporating​​the​​cost​​into​​the​​overall​​fee,​​attention​​shifts​​away​​from​​the​​price​​of​​the​
+ ​technology​ ​and​ ​towards​ ​the​ ​outcomes​ ​it​ ​achieves,​ ​such​ ​as​ ​improved​ ​design​ ​accuracy,​
+  ​fewer​ ​errors,​ ​and​ ​reduced​ ​need​ ​for​ ​costly​ ​redesigns​ ​during​ ​production.​ ​This​ ​supports​​a​
+   ​value-based​ ​pricing​ ​approach​ ​and​ ​reduces​ ​the​ ​likelihood​ ​of​ ​resistance​ ​from​ ​customers​
+    ​who​ ​may​ ​otherwise​ ​be​ ​reluctant​ ​to​ ​pay​ ​explicitly​ ​for​ ​a​ ​technology​ ​they​ ​do​ ​not​ ​fully​
+​understand.​
+
+​Bundling​ ​also​ ​simplifies​ ​pricing​ ​by​ ​avoiding​ ​the​ ​need​ ​to​ ​separately​ ​calculate​ ​and​ ​justify​
+ ​HoloScan-related​ ​charges.​ ​This​ ​reduces​ ​the​ ​risk​ ​of​ ​disputes,​ ​ensures​ ​consistency​ ​across​
+  ​engagements,​ ​and​ ​supports​ ​the​ ​seamless​ ​integration​ ​of​ ​HoloScan​ ​into​ ​standard​
+​consultancy processes.​
+
+​Drawbacks​
+​Despite​ ​these​ ​advantages,​ ​bundled​ ​pricing​ ​reduces​ ​transparency,​ ​as​ ​customers​ ​may​​not​
+ ​clearly​​see​​what​​they​​are​​paying​​for.​​If​​fees​​increase​​without​​a​​clear​​explanation,​​this​​may​
+  ​lead​ ​to​ ​concerns​ ​about​ ​value​ ​for​​money,​​particularly​​where​​competitors​​continue​​to​​use​
+​traditional pricing structures.​
+
+​In​ ​addition,​ ​some​ ​customers,​ ​especially​ ​those​ ​with​ ​tight​ ​budgets,​ ​may​ ​prefer​ ​greater​
+ ​flexibility​​and​​control​​over​​costs.​​An​​itemised​​approach​​allows​​them​​to​​decide​​whether​​to​
+  ​use​ ​HoloScan,​ ​making​ ​services​ ​more​ ​accessible​ ​and​ ​potentially​ ​supporting​ ​customer​
+   ​retention.​​It​​may​​also​​help​​demonstrate​​the​​specific​​value​​of​​the​​technology​​by​​making​​its​
+​cost more visible.​
+
+​Customers​ ​may​ ​be​ ​subjective​ ​about​ ​HoloScan​ ​and​ ​perceive​ ​it​ ​as​ ​an​ ​optional​ ​add-on,​
+ ​choosing​ ​not​ ​to​ ​use​ ​it.​ ​This​ ​will​ ​limit​ ​its​ ​adoption​ ​and​ ​reduce​ ​the​ ​potential​ ​benefits​ ​in​
+​terms of improved design outcomes.​
+
+
+
+​© Astranti 2026​                                     ​27​
+​Management Case Study​                                                                        ​Mock Exam 3​
+
+
+​4aii – Recommendation​
+
+​Overall,​ ​a​ ​bundled​ ​pricing​ ​approach​ ​is​ ​recommended.​ ​Treating​ ​HoloScan​ ​as​ ​an​ ​optional​
+ ​add-on​ ​could​ ​discourage​ ​adoption​ ​and​ ​undermine​ ​our​ ​goal​ ​of​ ​providing​ ​improved,​
+​error-free design outcomes while fully meeting client needs​​.​
+
+​However,​ ​this​ ​approach​ ​should​ ​be​ ​supported​​by​​clear​​communication​​so​​that​​customers​
+ ​understand​ ​that​ ​higher​ ​fees​ ​reflect​ ​enhanced​ ​design​ ​capabilities​ ​and​ ​better​ ​outcomes.​
+  ​The​​proposed​​increase​​in​​consultancy​​fees​​to​​account​​for​​HoloScan​​would​​raise​​the​​hourly​
+   ​rate​​by​​approximately​​12.5%​​($50/$400)​​to​​20%​​($30/$150),​​depending​​on​​the​​complexity​
+​of the engagement and the seniority of the consultant.​
+
+​Cartn​​should​​also​​consider​​flexibility​​for​​price-sensitive​​clients,​​such​​as​​selective​​discounts​
+​or phased adoption options, to encourage uptake without compromising relationships.​
+
+​Additionally,​ ​bundling​ ​reinforces​ ​the​ ​perception​ ​of​ ​HoloScan​ ​as​ ​a​ ​standard​ ​part​ ​of​ ​our​
+ ​consultancy​​offering,​​helping​​to​​build​​long-term​​customer​​reliance​​on​​its​​enhanced​​design​
+  ​capabilities.​ ​Over​ ​time,​ ​this​ ​can​ ​strengthen​ ​our​ ​competitive​ ​position​ ​by​ ​increasing​
+​customer trust, reducing errors, and improving the overall quality of service delivery.​
+
+
+​Sub-task (b) – 60%: Communication​
+​4bi – Customer needs​
+
+​Clarity and understanding​
+​A​ ​primary​ ​need​ ​is​ ​clarity​ ​and​ ​understanding,​ ​as​ ​customers​​may​​not​​be​​familiar​​with​​the​
+ ​technology​ ​and​ ​may​ ​question​ ​its​ ​relevance​ ​to​ ​food​ ​packaging​ ​design.​ ​They​ ​will​ ​need​​to​
+  ​understand​ ​how​ ​HoloScan​ ​fits​ ​into​ ​the​ ​design​ ​process​ ​and​ ​how​ ​it​ ​improves​ ​outcomes​
+​compared to traditional methods.​
+
+​Trust​
+​Customers​ ​will​ ​also​ ​require​ ​trust​ ​and​ ​reassurance.​ ​The​ ​introduction​ ​of​ ​new​ ​technology​
+ ​may​ ​create​ ​uncertainty,​ ​especially​ ​for​ ​customers​ ​accustomed​ ​to​ ​established​ ​design​
+  ​approaches.​​They​​will​​want​​confidence​​that​​HoloScan​​is​​reliable​​and​​enhances,​​rather​​than​
+​complicates, the design process.​
+
+​Value for money​
+​Another​​important​​need​​is​​value​​for​​money.​​The​​proposed​​increase​​in​​consultancy​​fees​​of​
+ ​approximately​ ​12.5%​ ​to​ ​20%​ ​per​ ​hour​ ​may​ ​prompt​ ​customers​ ​to​ ​question​ ​whether​ ​the​
+
+
+​© Astranti 2026​                                ​28​
+​Management Case Study​                                                                        ​Mock Exam 3​
+
+ ​ enefits​ ​justify​ ​the​ ​cost.​ ​Consultants​​should​​emphasise​​that​​HoloScan​​not​​only​​improves​
+ b
+ ​accuracy​ ​but​ ​also​ ​reduces​ ​the​ ​likelihood​ ​of​ ​expensive​ ​errors​ ​or​ ​rework,​ ​making​ ​the​
+​investment cost-effective in the long term.​
+
+​More​ ​accurate​ ​and​ ​optimised​ ​designs​ ​may​ ​lead​ ​to​ ​higher​ ​quality​ ​or​ ​more​ ​complex​
+ ​packaging​​specifications,​​which​​could​​increase​​production​​costs,​​whether​​the​​packaging​​is​
+  ​manufactured​ ​by​ ​Cartn​​or​​by​​the​​customer​​themselves.​​Consultants​​should​​highlight​​the​
+   ​overall​​value​​delivered,​​including​​reduced​​rework,​​fewer​​errors,​​and​​better​​product​​quality,​
+​to show that the long-term advantages outweigh any short-term increase in fees.​
+
+​Transparency​
+​Transparency​ ​is​ ​essential,​ ​but​ ​this​ ​does​ ​not​ ​require​ ​itemising​ ​fees.​ ​Instead,​ ​customers​
+ ​should​ ​clearly​ ​understand​ ​the​ ​outcomes​ ​and​ ​benefits​​that​​the​​fee​​increase​​supports.​​By​
+  ​explaining​ ​that​ ​the​ ​increase​ ​reflects​ ​HoloScan’s​ ​contribution​ ​to​ ​error​ ​prevention,​ ​Cartn​
+   ​can​ ​ensure​ ​customers​ ​perceive​ ​the​ ​pricing​ ​as​ ​fair​ ​and​ ​justified​ ​without​ ​making​ ​the​
+​process overly complex or breaking down individual cost components.​
+
+​Risk-reduction​
+​Risk​​reduction​​is​​another​​important​​aspect.​​By​​using​​HoloScan​​to​​identify​​potential​​design​
+ ​flaws​​early,​​We​​can​​demonstrate​​to​​customers​​that​​we​​are​​proactively​​managing​​the​​risk​
+  ​of​​errors​​or​​failures.​​This​​builds​​confidence​​in​​our​​consultancy​​services​​and​​positions​​the​
+​company as a trusted partner in high-stakes design projects.​
+
+​Innovation and future-proofing​
+​Finally,​​customers​​value​​innovation​​and​​future-proofing.​​Offering​​HoloScan​​as​​part​​of​​the​
+ ​standard​ ​consultancy​ ​package​ ​signals​ ​that​ ​Cartn​ ​invests​ ​in​ ​cutting-edge​ ​technology​ ​to​
+  ​deliver​ ​better​ ​outcomes.​ ​Over​ ​time,​ ​this​ ​approach​ ​can​ ​strengthen​ ​customer​ ​loyalty,​
+   ​encourage​ ​adoption​ ​of​ ​HoloScan-enabled​ ​services,​ ​and​ ​reinforce​ ​Cartn’s​ ​reputation​​as​​a​
+​leader in design reliability and quality assurance.​
+
+​4bii – Communication​
+
+​To​ ​address​ ​these​ ​needs,​ ​consultants​ ​should​ ​adopt​ ​a​ ​clear,​ ​customer-focused​ ​approach​
+ ​when​​introducing​​HoloScan.​​It​​should​​be​​presented​​as​​an​​integrated​​enhancement​​to​​our​
+​standard design services, rather than as an optional add-on.​
+
+
+
+
+​© Astranti 2026​                                ​29​
+​Management Case Study​                                                                        ​Mock Exam 3​
+
+
+​Focus on outcomes​
+​The​ ​conversation​ ​should​ ​focus​ ​on​ ​outcomes​ ​that​ ​matter​ ​to​ ​customers​ ​(i.e.​ ​reliability,​
+ ​fewer​ ​errors,​ ​higher-quality​ ​products),​ ​rather​ ​than​ ​the​ ​technical​ ​mechanics​ ​of​ ​the​
+  ​technology.​ ​Live​ ​demonstrations,​ ​3D​​simulations,​​and​​interactive​​walkthroughs​​can​​make​
+​these benefits tangible, showing exactly how HoloScan works.​
+
+​Importantly,​​consultants​​should​​highlight​​that​​some​​benefits​​are​​inherently​​immeasurable,​
+ ​such​ ​as​ ​increased​ ​confidence​ ​in​ ​design​ ​accuracy,​ ​smoother​ ​collaboration,​ ​and​ ​reduced​
+  ​reputational​ ​risk.​ ​These​ ​advantages​ ​create​ ​long-term​ ​value​ ​beyond​ ​immediate​ ​cost​
+​savings.​
+
+​Consistent and reassuring communication​
+​Communication​ ​should​ ​be​ ​consistent​​across​​the​​board.​​All​​consultants​​should​​be​​trained​
+ ​so​ ​that​ ​messaging​ ​is​ ​clear​ ​and​ ​every​ ​customer​ ​receives​ ​the​ ​same​ ​understanding​ ​of​
+​HoloScan’s purpose and benefits.​
+
+​Additionally,​ ​consultants​ ​should​ ​reassure​ ​customers​ ​by​ ​sharing​ ​examples​ ​of​ ​successful​
+ ​HoloScan-enabled​ ​projects,​ ​emphasising​ ​how​ ​early​ ​error​ ​detection​ ​has​ ​prevented​​costly​
+  ​redesigns​ ​or​ ​delays.​ ​Framing​ ​the​ ​technology​ ​through​ ​real-world​ ​outcomes​ ​helps​ ​build​
+​trust and reduces any uncertainty about adopting new methods.​
+
+​Cater to cautious customers​
+​Finally,​ ​consultants​ ​can​ ​encourage​ ​gradual​ ​adoption​ ​for​ ​more​ ​cautious​ ​customers,​ ​for​
+ ​example​​by​​starting​​with​​a​​pilot​​project​​or​​trial​​simulation.​​It​​could​​be​​a​​small​​part​​of​​the​
+  ​customer’s​​project,​​a​​single​​packaging​​line,​​or​​just​​a​​3D​​simulation​​session​​to​​demonstrate​
+   ​HoloScan’s​​capabilities.​​This​​helps​​provide​​hands-on​​experience​​with​​HoloScan’s​​value​​and​
+    ​allows​​customers​​to​​see​​the​​benefits​​directly,​​making​​it​​easier​​to​​integrate​​the​​technology​
+​into future projects.​
+
+
+
+
+​© Astranti 2026​                                ​30​
+​Management Case Study​                                                           ​Mock Exam 3​
+
+
+​Marking Matrix​
+​Task​   ​Topic​                                         ​Core activity​   ​%​    ​Marks​ ​Total​
+
+​1a​     ​Risks​                                               ​D​         ​60​       ​15​
+                                                                                             ​25​
+​1b​     ​Negotiations​                                        ​E​         ​40​       ​10​
+
+​2a​     ​Disruptive technology​                               ​A​         ​40​       ​10​
+                                                                                             ​25​
+​2b​     ​Non-financial performance indicators​                ​C​         ​60​       ​15​
+
+​3a​     ​Sources of funds​                                    ​B​         ​60​       ​15​
+                                                                                             ​25​
+​3b​     ​Ratios​                                              ​D​         ​40​       ​10​
+
+​4a​     ​Pricing​                                             ​A​         ​40​       ​10​
+                                                                                             ​25​
+​4b​     ​Communication​                                       ​E​         ​60​       ​15​
+
+                                                                                             ​100​
+
+
+
+
+​© Astranti 2026​                                 ​31​
+​Management Case Study​                                                                          ​Mock Exam 3​
+
+
+​Marking guidance​
+
+
+  ​Task 1​
+
+
+
+    ​(a)​      ​D. Measure performance​                                                                 ​60%​
+
+
+
+    ​(b)​      ​E. Manage internal and external stakeholders​                                          ​40%​
+
+
+
+
+  ​D. Measure performance​                                                                          ​60%​
+
+
+
+   1​ ai​ ​-​ ​Identify​ ​and​ ​evaluate​ ​the​ ​risks​ ​to​ ​Cartn​ ​arising​ ​from​
+    ​product/service​ ​reputation​ ​in​ ​relation​ ​to​ ​its​ ​design​ ​and​ ​advisory​            ​8 marks​
+  ​services.​
+
+
+
+                 ​No rewardable material​                                                                   ​0​
+
+
+                 ​ xplains​ ​a​ ​limited​ ​range​ ​of​ ​product/service​ ​reputation​ ​risks​
+                 E
+   ​Level 1​     ​associated​​with​​the​​situation,​​and​​the​​explanations​​lack​​depth​​and​          ​1-2​
+                  ​clarity​
+
+
+
+                 ​ xplains​​some​​product/service​​reputation​​risks​​associated​​with​​the​
+                 E
+   ​Level 2​                                                                                            ​3-5​
+                 ​situation, with reasonable depth and clarity​
+
+
+
+                 ​ xplains​ ​a​ ​wide​ ​range​ ​of​ ​product/service​ ​reputation​ ​risks​
+                 E
+   ​Level 3​                                                                                            ​6-8​
+                 ​associated with the situation, with depth and clarity​
+
+
+
+   1​ aii​ ​-​​Identify​​and​​evaluate​​the​​risks​​to​​Cartn​​arising​​from​​contractual​
+                                                                                                   ​7 marks​
+  ​inadequacy in relation to its design and advisory services.​
+
+
+
+
+​© Astranti 2026​                               ​32​
+​Management Case Study​                                                                            ​Mock Exam 3​
+
+
+
+                ​No rewardable material​                                                                      ​0​
+
+
+                ​ xplains​​a​​limited​​range​​of​​contractual​​inadequacy​​risks​​associated​
+                E
+   ​Level 1​                                                                                              ​1-2​
+                ​with the situation, and the explanations lack depth and clarity​
+
+
+
+                ​ xplains​ ​some​ ​contractual​ ​inadequacy​ ​risks​ ​associated​ ​with​ ​the​
+                E
+   ​Level 2​                                                                                              ​3-4​
+                ​situation, with reasonable depth and clarity​
+
+
+
+                ​ xplains​ ​a​ ​wide​ ​range​ ​of​ ​contractual​ ​inadequacy​​risks​​associated​
+                E
+   ​Level 3​                                                                                              ​5-7​
+                ​with the situation, with depth and clarity​
+
+
+
+
+  ​E. Manage internal and external stakeholders​                                                      ​40%​
+
+
+
+   1​ bi​ ​-​ ​Recommend​ ​with​ ​reasons​ ​the​ ​approach​​the​​company​​could​​take​
+                                                                                                    ​10 marks​
+  ​to renegotiate terms with one of our major suppliers.​
+
+
+
+                ​No rewardable material​                                                                      ​0​
+
+
+                ​ iscusses​ ​the​ ​general​ ​stages​ ​of​ ​the​ ​negotiation​ ​process​ ​and​
+                D
+   ​Level 1​                                                                                              ​1-3​
+                ​identifies the aim of the negotiation process​
+
+
+
+                ​ iscusses​​the​​general​​stages​​of​​the​​negotiation​​process,​​identifies​
+                D
+   ​Level 2​    ​the​​aim​​of​​the​​negotiation​​process​​and​​discusses​​the​​approach​​the​             ​4-6​
+                 ​company should take​
+
+
+
+                ​ iscusses​​the​​general​​stages​​of​​the​​negotiation​​process​​,​​identifies​
+                D
+   ​Level 3​    ​the​​aim​​of​​the​​negotiation​​process​​and​​discusses​​the​​approach​​the​             ​7-10​
+                 ​company should take with clarity and depth​
+
+
+
+
+​© Astranti 2026​                                ​33​
+​Management Case Study​                                                                  ​Mock Exam 3​
+
+
+
+
+  ​Task 2​
+
+
+
+    ​(a)​      ​A. Evaluate opportunities to add value​                                        ​40%​
+
+
+
+    ​(b)​      ​C. Manage performance and costs to create sustainable value​                    ​60%​
+
+
+
+
+  ​A. Evaluate opportunities to add value​                                                  ​40%​
+
+
+
+  ​2ai - Evaluate the arguments for HoloScan as a disruptive technology.​                  ​5 marks​
+
+
+
+                 ​No rewardable material​                                                           ​0​
+
+
+
+   ​Level 1​     ​Describes disruptive technology​                                                  ​1​
+
+
+
+   ​Level 2​     ​Offers arguments in favour​                                                   ​2-3​
+
+
+
+   ​Level 3​     ​Offers arguments in favour with justification and application​                ​4-5​
+
+
+
+   2​ aii​ ​-​ ​Evaluate​ ​the​ ​arguments​ ​against​ ​HoloScan​ ​as​ ​a​ ​disruptive​
+                                                                                           ​5 marks​
+  ​technology.​
+
+
+
+                 ​No rewardable material​                                                           ​0​
+
+
+
+   ​Level 1​     ​Describes non-disruptive technology​                                              ​1​
+
+
+
+   ​Level 2​     ​Offers arguments against​                                                     ​2-3​
+
+
+
+
+​© Astranti 2026​                            ​34​
+​Management Case Study​                                                                       ​Mock Exam 3​
+
+
+
+   ​Level 3​    ​Offers arguments against with justification and application​                        ​4-5​
+
+
+
+
+  ​C. Manage performance and costs to create sustainable value​                                  ​60%​
+
+
+
+   2​ bi​ ​-​ ​Explain​ ​the​ ​key​ ​considerations​ ​when​ ​developing​ ​non-financial​
+    ​performance​​indicators​​to​​assess​​the​​value​​generated​​by​​the​​proposed​             ​5 marks​
+  ​HoloScan investment, focusing on CUSTOMER AND MARKET IMPACT​
+
+
+
+                ​No rewardable material​                                                                 ​0​
+
+
+                ​ escribes​ ​the​ ​relevance​ ​of​ ​non-financial​ ​performance​
+                D
+   ​Level 1​                                                                                             ​1​
+                ​indicators​
+
+
+                ​ ffers​ ​a​ ​full​ ​discussion​ ​of​ ​relevant​ ​non-financial​
+                O
+   ​Level 2​                                                                                         ​2-3​
+                ​performance indicators​
+
+
+                ​ ffers​ ​a​ ​full​ ​discussion​ ​of​ ​relevant​ ​non-financial​ ​factors,​
+                O
+   ​Level 3​                                                                                         ​4-5​
+                ​with good justification for the points raised​
+
+
+   2​ bii​ ​-​ ​Explain​ ​the​ ​key​ ​considerations​ ​when​ ​developing​ ​non-financial​
+    ​performance​​indicators​​to​​assess​​the​​value​​generated​​by​​the​​proposed​             ​5 marks​
+  ​HoloScan investment, focusing on OPERATIONAL PERFORMANCE​
+
+
+
+                ​No rewardable material​                                                                 ​0​
+
+
+                ​ escribes​ ​the​ ​relevance​ ​of​ ​non-financial​ ​performance​
+                D
+   ​Level 1​                                                                                             ​1​
+                ​indicators​
+
+
+
+
+​© Astranti 2026​                              ​35​
+​Management Case Study​                                                                       ​Mock Exam 3​
+
+
+                ​ ffers​ ​a​ ​full​ ​discussion​ ​of​ ​relevant​ ​non-financial​
+                O
+   ​Level 2​                                                                                         ​2-3​
+                ​performance indicators​
+
+
+                ​ ffers​ ​a​ ​full​ ​discussion​ ​of​ ​relevant​ ​non-financial​ ​factors,​
+                O
+   ​Level 3​                                                                                         ​4-5​
+                ​with good justification for the points raised​
+
+
+   2​ biii​ ​-​ ​Explain​ ​the​ ​key​ ​considerations​ ​when​ ​developing​ ​non-financial​
+    ​performance​​indicators​​to​​assess​​the​​value​​generated​​by​​the​​proposed​             ​5 marks​
+  ​HoloScan investment, focusing on LONG-TERM DEVELOPMENT​
+
+
+
+                ​No rewardable material​                                                              ​0​
+
+
+                ​ escribes​ ​the​ ​relevance​ ​of​ ​non-financial​ ​performance​
+                D
+   ​Level 1​                                                                                          ​1​
+                ​indicators​
+
+
+                ​ ffers​ ​a​ ​full​ ​discussion​ ​of​ ​relevant​ ​non-financial​
+                O
+   ​Level 2​                                                                                         ​2-3​
+                ​performance indicators​
+
+
+                ​ ffers​ ​a​ ​full​ ​discussion​ ​of​ ​relevant​ ​non-financial​ ​factors,​
+                O
+   ​Level 3​                                                                                         ​4-5​
+                ​with good justification for the points raised​
+
+
+
+
+​© Astranti 2026​                              ​36​
+​Management Case Study​                                                                                      ​Mock Exam 3​
+
+
+
+
+  ​Task 3​
+
+
+
+    ​(a)​      ​B. Implement senior management decisions​                                                           ​60%​
+
+
+
+    ​(b)​      ​D. Measure performance​                                                                            ​40%​
+
+
+
+
+  ​B. Implement senior management decisions​                                                                    ​60%​
+
+
+
+   ​ ai​ ​-​ ​Identify​ ​the​ ​characteristics​ ​of​ ​debt​ ​and​ ​equity​ ​that​​affect​​their​
+   3
+   ​suitability​ ​for​ ​the​ ​funding​ ​of​ ​the​ ​HoloScan​ ​investment​ ​and​                                ​8 marks​
+  ​recommend the more suitable source of funds, stating reasons.​
+
+
+
+                  ​No rewardable material​                                                                              ​0​
+
+
+                  ​ ives​ ​a​ ​list​ ​of​ ​some​ ​characteristics​ ​of​ ​debt​ ​and​​equity​​with​​little​
+                  G
+   ​Level 1​                                                                                                        ​1-2​
+                  ​depth​
+
+
+
+                  ​ ives​ ​a​ ​list​ ​of​ ​some​ ​characteristics​ ​of​ ​debt​​and​​equity​​which​​are​
+                  G
+   ​Level 2​                                                                                                        ​3-5​
+                  ​explained in depth and somewhat applied.​
+
+
+
+                  ​ ives​​a​​wide​​range​​of​​characteristics​​of​​debt​​and​​equity​​which​​are​
+                  G
+   ​Level 3​                                                                                                        ​6-8​
+                  ​explained fully and applied.​
+
+
+
+  ​3aii -Recommend the more suitable source of funds, stating reasons.​                                        ​7 marks​
+
+
+
+                  ​No rewardable material​                                                                              ​0​
+
+
+
+
+​© Astranti 2026​                                     ​37​
+​Management Case Study​                                                                                ​Mock Exam 3​
+
+
+
+   ​Level 1​     ​Offers a limited justification for the recommended type of finance​                         ​1-2​
+
+
+
+   ​Level 2​     ​Offers a justification for the recommended type of finance​                                 ​3-4​
+
+
+                 ​ ffers​ ​full​ ​and​ ​logical​ ​justification​ ​for​ ​the​ ​recommended​​type​​of​
+                 O
+   ​Level 3​                                                                                                  ​5-7​
+                 ​finance​
+
+
+
+
+  ​D. Measure performance​                                                                                ​40%​
+
+
+
+   ​ bi​​-​​Evaluate​​how​​the​​funding​​the​​investment​​by​​debt​​will​​affect​​key​
+   3
+                                                                                                         ​5 marks​
+  ​accounting ratios.​
+
+
+
+                 ​No rewardable material​                                                                         ​0​
+
+
+
+   ​Level 1​     ​Identifies key ratios that will be affected​                                                    ​1​
+
+
+
+   ​Level 2​     ​Identifies key ratios and explains direction of change​                                     ​2-3​
+
+
+                 I​dentifies​ ​key​ ​ratios,​​and​​explains​​direction​​of​​change​​and​​impact​
+   ​Level 3​                                                                                                  ​4-5​
+                  ​on interpretation​
+
+
+
+   ​ bii​ ​-​ ​Evaluate​ ​how​ ​the​ ​funding​ ​the​ ​investment​ ​by​ ​equity​ ​will​ ​affect​
+   3
+                                                                                                         ​5 marks​
+  ​key accounting ratios.​
+
+
+
+                 ​No rewardable material​                                                                         ​0​
+
+
+
+   ​Level 1​     ​Identifies key ratios that will be affected​                                                    ​1​
+
+
+
+
+​© Astranti 2026​                                  ​38​
+​Management Case Study​                                                                            ​Mock Exam 3​
+
+
+
+   ​Level 2​     ​Identifies key ratios and explains direction of change​                                 ​2-3​
+
+
+                 I​dentifies​ ​key​ ​ratios,​​and​​explains​​direction​​of​​change​​and​​impact​
+   ​Level 3​                                                                                              ​4-5​
+                  ​on interpretation​
+
+
+
+
+  ​Task 4​
+
+
+
+    ​(a)​      ​A. Evaluate opportunities to add value​                                                  ​40%​
+
+
+
+   ​(b)​       ​E. Manage internal and external stakeholders​                                             ​60%​
+
+
+
+
+  ​A. Evaluate opportunities to add value​                                                            ​40%​
+
+
+
+  ​4ai - Evaluate the benefits and drawbacks of bundled pricing​                                     ​6 marks​
+
+
+
+                 ​No rewardable material​                                                                     ​0​
+
+
+
+   ​Level 1​     ​Offers a limited explanation of bundled pricing​                                        ​1-2​
+
+
+
+   ​Level 2​     ​Provides several benefits and drawbacks of bundled pricing​                             ​3-4​
+
+
+                 ​ rovides​ ​several​ ​clear​ ​benefits​ ​and​ ​drawbacks​​of​​bundled​​pricing​
+                 P
+   ​Level 3​                                                                                              ​5-6​
+                 ​with clear application​
+
+
+
+   ​ aii​ ​-​ ​Recommend​ ​the​ ​approach​ ​that​ ​should​ ​be​ ​taken​ ​to​ ​price​
+   4
+                                                                                                     ​4 marks​
+  ​consulting services after the implementation of HoloScan.​
+
+
+
+
+​© Astranti 2026​                                ​39​
+​Management Case Study​                                                                      ​Mock Exam 3​
+
+
+
+                 ​No rewardable material​                                                               ​0​
+
+
+
+   ​Level 1​     ​A recommendation provided with little to no justification​                            ​1​
+
+
+
+   ​Level 2​     ​A clear recommendation provided with some justification​                              ​2​
+
+
+
+   ​Level 3​     ​A clear recommendation provided with strong justification​                        ​3-4​
+
+
+
+
+  ​E. Manage internal and external stakeholders​                                                ​60%​
+
+
+
+  ​4bi - Identify customer needs​                                                              ​8 marks​
+
+
+
+                 ​No rewardable material​                                                               ​0​
+
+
+
+   ​Level 1​     ​Lists customer needs​                                                             ​1-2​
+
+
+
+   ​Level 2​     ​Identifies customer needs with explanation​                                       ​3-5​
+
+
+
+   ​Level 3​     ​Identifies customer needs with in-depth explanation​                              ​6-8​
+
+
+
+   ​ bii​​-​​Recommend​​how​​consultants​​should​​communicate​​to​​customers​
+   4
+   ​the​ ​decision​ ​to​ ​use​ ​HoloScan​ ​in​ ​design​ ​consultations,​ ​including​ ​any​     ​7 marks​
+  ​associated additional costs.​
+
+
+
+                 ​No rewardable material​                                                               ​0​
+
+
+
+
+​© Astranti 2026​                              ​40​
+​Management Case Study​                                                                           ​Mock Exam 3​
+
+
+
+               ​ xplains​ ​at​ ​least​ ​one​ ​communication​ ​strategy​ ​but​ ​there​ ​is​
+               E
+   ​Level 1​   ​little​ ​reference​ ​to​ ​the​ ​scenario.​ ​Explanations​ ​lack​ ​clarity​ ​or​          ​1-2​
+                ​depth.​
+
+
+               ​ xplains​ ​at​ ​least​ ​2​ ​or​ ​more​ ​communication​ ​strategies​ ​with​
+               E
+   ​Level 2​   ​reference​ ​to​ ​the​ ​scenario.​ ​Explanations​ ​show​ ​some​ ​clarity​                 ​3-4​
+                ​and depth.​
+
+
+               ​ xplains​ ​a​ ​range​ ​of​ ​communication​ ​strategies​ ​with​ ​reference​ ​to​
+               E
+  ​Level 3​                                                                                              ​5-7​
+               ​the scenario. Explanations are clear and in-depth.​
+
+
+
+
+​© Astranti 2026​                               ​41​
+

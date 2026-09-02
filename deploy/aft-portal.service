@@ -1,0 +1,19 @@
+[Unit]
+Description=Accountants for Tomorrow Learning Portal
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/aft-learning-portal
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/aft-learning-portal/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

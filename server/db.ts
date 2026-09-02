@@ -1,0 +1,598 @@
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { drizzle } from "drizzle-orm/mysql2";
+import { ENV } from "./_core/env";
+import { storageGetSignedUrl, storagePut } from "./storage";
+import { generateBrandedPrintablePdf } from "./pdf";
+import { hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
+import { entitlementExpiryFromAccessDays } from "@shared/payments";
+import {
+  answers,
+  attempts,
+  caseStudySections,
+  entitlements,
+  mockExams,
+  objectiveQuestions,
+  payments,
+  products,
+  qualifications,
+  resources,
+  markings,
+  feedbackStates,
+  submissions,
+  notifications,
+  auditEvents,
+  type InsertUser,
+  users,
+  paymentGatewaySettings,
+} from "../drizzle/schema";
+
+let _db: ReturnType<typeof drizzle> | null = null;
+
+export async function getDb() {
+  if (!_db && process.env.DATABASE_URL) {
+    try { _db = drizzle(process.env.DATABASE_URL); } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
+  }
+  return _db;
+}
+
+export async function upsertUser(user: InsertUser): Promise<void> {
+  if (!user.openId) throw new Error("User openId is required for upsert");
+  const db = await getDb();
+  if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
+  const values: InsertUser = { openId: user.openId };
+  const updateSet: Record<string, unknown> = {};
+  const textFields = ["name", "email", "loginMethod"] as const;
+  for (const field of textFields) { if (user[field] !== undefined) { values[field] = user[field] ?? null; updateSet[field] = user[field] ?? null; } }
+  if (user.lastSignedIn !== undefined) { values.lastSignedIn = user.lastSignedIn; updateSet.lastSignedIn = user.lastSignedIn; }
+  if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; } else if (user.openId === ENV.ownerOpenId) { values.role = "admin"; updateSet.role = "admin"; }
+  if (!values.lastSignedIn) values.lastSignedIn = new Date();
+  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+  const existing = await db.select({ id: users.id }).from(users).where(eq(users.openId, user.openId)).limit(1);
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  if (!existing[0]) {
+    const createdUser = await db.select({ id: users.id }).from(users).where(eq(users.openId, user.openId)).limit(1);
+    if (createdUser[0]) await db.insert(notifications).values({ userId: createdUser[0].id, type: "account", subject: "Welcome to Accountants for Tomorrow", body: "Your learner account is ready. Explore your products and begin your exam preparation." });
+  }
+}
+
+export async function getUserByOpenId(openId: string) {
+  const db = await getDb(); if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return result[0];
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb(); if (!db) return undefined;
+  const normalized = email.trim().toLowerCase();
+  const result = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
+  return result[0];
+}
+
+export async function createLocalUser(input: { email: string; name?: string; passwordHash: string; role?: "user" | "admin" | "instructor" }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const openId = `local:${randomUUID()}`;
+  const email = input.email.trim().toLowerCase();
+  const role = input.email.trim().toLowerCase() === ENV.ownerEmail ? "admin" : (input.role ?? "user");
+  await db.insert(users).values({
+    openId,
+    email,
+    name: input.name?.trim() || null,
+    passwordHash: input.passwordHash,
+    loginMethod: "local",
+    role,
+    lastSignedIn: new Date(),
+  });
+  const created = await getUserByEmail(email);
+  if (!created) throw new Error("User could not be created");
+  await db.insert(notifications).values({ userId: created.id, type: "account", subject: "Welcome to Accountants for Tomorrow", body: "Your learner account is ready. Explore your products and begin your exam preparation." });
+  return created;
+}
+
+export async function updateUserPasswordHash(userId: number, passwordHash: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+}
+
+export async function updateUserLastSignedIn(userId: number) {
+  const db = await getDb(); if (!db) return;
+  await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, userId));
+}
+
+export async function provisionDemoLearner(adminUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const openId = "aft-demo-learner-60d";
+  const email = "demo@accountantsfortomorrow.co.za";
+  await upsertUser({ openId, name: "AFT Demo Learner", email, loginMethod: "demo", role: "user", lastSignedIn: new Date() });
+  const demoUser = await getUserByOpenId(openId);
+  if (!demoUser) throw new Error("Demo learner could not be created");
+  const catalogue = await db.select().from(products).where(eq(products.status, "published"));
+  const eligible = catalogue.filter((product) => product.category === "case_study" || product.category === "objective_test");
+  const existing = await db.select().from(entitlements).where(eq(entitlements.userId, demoUser.id));
+  const existingByProductId = new Map(existing.map((item) => [item.productId, item]));
+  const startsAt = new Date();
+  const expiresAt = new Date(startsAt.getTime() + 60 * 24 * 60 * 60 * 1000);
+  for (const product of eligible) {
+    const current = existingByProductId.get(product.id);
+    if (current) {
+      await db.update(entitlements).set({ source: "admin", status: "active", startsAt, expiresAt }).where(eq(entitlements.id, current.id));
+    } else {
+      await db.insert(entitlements).values({ userId: demoUser.id, productId: product.id, source: "admin" as const, status: "active" as const, startsAt, expiresAt });
+    }
+  }
+  await db.insert(auditEvents).values({ userId: adminUserId, entityType: "demo_learner", entityId: demoUser.id, action: "provisioned", metadata: JSON.stringify({ openId, productCount: eligible.length, expiresAt: expiresAt.toISOString() }) });
+  return { id: demoUser.id, openId, email, name: demoUser.name, productCount: eligible.length, expiresAt };
+}
+
+export async function listPublishedProducts() {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ product: products, qualification: qualifications }).from(products).leftJoin(qualifications, eq(products.qualificationId, qualifications.id)).where(eq(products.status, "published")).orderBy(desc(products.createdAt));
+}
+
+export async function listPublishedQualifications() {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(qualifications).orderBy(asc(qualifications.name));
+}
+
+export async function listPublishedMockExams() {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ mockExam: mockExams, product: products, qualification: qualifications }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).leftJoin(qualifications, eq(products.qualificationId, qualifications.id)).where(eq(mockExams.status, "published")).orderBy(desc(mockExams.createdAt));
+}
+
+export async function listPublishedCaseStudySections(mockExamId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: caseStudySections.id, mockExamId: caseStudySections.mockExamId, sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, introduction: caseStudySections.introduction, durationSeconds: caseStudySections.durationSeconds, cooldownSeconds: caseStudySections.cooldownSeconds }).from(caseStudySections).innerJoin(mockExams, eq(caseStudySections.mockExamId, mockExams.id)).where(and(eq(caseStudySections.mockExamId, mockExamId), eq(mockExams.status, "published"))).orderBy(asc(caseStudySections.sectionNumber));
+}
+
+export async function listPublishedObjectiveQuestions(mockExamId?: number) {
+  const db = await getDb(); if (!db) return [];
+  const conditions = mockExamId ? and(eq(objectiveQuestions.status, "published"), eq(objectiveQuestions.mockExamId, mockExamId)) : eq(objectiveQuestions.status, "published");
+  return db.select({ id: objectiveQuestions.id, mockExamId: objectiveQuestions.mockExamId, topic: objectiveQuestions.topic, learningOutcome: objectiveQuestions.learningOutcome, questionType: objectiveQuestions.questionType, prompt: objectiveQuestions.prompt, optionsJson: objectiveQuestions.optionsJson, answerJson: objectiveQuestions.answerJson, explanation: objectiveQuestions.explanation, difficulty: objectiveQuestions.difficulty }).from(objectiveQuestions).where(conditions).orderBy(objectiveQuestions.id);
+}
+
+export async function listUserEntitlements(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ entitlement: entitlements, product: products }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(and(eq(entitlements.userId, userId), inArray(entitlements.status, ["active", "expired"]))).orderBy(desc(entitlements.createdAt));
+  return rows.map((row) => ({ ...row, entitlement: { ...row.entitlement, status: hasActiveEntitlement(row.entitlement) ? "active" as const : row.entitlement.status === "revoked" ? "revoked" as const : "expired" as const } }));
+}
+
+export async function listUserAttempts(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ attempt: attempts, mockExam: mockExams }).from(attempts).innerJoin(mockExams, eq(attempts.mockExamId, mockExams.id)).where(eq(attempts.userId, userId)).orderBy(desc(attempts.updatedAt));
+}
+
+export async function getPayFastGatewaySettings() {
+  const db = await getDb();
+  const row = db ? (await db.select().from(paymentGatewaySettings).limit(1))[0] : undefined;
+  const mode = row?.mode ?? (ENV.payfastMode === "live" ? "live" : "sandbox");
+  return { mode, configured: Boolean((mode === "live" ? ENV.payfastLiveMerchantId && ENV.payfastLiveMerchantKey : ENV.payfastSandboxMerchantId && ENV.payfastSandboxMerchantKey)), updatedAt: row?.updatedAt ?? null, updatedBy: row?.updatedBy ?? null };
+}
+
+export async function setPayFastGatewayMode(userId: number, mode: "sandbox" | "live") {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  if (mode === "live" && !(ENV.payfastLiveMerchantId && ENV.payfastLiveMerchantKey)) throw new Error("Live PayFast credentials are not configured");
+  const existing = (await db.select().from(paymentGatewaySettings).limit(1))[0];
+  if (existing) await db.update(paymentGatewaySettings).set({ mode, updatedBy: userId, updatedAt: new Date() }).where(eq(paymentGatewaySettings.id, existing.id));
+  else await db.insert(paymentGatewaySettings).values({ provider: "payfast", mode, updatedBy: userId });
+  await db.insert(auditEvents).values({ userId, entityType: "payment_gateway", entityId: existing?.id ?? 1, action: "payfast_mode_updated", metadata: JSON.stringify({ mode }) });
+  return getPayFastGatewaySettings();
+}
+
+export async function getAdminOverview() {
+  const db = await getDb();
+  if (!db) return { activeLearners: 0, awaitingMarking: 0, publishedProducts: 0, recentActivity: [] };
+  const [learnerCount, markingCount, productCount] = await Promise.all([
+    db.select({ value: count() }).from(users),
+    db.select({ value: count() }).from(attempts).where(eq(attempts.status, "awaiting_marking")),
+    db.select({ value: count() }).from(products).where(eq(products.status, "published")),
+  ]);
+  const recentActivity = await db.select().from(auditEvents).orderBy(desc(auditEvents.createdAt)).limit(8);
+  return {
+    activeLearners: Number(learnerCount[0]?.value ?? 0),
+    awaitingMarking: Number(markingCount[0]?.value ?? 0),
+    publishedProducts: Number(productCount[0]?.value ?? 0),
+    recentActivity,
+  };
+}
+
+export async function startCaseStudyAttempt(input: { userId: number; mockExamId: number; mode: "interactive" | "printable" | "solutions" | "feedback" }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const exam = await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, input.mockExamId)).limit(1);
+  if (!exam[0]) throw new Error("Mock exam not found");
+  if ((exam[0].product.priceCents ?? 0) > 0) {
+    const access = await db.select().from(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.productId, exam[0].product.id), eq(entitlements.status, "active"))).limit(1);
+    if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
+  }
+  const existing = await db.select().from(attempts).where(and(eq(attempts.userId, input.userId), eq(attempts.mockExamId, input.mockExamId), eq(attempts.mode, input.mode), eq(attempts.status, "in_progress"))).limit(1);
+  if (existing[0]) return existing[0];
+  const created = await db.insert(attempts).values({ userId: input.userId, mockExamId: input.mockExamId, mode: input.mode, status: "in_progress", startedAt: new Date(), currentSection: 1 }).$returningId();
+  const row = await db.select().from(attempts).where(eq(attempts.id, created[0]?.id ?? 0)).limit(1);
+  return row[0];
+}
+
+export async function getAttemptContext(userId: number, attemptId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ attempt: attempts, mockExam: mockExams, product: products }).from(attempts).innerJoin(mockExams, eq(attempts.mockExamId, mockExams.id)).innerJoin(products, eq(mockExams.productId, products.id)).where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId))).limit(1);
+  if (!rows[0]) throw new Error("Attempt not found");
+  return { mockExamId: rows[0].mockExam.id, productId: rows[0].product.id, status: rows[0].attempt.status };
+}
+
+export async function saveAnswerDraft(input: { userId: number; attemptId: number; sectionId: number; body: string; wordCount: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const attempt = await db.select().from(attempts).where(and(eq(attempts.id, input.attemptId), eq(attempts.userId, input.userId))).limit(1);
+  if (!attempt[0] || !isAttemptEditable(attempt[0].status)) throw new Error("Attempt is not editable");
+  const existing = await db.select().from(answers).where(and(eq(answers.attemptId, input.attemptId), eq(answers.sectionId, input.sectionId))).limit(1);
+  if (existing[0]) {
+    await db.update(answers).set({ body: input.body, wordCount: input.wordCount, savedAt: new Date(), version: existing[0].version + 1 }).where(eq(answers.id, existing[0].id));
+    return { id: existing[0].id, version: existing[0].version + 1, savedAt: new Date() };
+  }
+  const created = await db.insert(answers).values({ attemptId: input.attemptId, sectionId: input.sectionId, body: input.body, wordCount: input.wordCount }).$returningId();
+  return { id: created[0]?.id, version: 1, savedAt: new Date() };
+}
+
+export async function submitAttempt(input: { userId: number; attemptId: number; optOutOfMarking: boolean }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const attempt = await db.select().from(attempts).where(and(eq(attempts.id, input.attemptId), eq(attempts.userId, input.userId))).limit(1);
+  if (!attempt[0] || attempt[0].status === "submitted" || attempt[0].status === "marked") throw new Error("Attempt cannot be submitted");
+  const status = input.optOutOfMarking ? "submitted" : "awaiting_marking";
+  await db.update(attempts).set({ status, optOutOfMarking: input.optOutOfMarking ? 1 : 0, submittedAt: new Date() }).where(eq(attempts.id, input.attemptId));
+  return { success: true, status };
+}
+
+export async function generatePrintablePdf(userId: number, mockExamId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const exam = await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, mockExamId)).limit(1);
+  if (!exam[0]) throw new Error("Mock exam not found");
+  const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
+  const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, sections);
+  const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
+  const existing = await db.select().from(resources).where(and(eq(resources.productId, exam[0].product.id), eq(resources.kind, "printable_pdf"))).limit(1);
+  if (existing[0]) {
+    await db.update(resources).set({ title: `${exam[0].mockExam.title} · Printable exam`, fileKey: uploaded.key, fileUrl: uploaded.url, status: "published" }).where(eq(resources.id, existing[0].id));
+    await db.insert(auditEvents).values({ userId, entityType: "resource", entityId: existing[0].id, action: "printable_pdf_regenerated", metadata: JSON.stringify({ mockExamId, resourceId: existing[0].id }) });
+    return { resourceId: existing[0].id, url: uploaded.url, regenerated: true };
+  }
+  const created = await db.insert(resources).values({ productId: exam[0].product.id, title: `${exam[0].mockExam.title} · Printable exam`, kind: "printable_pdf", fileKey: uploaded.key, fileUrl: uploaded.url, status: "published" }).$returningId();
+  await db.insert(auditEvents).values({ userId, entityType: "resource", entityId: created[0]?.id ?? 0, action: "printable_pdf_generated", metadata: JSON.stringify({ mockExamId }) });
+  return { resourceId: created[0]?.id, url: uploaded.url, regenerated: false };
+}
+
+export async function listProtectedResources(userId: number, productId: number) {
+  const db = await getDb(); if (!db) return [];
+  const product = await db.select({ priceCents: products.priceCents }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!product[0]) throw new Error("Product not found");
+  if ((product[0].priceCents ?? 0) > 0) {
+    const access = await db.select().from(entitlements).where(and(eq(entitlements.userId, userId), eq(entitlements.productId, productId), eq(entitlements.status, "active"))).limit(1);
+    if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
+  }
+  const rows = await db.select().from(resources).where(and(eq(resources.productId, productId), eq(resources.status, "published"))).orderBy(desc(resources.createdAt));
+  return rows.map(({ fileKey, fileUrl, ...resource }) => ({ ...resource, hasFile: Boolean(fileKey || fileUrl) }));
+}
+
+export async function getProtectedResourceDownload(userId: number, resourceId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const row = await db.select({ resource: resources, product: products }).from(resources).innerJoin(products, eq(resources.productId, products.id)).where(and(eq(resources.id, resourceId), eq(resources.status, "published"))).limit(1);
+  if (!row[0]?.resource) throw new Error("Resource not found");
+  if ((row[0].product.priceCents ?? 0) > 0) {
+    const access = await db.select().from(entitlements).where(and(eq(entitlements.userId, userId), eq(entitlements.productId, row[0].product.id), eq(entitlements.status, "active"))).limit(1);
+    if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
+  }
+  const key = row[0].resource.fileKey;
+  if (!key) throw new Error("This resource is not available for download yet");
+  return { id: row[0].resource.id, title: row[0].resource.title, kind: row[0].resource.kind, url: await storageGetSignedUrl(key) };
+}
+
+export async function listUserNotifications(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)).limit(30);
+}
+
+export async function markNotificationRead(userId: number, notificationId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId)));
+  return { success: true };
+}
+
+export async function createLockedSubmission(input: { userId: number; attemptId: number; optOutOfMarking: boolean }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const attempt = await db.select().from(attempts).where(and(eq(attempts.id, input.attemptId), eq(attempts.userId, input.userId))).limit(1);
+  if (!attempt[0] || !isAttemptSubmittable(attempt[0].status)) throw new Error("Attempt cannot be submitted");
+  const existingSubmission = await db.select().from(submissions).where(eq(submissions.attemptId, input.attemptId)).limit(1);
+  if (existingSubmission[0]) throw new Error("Submission is already locked");
+  if (!input.optOutOfMarking) {
+    const markingProduct = await db.select({ id: products.id }).from(products).where(and(eq(products.category, "marking"), eq(products.status, "published"))).limit(1);
+    if (!markingProduct[0]) throw new Error("Instructor marking is not currently available");
+    const markingAccess = await db.select().from(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.productId, markingProduct[0].id), eq(entitlements.status, "active"))).limit(1);
+    if (!hasActiveEntitlement(markingAccess[0])) throw new Error("Purchase the instructor marking add-on before sending this attempt for marking");
+  }
+  const status = input.optOutOfMarking ? "submitted" : "awaiting_marking";
+  await db.update(attempts).set({ status, optOutOfMarking: input.optOutOfMarking ? 1 : 0, submittedAt: new Date() }).where(eq(attempts.id, input.attemptId));
+  const created = await db.insert(submissions).values({ attemptId: input.attemptId, submittedBy: input.userId, status: input.optOutOfMarking ? "locked" : "received" }).$returningId();
+  await db.insert(notifications).values({ userId: input.userId, type: "submission", subject: "Exam submission received", body: "Your submission has been securely locked and recorded." });
+  return { submissionId: created[0]?.id, status };
+}
+
+export async function getUserFeedbackStates(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ feedback: feedbackStates, attempt: attempts, mockExam: mockExams }).from(feedbackStates).innerJoin(attempts, eq(feedbackStates.attemptId, attempts.id)).innerJoin(mockExams, eq(attempts.mockExamId, mockExams.id)).where(and(eq(attempts.userId, userId), eq(feedbackStates.state, "available"))).orderBy(desc(feedbackStates.releasedAt));
+}
+
+export async function listAdminProducts() {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ product: products, qualification: qualifications }).from(products).leftJoin(qualifications, eq(products.qualificationId, qualifications.id)).orderBy(desc(products.createdAt));
+}
+
+export async function getAdminContentOverview() {
+  const db = await getDb();
+  if (!db) return { products: 0, mockExams: 0, sections: 0, resources: 0, objectiveQuestions: 0 };
+  const [productRows, mockRows, sectionRows, resourceRows, questionRows] = await Promise.all([
+    db.select({ value: count() }).from(products),
+    db.select({ value: count() }).from(mockExams),
+    db.select({ value: count() }).from(caseStudySections),
+    db.select({ value: count() }).from(resources),
+    db.select({ value: count() }).from(objectiveQuestions),
+  ]);
+  return { products: Number(productRows[0]?.value ?? 0), mockExams: Number(mockRows[0]?.value ?? 0), sections: Number(sectionRows[0]?.value ?? 0), resources: Number(resourceRows[0]?.value ?? 0), objectiveQuestions: Number(questionRows[0]?.value ?? 0) };
+}
+
+export async function listAdminContent(kind: "mock_exams" | "sections" | "resources" | "objective_questions") {
+  const db = await getDb(); if (!db) return [];
+  if (kind === "mock_exams") {
+    const rows = await db.select().from(mockExams).orderBy(desc(mockExams.createdAt));
+    return rows.map((row) => ({ id: row.id, title: row.title, status: row.status, detail: `${row.examType.replace("_", " ")} · ${row.totalDurationSeconds / 60} minutes` }));
+  }
+  if (kind === "sections") {
+    const rows = await db.select().from(caseStudySections).orderBy(asc(caseStudySections.sectionNumber));
+    return rows.map((row) => ({ id: row.id, title: row.title, status: "published" as const, detail: `Section ${row.sectionNumber} · ${row.durationSeconds / 60} minutes` }));
+  }
+  if (kind === "resources") {
+    const rows = await db.select().from(resources).orderBy(desc(resources.createdAt));
+    return rows.map((row) => ({ id: row.id, title: row.title, status: row.status, detail: row.kind.replace("_", " ") }));
+  }
+  const rows = await db.select().from(objectiveQuestions).orderBy(desc(objectiveQuestions.createdAt));
+  return rows.map((row) => ({ id: row.id, title: row.prompt.slice(0, 100), status: row.status === "retired" ? "archived" as const : row.status, detail: `${row.topic} · ${row.difficulty}` }));
+}
+
+export async function updateSectionTitle(input: { sectionId: number; title: string; userId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const title = input.title.trim();
+  if (!title) throw new Error("Section title is required");
+  await db.update(caseStudySections).set({ title }).where(eq(caseStudySections.id, input.sectionId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "case_study_section", entityId: input.sectionId, action: "rename", metadata: JSON.stringify({ title }) });
+  return { success: true };
+}
+
+export async function updateAdminContentStatus(input: { kind: "mock_exams" | "resources" | "objective_questions"; id: number; status: "draft" | "published" | "archived"; userId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (input.kind === "mock_exams") await db.update(mockExams).set({ status: input.status }).where(eq(mockExams.id, input.id));
+  if (input.kind === "resources") await db.update(resources).set({ status: input.status }).where(eq(resources.id, input.id));
+  if (input.kind === "objective_questions") await db.update(objectiveQuestions).set({ status: input.status === "archived" ? "retired" : input.status }).where(eq(objectiveQuestions.id, input.id));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: input.kind, entityId: input.id, action: `status_${input.status}`, metadata: JSON.stringify({ status: input.status }) });
+  return { success: true };
+}
+
+export async function updateProductStatus(input: { productId: number; status: "draft" | "published" | "archived"; userId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(products).set({ status: input.status }).where(eq(products.id, input.productId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: input.productId, action: `status_${input.status}`, metadata: JSON.stringify({ status: input.status }) });
+  return { success: true };
+}
+
+export async function listMarkerQueue() {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ marking: markings, submission: submissions, attempt: attempts }).from(markings).innerJoin(submissions, eq(markings.attemptId, submissions.attemptId)).innerJoin(attempts, eq(markings.attemptId, attempts.id)).where(inArray(markings.status, ["unassigned", "assigned", "in_progress"])).orderBy(desc(markings.createdAt));
+}
+
+export async function assignMarking(input: { markerId: number; markingId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(markings).set({ markerId: input.markerId, status: "assigned" }).where(eq(markings.id, input.markingId));
+  return { success: true };
+}
+
+export async function releaseFeedback(input: { markingId: number; feedback: string; awardedPoints: number; totalPoints: number; rubricSnapshot?: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const row = await db.select().from(markings).where(eq(markings.id, input.markingId)).limit(1);
+  if (!row[0]) throw new Error("Marking not found");
+  if (row[0].status === "submitted") throw new Error("Feedback has already been released");
+  await db.update(markings).set({ status: "submitted", feedback: input.feedback, rubricSnapshot: input.rubricSnapshot ?? null, awardedPoints: input.awardedPoints, totalPoints: input.totalPoints, markedAt: new Date() }).where(eq(markings.id, input.markingId));
+  await db.insert(feedbackStates).values({ attemptId: row[0].attemptId, state: "available", summary: input.feedback, releasedAt: new Date() });
+  await db.update(attempts).set({ status: "marked" }).where(eq(attempts.id, row[0].attemptId));
+  const attemptOwner = await db.select().from(attempts).where(eq(attempts.id, row[0].attemptId)).limit(1);
+  if (attemptOwner[0]) await db.insert(notifications).values({ userId: attemptOwner[0].userId, type: "marking", subject: "Your marking is available", body: "Your case-study feedback has been released and is ready to review." });
+  return { success: true };
+}
+
+export async function updateProductAccessDays(input: { productId: number; accessDays: number; userId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (!Number.isInteger(input.accessDays) || input.accessDays < 1 || input.accessDays > 3650) throw new Error("Access period must be between 1 and 3650 days");
+  await db.update(products).set({ accessDays: input.accessDays }).where(eq(products.id, input.productId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: input.productId, action: "access_days_updated", metadata: JSON.stringify({ accessDays: input.accessDays }) });
+  return { success: true, accessDays: input.accessDays };
+}
+
+export async function createAdminProduct(input: { userId: number; title: string; category: "case_study" | "objective_test" | "marking" | "resource"; description?: string; featuredImageUrl?: string; priceCents: number; accessDays?: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const title = input.title.trim(); if (!title) throw new Error("Product title is required");
+  const created = await db.insert(products).values({ title, category: input.category, description: input.description?.trim() || null, featuredImageUrl: input.featuredImageUrl?.trim() || null, priceCents: Math.max(0, Math.round(input.priceCents)), accessDays: input.accessDays ?? 30, status: "draft" }).$returningId();
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: created[0]?.id ?? 0, action: "created", metadata: JSON.stringify({ title, category: input.category }) });
+  return { id: created[0]?.id };
+}
+
+export async function createAdminMockExam(input: { userId: number; productId: number; title: string; examType: "case_study" | "objective_test"; intro?: string; totalDurationSeconds: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const title = input.title.trim(); if (!title) throw new Error("Exam title is required");
+  const created = await db.insert(mockExams).values({ productId: input.productId, title, examType: input.examType, intro: input.intro?.trim() || null, totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), status: "draft" }).$returningId();
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "mock_exam", entityId: created[0]?.id ?? 0, action: "created", metadata: JSON.stringify({ title, examType: input.examType }) });
+  return { id: created[0]?.id };
+}
+
+export async function createAdminObjectiveQuestion(input: { userId: number; mockExamId: number; topic: string; prompt: string; options: string[]; correct: number; questionType?: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input"; explanation?: string; difficulty: "easy" | "medium" | "hard"; attachmentBase64?: string; attachmentFileName?: string; attachmentMimeType?: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (!input.prompt.trim() || input.options.length < 2 || input.correct < 0 || input.correct >= input.options.length) throw new Error("Question, options, and a valid correct answer are required");
+  let attachmentUrl: string | null = null;
+  let attachmentFileName: string | null = null;
+  let attachmentMimeType: string | null = null;
+  if (input.attachmentBase64) {
+    const allowed = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+    if (!input.attachmentMimeType || !allowed.has(input.attachmentMimeType)) throw new Error("Question attachment must be a PNG, JPEG, WebP, or GIF image");
+    const payload = input.attachmentBase64.includes(",") ? input.attachmentBase64.split(",")[1] : input.attachmentBase64;
+    const bytes = Buffer.from(payload, "base64");
+    if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new Error("Question attachment must be between 1 byte and 10 MB");
+    const uploaded = await storagePut(`objective-attachments/${input.mockExamId}/${Date.now()}-${(input.attachmentFileName || "question-image").replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, input.attachmentMimeType);
+    attachmentUrl = uploaded.url;
+    attachmentFileName = input.attachmentFileName || "question-image";
+    attachmentMimeType = input.attachmentMimeType;
+  }
+  const created = await db.insert(objectiveQuestions).values({ mockExamId: input.mockExamId, topic: input.topic.trim(), learningOutcome: null, questionType: input.questionType ?? "single_choice", prompt: input.prompt.trim(), optionsJson: JSON.stringify(input.options), answerJson: JSON.stringify(input.correct), attachmentUrl, attachmentFileName, attachmentMimeType, explanation: input.explanation?.trim() || null, difficulty: input.difficulty, status: "draft" }).$returningId();
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "objective_question", entityId: created[0]?.id ?? 0, action: "created", metadata: JSON.stringify({ mockExamId: input.mockExamId, topic: input.topic, questionType: input.questionType ?? "single_choice", attachmentFileName }) });
+  return { id: created[0]?.id, attachmentUrl };
+}
+
+export async function uploadAdminResource(input: { userId: number; productId: number; title: string; kind: "pre_seen" | "formulae" | "printable_pdf" | "feedback" | "course_material" | "reference"; fileName: string; mimeType: string; base64: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const payload = input.base64.includes(",") ? input.base64.split(",")[1] : input.base64;
+  const bytes = Buffer.from(payload, "base64");
+  if (!bytes.length || bytes.length > 20 * 1024 * 1024) throw new Error("Resource file must be between 1 byte and 20 MB");
+  const uploaded = await storagePut(`admin-resources/${input.productId}/${Date.now()}-${input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, input.mimeType || "application/octet-stream");
+  const created = await db.insert(resources).values({ productId: input.productId, title: input.title.trim() || input.fileName, kind: input.kind, fileKey: uploaded.key, fileUrl: uploaded.url, status: "draft" }).$returningId();
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "resource", entityId: created[0]?.id ?? 0, action: "uploaded", metadata: JSON.stringify({ productId: input.productId, fileName: input.fileName, kind: input.kind }) });
+  return { id: created[0]?.id, key: uploaded.key };
+}
+
+export async function updateProductPrice(input: { productId: number; priceCents: number; userId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (!Number.isInteger(input.priceCents) || input.priceCents < 0) throw new Error("Price cannot be negative");
+  await db.update(products).set({ priceCents: input.priceCents }).where(eq(products.id, input.productId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: input.productId, action: "price_updated", metadata: JSON.stringify({ priceCents: input.priceCents }) });
+  return { success: true, priceCents: input.priceCents };
+}
+
+export async function claimFreeProduct(input: { userId: number; productId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const product = (await db.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];
+  if (!product || product.status !== "published") throw new Error("Product unavailable");
+  if (product.priceCents > 0) throw new Error("This product requires checkout");
+  const existing = (await db.select().from(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.productId, input.productId), eq(entitlements.status, "active"))).limit(1))[0];
+  if (existing && hasActiveEntitlement(existing)) return { success: true, alreadyOwned: true };
+  const startsAt = new Date();
+  const created = await db.insert(entitlements).values({ userId: input.userId, productId: input.productId, source: "free", status: "active", startsAt, expiresAt: entitlementExpiryFromAccessDays(product.accessDays, startsAt) }).$returningId();
+  await db.insert(notifications).values({ userId: input.userId, type: "purchase", subject: "Free objective test added", body: `Your access to ${product.title} is now active.` });
+  return { success: true, alreadyOwned: false, entitlementId: created[0]?.id };
+}
+
+export async function getUserById(userId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return result[0];
+}
+
+export async function listAdminUsers() {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(users).orderBy(desc(users.createdAt)).limit(500);
+  const userIds = rows.map((row) => row.id);
+  if (!userIds.length) return [];
+  const [entitlementRows, attemptRows] = await Promise.all([
+    db.select({ userId: entitlements.userId, value: count() }).from(entitlements).where(inArray(entitlements.userId, userIds)).groupBy(entitlements.userId),
+    db.select({ userId: attempts.userId, value: count() }).from(attempts).where(inArray(attempts.userId, userIds)).groupBy(attempts.userId),
+  ]);
+  const entitlementCounts = new Map(entitlementRows.map((row) => [row.userId, Number(row.value)]));
+  const attemptCounts = new Map(attemptRows.map((row) => [row.userId, Number(row.value)]));
+  return rows.map(({ passwordHash, ...user }) => ({ ...user, entitlementCount: entitlementCounts.get(user.id) ?? 0, attemptCount: attemptCounts.get(user.id) ?? 0 }));
+}
+
+export async function createManagedUser(input: { email: string; name?: string; passwordHash: string; role: "user" | "instructor" }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await getUserByEmail(input.email);
+  if (existing) throw new Error("An account with this email already exists");
+  const openId = `local:${randomUUID()}`;
+  const email = input.email.trim().toLowerCase();
+  await db.insert(users).values({ openId, email, name: input.name?.trim() || null, passwordHash: input.passwordHash, loginMethod: "local", role: input.role, lastSignedIn: new Date() });
+  const created = await getUserByEmail(email);
+  if (!created) throw new Error("Account could not be created");
+  const subject = input.role === "instructor" ? "Welcome to the content team" : "Welcome to Accountants for Tomorrow";
+  const body = input.role === "instructor" ? "Your instructor account is ready. Sign in to build products, upload exam content, and manage marking." : "Your learner account was created by an administrator. Explore your allocated products and begin your exam preparation.";
+  await db.insert(notifications).values({ userId: created.id, type: "account", subject, body });
+  return created;
+}
+
+export async function removeUser(adminUserId: number, targetUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (adminUserId === targetUserId) throw new Error("You cannot remove your own account");
+  const target = await getUserById(targetUserId);
+  if (!target) throw new Error("Account not found");
+  if (isAdminRole(target.role)) throw new Error("Administrator accounts cannot be removed through this workflow");
+  const attemptIds = (await db.select({ id: attempts.id }).from(attempts).where(eq(attempts.userId, targetUserId))).map((row) => row.id);
+  if (attemptIds.length) {
+    await db.delete(answers).where(inArray(answers.attemptId, attemptIds));
+    await db.delete(feedbackStates).where(inArray(feedbackStates.attemptId, attemptIds));
+    await db.delete(markings).where(inArray(markings.attemptId, attemptIds));
+    await db.delete(submissions).where(inArray(submissions.attemptId, attemptIds));
+  }
+  await db.delete(attempts).where(eq(attempts.userId, targetUserId));
+  await db.delete(entitlements).where(eq(entitlements.userId, targetUserId));
+  await db.delete(payments).where(eq(payments.userId, targetUserId));
+  await db.delete(notifications).where(eq(notifications.userId, targetUserId));
+  await db.delete(users).where(eq(users.id, targetUserId));
+  await db.insert(auditEvents).values({ userId: adminUserId, entityType: "user", entityId: targetUserId, action: "removed", metadata: JSON.stringify({ role: target.role, email: target.email }) });
+  return { success: true };
+}
+
+export async function recordPayment(input: { userId: number; productId: number; provider: "payfast" | "stripe" | "admin"; reference?: string; amountCents: number; currency?: string; status?: "pending" | "completed" | "cancelled" | "refunded"; metadata?: Record<string, unknown> }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const created = await db.insert(payments).values({
+    userId: input.userId,
+    productId: input.productId,
+    provider: input.provider,
+    reference: input.reference?.slice(0, 120) ?? null,
+    amountCents: Math.max(0, Math.round(input.amountCents)),
+    currency: input.currency ?? "ZAR",
+    status: input.status ?? "completed",
+    metadata: input.metadata ? JSON.stringify(input.metadata) : null,
+  }).$returningId();
+  return { id: created[0]?.id };
+}
+
+export async function listPayments() {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ payment: payments, user: users, product: products }).from(payments).innerJoin(users, eq(payments.userId, users.id)).leftJoin(products, eq(payments.productId, products.id)).orderBy(desc(payments.createdAt)).limit(300);
+  return rows.map(({ payment, user, product }) => ({ ...payment, learnerEmail: user.email, learnerName: user.name, productTitle: product?.title ?? null }));
+}
+
+export async function adminGrantEntitlement(input: { adminUserId: number; userId: number; productId: number; accessDays?: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const student = await getUserById(input.userId);
+  if (!student) throw new Error("Learner account not found");
+  if (student.role !== "user") throw new Error("Access can only be allocated to registered learner accounts");
+  const product = (await db.select({ id: products.id, title: products.title, category: products.category, priceCents: products.priceCents, accessDays: products.accessDays, status: products.status }).from(products).where(eq(products.id, input.productId)).limit(1))[0];
+  if (!product || product.status !== "published") throw new Error("Product unavailable or not published");
+  const accessDays = Number(input.accessDays) > 0 ? Math.min(3650, Math.round(input.accessDays ?? 0)) : product.accessDays;
+  const startsAt = new Date();
+  const expiresAt = entitlementExpiryFromAccessDays(accessDays, startsAt);
+  const existing = (await db.select().from(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.productId, input.productId), eq(entitlements.status, "active"))).limit(1))[0];
+  if (existing) {
+    await db.update(entitlements).set({ source: "admin", status: "active", grantedBy: input.adminUserId, startsAt, expiresAt }).where(eq(entitlements.id, existing.id));
+  } else {
+    await db.insert(entitlements).values({ userId: input.userId, productId: input.productId, source: "admin", status: "active", grantedBy: input.adminUserId, startsAt, expiresAt });
+  }
+  await recordPayment({ userId: input.userId, productId: input.productId, provider: "admin", reference: `admin-grant-${Date.now()}`, amountCents: product.priceCents, metadata: { grantedBy: input.adminUserId, accessDays, expiresAt: expiresAt?.toISOString() ?? null, reason: "manual-allocation" } });
+  await db.insert(notifications).values({ userId: input.userId, type: "account", subject: "Exam access granted", body: `Your access to ${product.title} has been granted${expiresAt ? ` and runs until ${expiresAt.toLocaleDateString()}` : ""}.` });
+  await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "entitlement", entityId: existing?.id ?? 0, action: "granted", metadata: JSON.stringify({ userId: input.userId, productId: input.productId, accessDays, expiresAt: expiresAt?.toISOString() ?? null }) });
+  return { success: true, productId: input.productId, title: product.title, startsAt, expiresAt };
+}
+
+export async function revokeEntitlement(input: { adminUserId: number; entitlementId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const row = (await db.select({ id: entitlements.id, userId: entitlements.userId, product: products.title }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(eq(entitlements.id, input.entitlementId)).limit(1))[0];
+  if (!row) throw new Error("Entitlement not found");
+  await db.update(entitlements).set({ status: "revoked" }).where(eq(entitlements.id, input.entitlementId));
+  await db.insert(notifications).values({ userId: row.userId, type: "account", subject: "Access removed", body: `Your access to ${row.product} has been removed by an administrator.` });
+  await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "entitlement", entityId: input.entitlementId, action: "revoked", metadata: JSON.stringify({ product: row.product }) });
+  return { success: true };
+}
+
+export async function listAdminUserEntitlements(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ entitlement: entitlements, product: products }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(eq(entitlements.userId, userId)).orderBy(desc(entitlements.createdAt));
+  return rows.map((row) => ({ ...row, entitlement: { ...row.entitlement, status: hasActiveEntitlement(row.entitlement) ? "active" as const : row.entitlement.status === "revoked" ? "revoked" as const : "expired" as const } }));
+}

@@ -1,0 +1,826 @@
+                CIMA
+
+ Management Case Study
+
+     May & August 2026
+
+
+
+
+          Mock Exam B
+           Answers
+
+
+To gain maximum benefit, do not refer to these answers
+until you have completed the mock questions and
+submitted them for marking.
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+
+
+
+© Kaplan Financial Limited, 2026
+The text in this material and any others made available by any Kaplan Group company does
+not amount to advice on a particular matter and should not be taken as such. No reliance
+should be placed on the content as the basis for any investment or other decision or in
+connection with any advice given to third parties. Please consult your appropriate professional
+adviser as necessary. Kaplan Publishing Limited and all other Kaplan group companies
+expressly disclaim all liability to any person in respect of any losses or other claims, whether
+direct, indirect, incidental, consequential or otherwise arising in relation to the use of such
+materials.
+All rights reserved. No part of this examination may be reproduced or transmitted in any form
+or by any means, electronic or mechanical, including photocopying, recording, or by any
+information storage and retrieval system, without prior permission from Kaplan Publishing.
+
+
+
+
+2                                                                       K A P LA N P UB L I S H I N G
+                                                                  MO CK E XAM B - ANSWERS
+
+Task 1
+
+To: Elizabeth Maenda
+From: Financial Manager
+Date: Today
+Subject: Moving into the market for trays
+
+Challenges in predicting costs and revenues
+
+Market size and market share
+
+The first challenge is that we will be entering into a market that we do not have experience
+of. We will need to gather data on the market size for trays in order to understand our
+potential sales volumes and therefore potential sales revenues.
+
+We know that the overall food packaging market in Harrland is growing, but we need to
+determine the current level for sales of trays and its growth potential, so forecasts for the
+specific market segment will need to be obtained.
+
+The second challenge for predicting volumes is to determine what our market share may be.
+For this, we will need to know who currently provides trays to the Harrland market and
+whether we will be directly competing with them. We will need to know and understand what
+our strengths and weaknesses are, so that we can determine how well we can target taking
+market share from those competitors.
+
+We are an established brand name for cartons and tubs. This may transfer well to the sale of
+trays, but that is not guaranteed, so we may need to promote the Cartn brand significantly to
+gain our desired market share, incurring additional cost.
+
+Our desire to enter the market is driven by Pack-Up, so a good place to start would be to
+investigate the quality and prices of their trays. It could be that innovation has driven their
+recent success in tray sales and profitability. Entering the market with a generic tray product
+may not capture the same level of growth.
+
+Pricing
+
+We will need to understand where our products will be positioned in the market so that we
+can form a pricing strategy. With lots of competition, we need to either differentiate by
+producing an innovative and/or high-quality product, allowing us to charge a high price, or we
+need to compete on price for the same standard of product already supplied to the market.
+Until this decision is made, we will not be able to predict sales revenues.
+
+Costs
+
+We need to determine the specification of materials that would be needed for tray
+manufacture. If Pack-Up’s recent growth has been driven by innovation, we may need to incur
+a significant amount of expenditure to try to replicate that. If their growth has been driven by
+
+
+
+K APLAN P UBLI S H I N G                                                                      3
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+promotional activity, they may now have a tight hold on the Harrland market, and we would
+require a significant budget for promotional activities to gain market share.
+
+We will also need to determine how to produce trays. Can any of our current production lines
+be adapted for this, or will we need to invest in new plant and equipment?
+
+Increased production levels will lead to an increase in factory operating costs, such as
+electricity use, which should be factored into the appraisal.
+
+To successfully enter the market for trays, we will need to source appropriate materials,
+especially if our only route to success is via innovation. We may wish to use the same supplier
+as Pack-Up. However, this may not be possible if they have a trading relationship that prevents
+them from selling to competitors.
+
+Materials costs may be high on a per unit basis while sales are low for a new product. We
+would have to predict how economies of scale would arise and factor this into our calculations.
+
+Recruitment and training may be needed for staff who will produce the trays. The level of
+expenditure will depend on the scale at which we plan to undertake the project.
+
+Decisions must be made about the scale of the project to be evaluated via NPV calculation.
+The project is to start on a small scale and potentially grow later. For the NPV, we need to
+know a timeframe over which to perform the calculations. Do we produce cash flows for the
+initial small phase of the project, or do we include estimates of the later growth phase?
+
+Usefulness of competitor’s segmental report
+
+The fact that Pack-Up distinguishes its revenue sources between the four product ranges is
+interesting because it gives some indication of how revenues and profits are broken down for
+internal management purposes. Sales of trays grew significantly in 2026 by (57.4/35.5) 61.6%,
+forming 21.8% of Pack-Up’s sales in 2026 compared to only 15.3% in 2025.
+
+We must be careful not to extrapolate from this data without other data to back up such
+calculations. This data is very limited, covering only a change for one company from one year
+to the next. We don’t know why such a large increase occurred – it may have been to do with
+something specific that Pack-Up did rather than because of an upturn in the market. There is
+no guarantee that the sales of trays will continue to grow at such a rate, either for Pack-Up or
+for anyone else selling trays.
+
+We must therefore be prudent when making predictions based on analysis of this report. We
+should review the data in conjunction with Pack-Up’s marketing activity and with overall
+market statistics.
+
+The figures for gross profit are less valuable because it is not necessarily clear to Cartn how
+Pack-Up breaks down its cost of sales between product ranges. Pack-Up may have a different
+proportion of fixed costs to Cartn, meaning that direct comparisons at different sales volumes
+would not be feasible. This makes it difficult for Cartn to predict the costs that it will incur in
+developing and selling semi-rigid trays. The figure for gross profit may also exclude product
+development costs written off that Pack-Up had to incur that have yet to be borne by Cartn.
+
+
+
+4                                                                         K A P LA N P UB L I S H I N G
+                                                                   MO CK E XAM B - ANSWERS
+
+The limited analysis does not include any information relating to the net profit per product
+line. Expenses incurred in arriving at net profit per product line would be of particular interest
+as it would help to identify specific marketing and promotion costs incurred.
+
+The choice of accounting policies and accounting treatments adopted by Pack-Up may also be
+a relevant factor. For example, the depreciation method and rate applied by Pack-Up for non-
+current assets may be different to Cartn, resulting in a different charge to profit or loss. The
+allocation of this charge between expense headings such as cost of sales, distribution costs
+and administrative expenses will also impact the information under review. The allocation of
+common costs between the four product lines will also change the perspective and insight
+available into Pack-Up’s operations.
+
+Pack-Up’s analysis implies something about the potential demand for trays, but using the
+analysis requires several significant assumptions that could prove to be invalid. For example,
+has Pack-Up’s revenue growth come from taking market share from competitors, or is the
+market itself growing sharply? It is possible that this is a smaller market than we may have
+anticipated based on Pack-Up’s sales growth and that the launch of Cartn’s products will
+simply lead to operating losses by both Pack-Up and Cartn.
+
+Financial Manager
+
+
+
+MARKING GUIDE:
+
+
+
+
+Sub-task (a) = 60% (15 marks)
+ Trait
+ Predicting         Level       Descriptor                                                           Marks
+ costs and
+                                No rewardable material.                                                0
+ revenues
+                    Level 1     Offers some discussion of challenges relating to predicting           1-5
+                                costs and revenues for Cartn in the new market. Discussion is
+                                generic with little relation to the specific scenario.
+                    Level 2     Offers good discussion of challenges relating to predicting          6-10
+                                costs and revenues for Cartn in the new market. Makes good
+                                attempt to relate the discussion to the specific scenario.
+                    Level 3     Offers full discussion of challenges relating to predicting costs    11-15
+                                and revenues for Cartn in the new market. The discussion is
+                                entirely based around the specific scenario.
+
+
+
+
+K APLAN P UBLI S H I N G                                                                        5
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+Sub-task (b) = 40% (10 marks)
+    Trait
+    Usefulness of   Level     Descriptor                                                             Marks
+    divisional
+                              No rewardable material.                                                   0
+    analysis
+    information     Level 1   Describes rules relating to analysis and identifies problems             1-3
+                              Cartn will incur associated with determining divisional
+                              profitability.
+                    Level 2   Describes usefulness of reported breakdown of figures and                4-6
+                              discusses problems Cartn will incur associated with determining
+                              divisional profitability.
+                    Level 3   Evaluates usefulness of reported breakdown of figures and               7-10
+                              evaluates problems Cartn will incur associated with determining
+                              divisional profitability, including predictive value.
+
+
+
+
+6                                                                    K A P LA N P UB L I S H I N G
+                                                                  MO CK E XAM B - ANSWERS
+
+Task 2
+
+To: Elizabeth Maenda
+From: Financial Manager
+Date: Today
+Subject: Cartn trays
+
+Product development team engagement
+
+Team engagement is characterised by the level of enthusiasm and dedication of team
+members. At present, Product Development team staff tasked to work on the project to
+develop the range of semi-rigid trays have been reluctant to focus on it. By implementing the
+following strategies, Cartn can improve the team’s engagement, helping contribute to the
+successful development of the new range.
+
+Project management and accountability
+
+Project management will assist in the integration of all aspects of the project, ensuring that
+the proper knowledge and resources are available when and where needed, and that the
+expected outcome is produced in a timely, cost-effective manner. A dedicated project
+manager should oversee the tray product development, ensuring accountability and
+coordination across a range of multi-disciplinary departments. This is particularly important
+given the team's current struggle to obtain the necessary cooperation and expertise from the
+Production department. This oversight will help engage the Product Development team to
+work towards the achievement of the project objectives.
+
+Alignment and understanding of project goals
+
+The development of the range of semi-rigid trays is the first major change for some time in
+the products we offer. It is important that the project goals and targets are clearly
+communicated to the Product Development team so that they understand what Cartn is
+striving to achieve, such as successfully entering the attractive Harrland market.
+
+Individual and team goals and targets, aligned to the overall project goals, should be identified
+and communicated to the team so that team members understand what their role is and what
+is expected of them, including clear deadlines.
+
+Collaborative tools should be used to share project plans, and regular cross-departmental
+meetings should take place to ensure alignment and understanding of project goals,
+particularly to bridge the gap with Production.
+
+Incentivise engagement
+
+The Product Development team is more likely to engage in the project if they understand how
+its success will benefit them. A successful project capturing growth in the tray market could
+help contribute to Cartn’s improved financial performance. This may, in turn, benefit the
+Product Development team, for example, through improved job security, pay increases or the
+introduction of incentives such as performance-related bonuses. The team has been with the
+
+
+K APLAN P UBLI S H I N G                                                                       7
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+company for many years developing cartons and tubs. They may find this work enjoyable and
+consider that it adds value and so could be reluctant to change their focus. However, the new
+project will be a personal development opportunity for team members to learn about tray
+design and production. A recognition programme could be introduced offering career growth
+opportunities for high performing staff.
+
+Resource allocation and support
+
+Poor team engagement may, in part, be due to a perception by members that they do not
+have the time, expertise or support required to successfully assist in developing the new
+range. An expectation should be defined of how much time team members are expected to
+commit to the achievement of the project goals, and when that time is likely to be required.
+
+Cartn should organise training sessions to enhance the technical knowledge of the Product
+Development team regarding specific challenges and opportunities relating to tray design and
+manufacture. This should help the team to consider how best they are able to add value when
+identifying and solving problems associated with manufacturing the trays, such as adapting
+the moulding patterns dependent on customer needs.
+
+Cartn should also facilitate knowledge exchange sessions where Production team members
+share insights on manufacturing processes relevant to trays. This should assist the Product
+Development team to feel more supported by Production.
+
+Cultural and change management
+
+This is the first major change for some time in the products offered and will require a shift in
+mindset for the Product Development team. Although it is thought that the team possesses
+the technical expertise to source suitable materials and produce high-quality trays, their
+apparent lack of interest suggests a reluctance or fear of change. Cartn should address
+resistance to change by fostering a culture of innovation and adaptability. It should encourage
+open discussions about concerns and promote a shared vision for the new product range.
+
+In addition, it could provide change management support to help team members transition
+from their long-standing focus on cartons and tubs to the new semi-rigid tray range.
+
+Transfer price
+
+The Product Development team may be making excessive use of Production staff time in order
+to free Product Development staff for other duties, while the Production Manager is
+encouraging Production staff to ignore such requests.
+
+Such behaviour is potentially damaging to the overall business, but both sets of actions are
+designed to benefit the individual teams under each department head. It may be difficult
+therefore to convince either department head to change their behaviour. Simply instructing
+the two department heads to cooperate or imposing a transfer price that they feel is unfair
+may lead to resentment, resistance and further problems of dysfunctional behaviour.
+
+The Production Department may not be able to achieve their productivity or cost targets if the
+team is spending excessive time assisting the Product Development department without any
+
+
+
+8                                                                       K A P LA N P UB L I S H I N G
+                                                                 MO CK E XAM B - ANSWERS
+
+financial reward. Perhaps overtime is being incurred because of the extra work, or productivity
+levels are reduced.
+
+It would be ideal if the question of cooperation could be resolved by an appropriate transfer
+price, so that neither department has an incentive to behave in a dysfunctional manner, but
+both department heads still feel that they are in control of their area of operational
+responsibility.
+
+Generally, charging transfer prices based on opportunity costs offers the most satisfactory
+way of optimising internal trading. Opportunity costs, however, may be difficult to measure
+in this case. The difficulty is that there will not be an objective, mutually agreeable, way to
+measure the value of the time being recharged that is acceptable to both departments.
+
+One response to the problem might be to permit the Production Manager to make an internal
+charge that is equal to the hourly overtime rate paid to staff. If necessary, the Production
+department could then afford to pay overtime to staff to make up for time spent dealing with
+Product Development department queries. The charge should have an upper limit that was
+less than the hourly rate that would have to be paid for external consultants. This should
+discourage the Product Development department from using external providers, which would
+lead to additional cost incurred by the Group. The imposition of charges above those currently
+permitted would create a disincentive for Product Development to make excessive use of
+Production staff time.
+
+An alternative approach would be to use dual pricing. Cartn’s Board is committed to launching
+trays as a product, so the development work is essential. To keep both teams happy and allow
+development to proceed without friction, we could allow the Production team to set market
+rates for the transfer, with the Product Development team only being charged a marginal cost.
+This would keep both managers happy. The finance team would have to reconcile and adjust
+for the differences.
+
+
+
+Financial Manager
+
+
+
+
+K APLAN P UBLI S H I N G                                                                     9
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+MARKING GUIDE:
+
+
+
+Sub-task (a) = 60% (15 marks)
+ Trait
+ Product           Level        Descriptor                                                               Marks
+ Development
+                                No rewardable material.                                                     0
+ team
+ engagement        Level 1      Defines engagement and identifies need for engagement of the               1-5
+                                Product Development team.
+                   Level 2      Defines engagement and offers some relevant suggestions for               6-10
+                                Product Development team engagement, with good
+                                justification.
+                   Level 3      Defines engagement and offers a good range of suggestions for             11-15
+                                Product Development team engagement, with full justification.
+
+
+
+Sub-task (b) = 40% (10 marks)
+ Trait
+ Transfer price    Level        Descriptor                                                               Marks
+                                No rewardable material.                                                     0
+                   Level 1      Identifies transfer pricing approach for Cartn and offers some             1-3
+                                justification for the recommendation made.
+                   Level 2      Discusses transfer pricing in the context of this Cartn scenario           4-6
+                                and offers good justification for the recommendation made.
+                   Level 3      Provides a good discussion of the dysfunctional behaviour that            7-10
+                                could arise from this Cartn scenario and offers full justification
+                                for the recommendation made.
+
+
+
+
+10                                                                       K A P LA N P UB L I S H I N G
+                                                                 MO CK E XAM B - ANSWERS
+
+Task 3
+
+To: Elizabeth Maenda
+From: Financial Manager
+Subject: Cartn trays
+
+Hi Elizabeth,
+
+Debt and equity
+
+The immediate costs of raising finance will always be an issue in selecting between different
+sources available to Cartn. There is generally a significant fixed cost associated with raising
+equity, which makes it uneconomic to raise small amounts by equity rather than debt. As a
+quoted company, Cartn could make a public issue of shares on the Harrlandian Stock
+Exchange. The financing of the new plant and equipment plus additional inventory will require
+an investment of H$45m which, if financed by equity, would represent an increase of 11.6%
+(H$45/H$386.4m). This would double the current issued share capital plus share premium, so
+represents a significant proportionate increase. It may also have implications for the current
+controlling shareholders as they may not be able to invest sufficient to retain that interest.
+That said, it would reduce the current gearing ratio from 28.5% (H$154.3m/(H$386.4m +
+H$154.3m)) to 26.3% (H$154.3m/(H$431.4m + H$154.3m)), which providers of equity finance
+may view as a reduction in financial risk and a beneficial change.
+
+Gearing is an important accounting ratio and so the impact of new funding should be
+considered. Cartn could make an issue of corporate bonds or notes on the Harrlandian Stock
+Exchange to raise the necessary finance. Alternatively, it may be able to source debt finance
+or grants from a specialist provider of finance, such as agencies promoting more sustainable
+manufacturing and working practices.
+
+Cartn’s gearing is presently 28.5%. If debt finance is used, borrowing a further H$45m would
+increase the gearing ratio to 34.0% (H$199.3m/(H$386.4m + H$199.3m)). The funding to be
+raised in comparison to current debt levels represents an increase of approximately 29%. The
+increase in gearing from using debt finance may cause some concern amongst current
+shareholders who may seek a higher rate of return on their investment in Cartn. Debt is a
+cheaper source of finance than equity due to the lower risk levels perceived by debt investors,
+so the combined effect of higher gearing and cheaper finance may be to reduce the company’s
+WACC. They may need to be reassured of the potential commercial and financial benefits that
+the investment would generate.
+
+The return paid to providers of debt capital will be a tax-deductible expense in the statement
+of profit or loss, making it even cheaper. The return to equity holders would be a reduction in
+retained earnings within equity and not tax-deductible.
+
+It would be possible to tailor debt to match the life of the assets that are to be financed. In
+this case, there will be a significant investment in new plant and equipment for production
+plus increased inventory holdings. The intention would be to develop a new product range
+
+
+
+K APLAN P UBLI S H I N G                                                                    11
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+using new assets which would be subject to the same regular repair and maintenance
+programme of our current plant and equipment. It is expected that, on a long-term basis, once
+this has been funded and subsequently paid, the only ongoing investment requirement would
+be the financing of additional inventory holdings. Revenue from the new product range will
+be used to help replace these assets, potentially removing the need for additional debt.
+
+Integrated Reporting Capitals
+
+Financial capital is the funding that will appear in the Cartn Group’s statement of financial
+position that would be reported as a matter of routine in the annual financial statements. The
+funding raised for the planned expansion will simply be reported as normal in equity and/or
+non-current liabilities as applicable. Finance costs associated with debt finance will be
+included in the statement of profit or loss, and any dividends paid to equity holders would be
+disclosed in the statement of changes in equity.
+
+Manufactured capital will essentially be the investment in the property, plant and equipment
+that appears in the Group statement of financial position. Again, it will simply be reflected as
+an increase in non-current assets in the financial statements.
+
+Intellectual capital will reflect any intangibles that Cartn creates because of the new range of
+trays. It will not be necessary to attach a monetary value to those assets; it will be adequate
+to describe them in sufficient detail to inform stakeholders about the intellectual property
+that Cartn has created.
+
+In this case, the knowledge relates to the design and creation of new trays. Also, the materials
+used in the manufacture of the trays may have particular qualities, such as their size, shape or
+biodegradable qualities that enhance business customer and end consumer satisfaction. It is
+sufficient that Cartn has developed designs and processes that enable it to expand the range
+of products that it sells.
+
+Note, however, that Cartn does have intangible assets which may include patented processes,
+materials or components which may be able to be used for the trays or easily adapted for use
+for this new range. It is also possible that Cartn may develop a new production process for the
+new range, in which case, the requirements of IAS 38 Intangible assets, should be complied
+with, capitalising any costs that meet the required criteria, and writing-off any other costs
+incurred.
+
+Human capital will reflect any new competencies or capabilities that will be created or
+enhanced for any of Cartn’s staff. The new range will require Cartn’s design staff to develop
+new skills relating to developing the designs for the new trays, perhaps in relation to the shape
+or dimensions of the trays. Those skills may be of value when extending the Cartn product
+range. Human capital may be enhanced by recruitment of employees with different skills or
+competencies or providing additional training for members of the current workforce.
+
+Social and relationship capital arises from relationships and the ability to create collective
+wellbeing. Cartn will create a new product range which will offer business customers a product
+with enhanced sustainability credentials and give end consumers greater choice to enable
+
+
+
+
+12                                                                       K A P LA N P UB L I S H I N G
+                                                                  MO CK E XAM B - ANSWERS
+
+their needs to be more easily or better matched. The new range could be regarded as a
+preferable alternative to similar products offered by other suppliers.
+
+Natural capital reflects the impact that Cartn has on scarce resources. Cartn should design its
+processes and products to minimise waste and focus upon recyclability of its materials and
+packaging. Given the increased awareness of investors and society to environmental-related
+issues, any investment in new plant and equipment that is more energy-efficient and that
+contributes to waste reduction from the production process will be viewed positively by
+interested parties. The use of wheat straw, which may otherwise go to waste, in tray
+production may be disclosed as an environmentally beneficial use of natural capital.
+
+If you need any further information, please contact me.
+
+Financial Manager
+
+
+
+MARKING GUIDE:
+
+
+Sub-task (a) = 40% (10 marks)
+ Trait
+ Debt and           Level       Descriptor                                                          Marks
+ equity
+                                No rewardable material.                                               0
+                    Level 1     Explains a limited number of points in basic or general terms        1-3
+                                relating to how finance is raised is accounted for without detail
+                                or application to the context of the scenario.
+                    Level 2     Explains a reasonable number of points that demonstrates             4-7
+                                some insight and understanding of how finance raised is
+                                classified and accounted for. There may be limited application
+                                to the context of the pre-seen and/or scenario.
+                    Level 3     Fully explains a broad range of points that demonstrate insight     8-10
+                                and understanding of how finance raised is classified and
+                                accounted for in the financial statements.
+                                There should be application to the context of the pre-seen
+                                and/or scenario e.g. reference to equity and debt finance in
+                                the statement of financial position.
+
+
+
+
+K APLAN P UBLI S H I N G                                                                     13
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+Sub-task (b) = 60% (15 marks)
+ Trait
+ Integrated       Level     Descriptor                                                              Marks
+ reporting
+                            No rewardable material.                                                    0
+                  Level 1   Explains some points that demonstrate an understanding of                 1-4
+                            integrated reporting, but is not comprehensive, lacks detail
+                            and with minimal application to Cartn.
+                  Level 2   Explains a range of points that demonstrate insight and                  5-10
+                            understanding of integrated reporting, but is not
+                            comprehensive. For example, it may lack comment on the
+                            impact on the different forms of capital. Good application to
+                            Cartn.
+                  Level 3   Fully explains a broad range of points that demonstrate insight          11-15
+                            and understanding of what an integrated report is, how it
+                            differs from financial statements and includes reference
+                            and/or full application to Cartn.
+
+
+
+
+14                                                                  K A P LA N P UB L I S H I N G
+                                                                  MO CK E XAM B - ANSWERS
+
+Task 4
+
+To: Elizabeth Maenda
+From: Financial Manager
+Date: Today
+Subject: Project issues for tray production
+
+Project management
+
+The Board’s decision on whether to focus solely on consumer-friendly trays with reduced
+secondary packaging, or to develop two separate ranges to appeal to both consumers and
+food producers, will significantly impact how we manage this project.
+
+Defining project scope
+
+Currently, the Board is weighing the marketing benefits of a dual product approach against
+operational concerns regarding factory space and production inefficiencies. Making a
+definitive choice soon will provide the project team with a clear objective. A single product
+focus creates a unified goal, allowing the departments to align and collaborate productively.
+A dual product approach creates a much broader, fragmented scope, requiring the project
+manager to carefully balance competing departmental priorities from the outset.
+
+Resource allocation and team composition
+
+If the Board opts to produce two types of products simultaneously, the project's scope and
+complexity will effectively double. This will put significant pressure on the Product
+Development and Operations teams, requiring careful resource management. The project
+manager will need to assemble a team with the right mix of practical skills to organise complex
+production scheduling and maintain strict quality control across two distinct lines, ensuring
+this dual workload is handled efficiently and within budget.
+
+In contrast, if there is a focus on a single market, the team can concentrate its resources. For
+example, focusing solely on consumers means the team must solve specific technical
+challenges, such as printing directly onto the tray material to eliminate secondary packaging.
+This narrower scope would require a project team heavily weighted with technical design
+specialists and external print suppliers.
+
+Project leadership and liaison with stakeholder groups
+
+The chosen path will also dictate the project manager’s core focus and stakeholder
+interactions.
+
+If the decision is to focus on a single consumer-led design, Marketing may be best positioned
+to lead the project. They would need to use persuasive communication to convince our food
+manufacturing customers to adopt our new packaging, despite their initial reluctance and the
+potential for increased primary packaging prices.
+
+Should the Board decide to produce two distinct product types, managing simultaneous
+product lines will require a project manager with exceptional organisational and negotiation
+
+
+K APLAN P UBLI S H I N G                                                                     15
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+skills. They must balance the commercial ambitions of Marketing with the practical constraints
+of Operations, ensuring that the drive to capture both markets does not severely compromise
+our factory space, costs, or overall production efficiency.
+
+Pricing approach
+
+If Cartn decides to prioritise the preferences of food consumers for tray production, it will still
+have to consider that consumers are not purchasing directly from Cartn and so our pricing will
+still need to appeal to the food manufacturers.
+
+Penetration pricing
+
+If we decide to focus on consumers, we will be aiming to reduce the level of secondary
+packaging required for the trays. We know that this is an approach that food producers may
+not find attractive, so to encourage them to choose Cartn trays, we may choose to price as
+low as possible. Penetration pricing involves setting a low price initially to attract large sales
+volumes quickly. Once established in the market, the prices could then be slowly raised to a
+level that will generate appropriate profits in the longer term.
+
+If through low pricing we are able to encourage food manufacturers to redesign their products
+with minimal secondary packaging while maintaining their profitability and potentially
+stimulating their own sales to environmentally conscious consumers, sales volumes should
+grow over time. This would lead to achieving the benefits of economies of scale that make
+penetration pricing a profitable approach over the long term, despite the low profit margins
+earned initially.
+
+However, the main danger of penetration pricing is that the prices we could achieve would
+not be enough to generate an appropriate level of profit. Only if the strategy is successful
+could we raise prices at a later date and/or gain the benefits of economies of scale. This is a
+risky approach given the level of investment made in the products to date.
+
+Price skimming
+
+For products that are attractive in ways other than price, such as unique or high-quality
+products, an approach that could be taken is to charge high prices initially to earn as much
+profit per unit as possible from those customers who are willing to pay such prices to have the
+product. The prices can then be lowered gradually to tap into the rest of the market.
+
+This would enable high profit margins to be achieved initially, which would help to recoup the
+costs incurred when developing the trays.
+
+Environmentally conscious customers may be willing to pay higher prices for the products that
+meet their desire for sustainability. However, there will also be an element of the market that
+desires such products but cannot afford to pay higher prices. Our usual food manufacturing
+customers will not wish to raise prices for these consumers as they will probably lose sales as
+a result. There is the possibility that the manufacturers will pay the higher prices to Cartn but
+not pass the additional cost onto consumers, but we should not rely on this happening when
+making our pricing decision.
+
+
+
+16                                                                        K A P LA N P UB L I S H I N G
+                                                                 MO CK E XAM B - ANSWERS
+
+It may be that we could target customers who produce food products at the premium end of
+the market. Their customer base may already be those who are willing and able to pay higher
+prices for sustainable products. This would, however, leave us targeting a niche aspect of the
+market rather than the market as a whole.
+
+Consistency for the brand
+
+Ultimately, we should set a price that is consistent with our product positioning. We don’t
+want our product range and pricing to be seen as confusing to food manufacturers. We should
+decide who we are ultimately targeting and price in line with the expectations of that market.
+
+Product and product reputation risks
+
+Product risks
+
+One risk that might arise from this new product is that we target the incorrect market. The
+market that aligns with the wishes of environmentally conscious food consumers may not fully
+materialise. It may be that the government debate proceeds no further than a short
+discussion. No legislative changes may result, even if the government agrees that progress on
+reducing secondary packaging is a positive step.
+
+Without legislative changes, food producers may not wish to incur the cost of amending their
+own production processes until sales of the (potentially more expensive) food contained in
+the updated packaging is guaranteed, or until customers are seen to switch away from
+products with higher levels of secondary packaging.
+
+If we target food manufacturers who do not wish to make changes to their product packaging,
+we may end up falling foul of legislative changes if they do arise.
+
+If we were to decide to produce both types of packaging, we may incur excessive cost to run
+two types of production line, such that the profitability of our tray production doesn’t meet
+targets and is considered a failure.
+
+Product reputation risks
+
+If we fail to meet the wishes of consumers, negative publicity could arise, via such outlets as
+social media. In theory, this could have a significant negative impact on sales of all of our
+products.
+
+However, we are shielded from this to a large extent, as we are not the ‘face of the product’
+– the food manufacturers themselves are. It is they who are likely to bear the reputational
+damage from failing to act in a more sustainable manner.
+
+However, it would not take much effort for determined consumers or media outlets to
+discover that we are actually responsible for manufacturing the materials that they are
+unhappy with, so it is a risk we should consider.
+
+If we fail to meet the wishes of food manufacturers, our reputation within the industry could
+be damaged. This could have a knock-on effect to sales of our cartons and tubs to current
+customers.
+
+
+K APLAN P UBLI S H I N G                                                                    17
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+We may also fail to attract new customers if it is felt that we prioritise our view of consumer
+needs over our direct customers’ actual needs.
+
+Financial Manager
+
+MARKING GUIDE:
+
+Sub-task (a) = 33% (8 marks)
+ Trait
+ Project            Level      Descriptor                                                               Marks
+ management
+                               No rewardable material.                                                     0
+                    Level 1    Identifies some ways the Board's decision will affect project              1-2
+                               management, but the explanation is basic and lacks specific
+                               application to the Cartn scenario.
+                    Level 2    Good discussion of how the decision to focus on consumers, or              3-5
+                               both consumers and manufacturers will affect the management
+                               of the project, with some application to the Cartn scenario.
+                    Level 3    Offers full discussion of how the Board's decision will impact             6-8
+                               various aspects of project management with full application to
+                               the specific Cartn scenario.
+
+
+
+Sub-task (b) = 34% (9 marks)
+ Trait
+ Pricing            Level      Descriptor                                                               Marks
+                               No rewardable material.                                                     0
+                    Level 1    Describes pricing strategies, but with little reference to the Cartn       1-3
+                               scenario and overall pricing strategy.
+                    Level 2    Offers sensible recommendations for pricing trays, with some               3-6
+                               justification and some relevance to Cartn’s current pricing
+                               strategy.
+                    Level 3    Offers sensible recommendations for pricing trays, with good               7-9
+                               justification and relevance to the product and the overall Cartn
+                               pricing strategy.
+
+
+
+
+18                                                                      K A P LA N P UB L I S H I N G
+                                                                  MO CK E XAM B - ANSWERS
+
+Sub-task (c) = 33% (8 marks)
+ Trait
+ Risks              Level       Descriptor                                                           Marks
+                                No rewardable material.                                                 0
+                    Level 1     Defines product and product reputation risks but with little           1-2
+                                relation to Cartn and the specific product range.
+                    Level 2     Offers a good discussion of the product and product reputation         3-5
+                                risks arising in the specific scenario.
+
+                    Level 3     Offers a full discussion of the product and product reputation         6-8
+                                risks arising in the specific scenario, with good justification of
+                                their selection.
+
+
+
+
+SUMMARY MARKING GUIDE
+
+                                     CORE ACTIVITY
+                   A            B            C          D           E       TOTAL
+  TASK 1           15                                  10                      25
+  TASK 2                                     15                    10          25
+  TASK 3                        10                                 15          25
+  TASK 4                        9            8          8                      25
+  TOTAL            15           19           23        18          25         100
+
+  Blueprint     15 - 25       15 – 25    15 – 25     15 – 25     15 - 25
+
+
+
+
+K APLAN P UBLI S H I N G                                                                     19
+CIMA MANAGE MENT LEVEL CASE ST UDY (MAY AND AUGUST 2026 )
+
+
+
+
+20                                                   K A P LA N P UB L I S H I N G
+

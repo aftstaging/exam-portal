@@ -1,0 +1,1 @@
+ALTER TABLE `markings` ADD `rubricSnapshot` text;

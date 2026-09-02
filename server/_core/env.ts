@@ -1,0 +1,20 @@
+export const ENV = {
+  cookieSecret: process.env.JWT_SECRET ?? "",
+  databaseUrl: process.env.DATABASE_URL ?? "",
+  ownerOpenId: process.env.OWNER_OPEN_ID ?? "",
+  ownerEmail: (process.env.OWNER_EMAIL ?? "").trim().toLowerCase(),
+  isProduction: process.env.NODE_ENV === "production",
+  s3Region: process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? "",
+  s3Bucket: process.env.S3_BUCKET ?? "",
+  s3Endpoint: process.env.S3_ENDPOINT ?? "",
+  s3AccessKeyId: process.env.AWS_ACCESS_KEY_ID ?? "",
+  s3SecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? "",
+  
+  payfastSandboxMerchantId: process.env.PAYFAST_SANDBOX_MERCHANT_ID ?? "",
+  payfastSandboxMerchantKey: process.env.PAYFAST_SANDBOX_MERCHANT_KEY ?? "",
+  payfastSandboxPassphrase: process.env.PAYFAST_SANDBOX_PASSPHRASE ?? "",
+  payfastLiveMerchantId: process.env.PAYFAST_LIVE_MERCHANT_ID ?? "",
+  payfastLiveMerchantKey: process.env.PAYFAST_LIVE_MERCHANT_KEY ?? "",
+  payfastLivePassphrase: process.env.PAYFAST_LIVE_PASSPHRASE ?? "",
+  payfastMode: (process.env.PAYFAST_MODE as "sandbox" | "live") || "sandbox",
+};
