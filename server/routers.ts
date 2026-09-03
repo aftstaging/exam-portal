@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, validateCoupon } from "./db";
+import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, validateCoupon, checkoutWithCoupon } from "./db";
 import { createCheckoutSession } from "./stripe";
 import { isAdminRole } from "@shared/integrity";
 import { getDb } from "./db";
@@ -98,6 +98,14 @@ export const appRouter = router({
           couponCode = validated.code;
         } catch (error) {
           throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Invalid coupon code" });
+        }
+      }
+      if (amountCents <= 0 && couponCode) {
+        try {
+          const result = await checkoutWithCoupon({ userId: ctx.user.id, productIds: available.map((product) => product.id), couponCode });
+          return { noPayment: true, granted: result.granted, couponCode: result.couponCode };
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Could not apply coupon" });
         }
       }
       const settings = await getPayFastGatewaySettings();

@@ -966,3 +966,32 @@ export async function clickCoupon(input: { couponId: number; userId: number; amo
   await db.insert(couponRedemptions).values({ couponId: input.couponId, userId: input.userId, amountCents: Math.round(input.amountCents) });
   return { success: true, usedCount: coupon.usedCount + 1 };
 }
+
+export async function checkoutWithCoupon(input: { userId: number; productIds: number[]; couponCode: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const selected = await db.select().from(products).where(inArray(products.id, Array.from(new Set(input.productIds))));
+  const available = selected.filter((product) => product.status === "published" && product.priceCents > 0);
+  if (!available.length) throw new Error("Your cart has no paid products");
+  const subtotal = available.reduce((sum, product) => sum + product.priceCents, 0);
+  const validated = await validateCoupon({ code: input.couponCode, subtotalCents: subtotal });
+  if (validated.totalCents > 0) throw new Error("Coupon does not cover the full amount; checkout with payment instead");
+  const coupon = (await db.select().from(coupons).where(eq(coupons.code, validated.code)).limit(1))[0];
+  if (!coupon) throw new Error("This coupon code is not valid");
+
+  let granted = 0;
+  const startsAt = new Date();
+  for (const product of available) {
+    const existing = (await db.select().from(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.productId, product.id), eq(entitlements.status, "active"))).limit(1))[0];
+    if (existing && hasActiveEntitlement(existing)) continue;
+    await db.insert(entitlements).values({ userId: input.userId, productId: product.id, source: "admin", status: "active", startsAt, expiresAt: entitlementExpiryFromAccessDays(product.accessDays, startsAt) });
+    granted += 1;
+  }
+
+  await db.update(coupons).set({ usedCount: coupon.usedCount + 1 }).where(eq(coupons.id, coupon.id));
+  await db.insert(couponRedemptions).values({ couponId: coupon.id, userId: input.userId, amountCents: Math.round(validated.discountCents) });
+  await recordPayment({ userId: input.userId, productId: available[0].id, provider: "admin", reference: `coupon-${coupon.code}`, amountCents: 0, metadata: { couponCode: coupon.code, couponId: coupon.id, productIds: available.map((p) => p.id), discountCents: validated.discountCents, granted, source: "coupon" } });
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: coupon.id, action: "redeemed", metadata: JSON.stringify({ code: coupon.code, productIds: available.map((p) => p.id), discountCents: validated.discountCents }) });
+  if (granted) await db.insert(notifications).values({ userId: input.userId, type: "purchase", subject: "Products added", body: `Your ${granted} Accountants for Tomorrow product${granted === 1 ? " is" : "s are"} now active via coupon ${coupon.code}.` });
+
+  return { success: true, granted, couponCode: coupon.code, discountCents: validated.discountCents };
+}

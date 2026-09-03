@@ -20,15 +20,6 @@ export default function Cart() {
   const [, navigate] = useLocation();
   const { isAuthenticated } = useAuth();
   const productsQuery = trpc.catalogue.products.useQuery(undefined, { retry: false });
-  const checkout = trpc.payments.createPayfastCartCheckout.useMutation({
-    onSuccess: ({ endpoint, fields }) => {
-      const form = document.createElement("form"); form.method = "POST"; form.action = endpoint;
-      Object.entries(fields).forEach(([name, value]) => { const input = document.createElement("input"); input.type = "hidden"; input.name = name; input.value = value; form.appendChild(input); });
-      document.body.appendChild(form); form.submit();
-    },
-    onError: (error) => window.alert(error.message),
-  });
-  const claimFree = trpc.payments.claimFreeProduct.useMutation({ onError: (error) => window.alert(error.message) });
   const [cartIds, setCartIds] = useState<number[]>(() => { try { return JSON.parse(window.localStorage.getItem(CART_KEY) ?? "[]") as number[]; } catch { return []; } });
   useEffect(() => { window.localStorage.setItem(CART_KEY, JSON.stringify(cartIds)); }, [cartIds]);
   const items = useMemo(() => (productsQuery.data ?? []).filter(({ product }) => cartIds.includes(product.id)), [productsQuery.data, cartIds]);
@@ -36,6 +27,22 @@ export default function Cart() {
   const freeIds = items.filter(({ product }) => product.priceCents === 0).map(({ product }) => product.id);
   const total = items.reduce((sum, { product }) => sum + product.priceCents, 0);
   const clearCart = () => setCartIds([]);
+  const checkout = trpc.payments.createPayfastCartCheckout.useMutation({
+    onSuccess: (result) => {
+      if ("noPayment" in result) {
+        window.alert(`Coupon applied — you have full access to the selected products.`);
+        clearCart();
+        navigate("/dashboard");
+        return;
+      }
+      const { endpoint, fields } = result;
+      const form = document.createElement("form"); form.method = "POST"; form.action = endpoint;
+      Object.entries(fields).forEach(([name, value]) => { const input = document.createElement("input"); input.type = "hidden"; input.name = name; input.value = value; form.appendChild(input); });
+      document.body.appendChild(form); form.submit();
+    },
+    onError: (error) => window.alert(error.message),
+  });
+  const claimFree = trpc.payments.claimFreeProduct.useMutation({ onError: (error) => window.alert(error.message) });
   const remove = (productId: number) => setCartIds((current) => current.filter((id) => id !== productId));
   const [couponCodeInput, setCouponCodeInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<null | { code: string; discountCents: number }>(null);
