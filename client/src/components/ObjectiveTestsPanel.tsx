@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Check, ChevronLeft, ChevronRight, Flag, PackageOpen, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -212,6 +213,90 @@ function AnswerControl({ current, question, answers, setAnswers }: { current: Re
   </div>;
 }
 
-function ResultPanel({ questions, answers, score, onReset, onReview }: { questions: ReturnType<typeof parseObjectiveQuestion>[]; answers: Record<number, ObjectiveAnswer>; score: number; onReset: () => void; onReview: () => void }) { return <div className="mt-7 rounded-xl border border-[#00ff88]/40 bg-[#102b36] p-5"><div className="text-2xl font-bold text-white">{score}/{questions.length} correct</div><p className="mt-1 text-sm text-[#c4b5fd]">Percentage: {questions.length ? Math.round((score / questions.length) * 100) : 0}%. Review the explanations below.</p><div className="mt-5 space-y-3">{questions.map((item, index) => <div key={index} className="rounded-lg border border-white/10 bg-[#18093c] p-4"><div className="flex items-center justify-between gap-3"><span className="font-bold text-white">Question {index + 1}</span><Badge className={objectiveAnswerMatches(answers[index], item.correct) ? "bg-[#102b36] text-[#00ff88]" : "bg-[#2f274e] text-[#00e5ff]"}>{objectiveAnswerMatches(answers[index], item.correct) ? "Correct" : "Review"}</Badge></div><p className="mt-2 text-sm text-[#c4b5fd]">{item.explanation}</p></div>)}</div><div className="mt-5 flex flex-wrap gap-2"><Button variant="outline" className="border-[#00e5ff] text-white" onClick={onReview}>Review answers</Button><Button className="aft-button" onClick={onReset}><RotateCcw className="mr-2 h-4 w-4" /> New test</Button></div></div>; }
+function formatReviewAnswer(item: ReturnType<typeof parseObjectiveQuestion>, answer: ObjectiveAnswer | undefined): string {
+  if (answer === undefined || answer === null) return "Not answered";
+  if (item.questionType === "text_input" || item.questionType === "numerical") return String(answer);
+  if (item.questionType === "multiple_choice") {
+    const idxs = answer as number[];
+    if (!idxs.length) return "None selected";
+    return idxs.map((i) => `${String.fromCharCode(65 + Number(i))}. ${item.options[Number(i)] ?? "(empty)"}`).join(", ");
+  }
+  const i = answer as number;
+  if (item.options[Number(i)] === undefined) return String(answer);
+  return `${String.fromCharCode(65 + Number(i))}. ${item.options[Number(i)]}`;
+}
+
+function ResultPanel({ questions, answers, score, onReset, onReview }: { questions: ReturnType<typeof parseObjectiveQuestion>[]; answers: Record<number, ObjectiveAnswer>; score: number; onReset: () => void; onReview: () => void }) {
+  const percentage = questions.length ? Math.round((score / questions.length) * 100) : 0;
+  const topicData = useMemo(() => {
+    const map = new Map<string, { correct: number; total: number }>();
+    questions.forEach((item, index) => {
+      const topic = item.topic || "General";
+      const entry = map.get(topic) ?? { correct: 0, total: 0 };
+      entry.total += 1;
+      if (objectiveAnswerMatches(answers[index], item.correct)) entry.correct += 1;
+      map.set(topic, entry);
+    });
+    return Array.from(map.entries()).map(([topic, value]) => ({ topic, score: Math.round((value.correct / value.total) * 100), correct: value.correct, total: value.total })).sort((a, b) => a.score - b.score);
+  }, [questions, answers]);
+
+  return <div className="mt-8 max-w-5xl space-y-6">
+    <div className="rounded-xl border border-[#00ff88]/40 bg-[#102b36] p-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="text-2xl font-bold text-white">{score}/{questions.length} correct</div>
+        <Badge className={percentage >= 70 ? "bg-[#102b36] text-[#00ff88]" : percentage >= 50 ? "bg-[#2f274e] text-[#f4c44e]" : "bg-[#2f274e] text-[#ff8a7a]"}>{percentage}%</Badge>
+        <p className="ml-auto text-sm text-[#c4b5fd]">Review each question and your topic performance below.</p>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-[#c4b5fd]">{percentage >= 70 ? "Well done — you are performing strongly across most areas." : percentage >= 50 ? "A solid attempt. Focus on the topics highlighted below to improve your score." : "Review the topics below where your score is lowest before retrying."}</p>
+    </div>
+
+    <div className="rounded-xl border border-[#00e5ff]/30 bg-[#120730] p-5">
+      <h3 className="text-lg font-bold text-white">Performance by topic</h3>
+      <p className="mt-1 text-sm text-[#c4b5fd]">Percentage of questions answered correctly in each topic area.</p>
+      {topicData.length === 0 ? <p className="mt-4 text-sm text-white/50">No topic data available.</p> : <div className="mt-4 h-64 w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={topicData} layout="vertical" margin={{ left: 24, right: 40, top: 4, bottom: 4 }}><XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} stroke="#94a3b8" /><YAxis type="category" dataKey="topic" width={120} tick={{ fill: "#e2e8f0", fontSize: 12 }} stroke="#94a3b8" /><Tooltip formatter={(value) => [`${value}%`, "Score"]} labelStyle={{ color: "#0c0524" }} contentStyle={{ background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#0c0524" }} /><Bar dataKey="score" radius={[0, 4, 4, 0]}>{topicData.map((entry) => <Cell key={entry.topic} fill={entry.score >= 70 ? "#00ff88" : entry.score >= 50 ? "#f4c44e" : "#ff8a7a"} />)}</Bar></BarChart></ResponsiveContainer></div>}
+    </div>
+
+    <div className="rounded-xl border border-white/10 bg-[#120730] p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-lg font-bold text-white">Question review</h3>
+        <span className="text-xs text-white/45">{questions.length} questions</span>
+      </div>
+      <div className="mt-4 space-y-4">
+        {questions.map((item, index) => {
+          const result = objectiveAnswerMatches(answers[index], item.correct);
+          return <div key={index} className="rounded-lg border border-white/10 bg-[#18093c] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-white">Q{index + 1}</span>
+                <Badge className="border border-white/10 bg-[#0c0524] px-2 py-0.5 text-[11px] text-[#c4b5fd]">{item.topic}</Badge>
+              </div>
+              <Badge className={result ? "bg-[#102b36] text-[#00ff88]" : "bg-[#2f274e] text-[#ff8a7a]"}>{result ? "Correct" : "Incorrect"}</Badge>
+            </div>
+            <p className="mt-3 text-sm font-medium leading-6 text-white">{item.prompt}</p>
+            <div className="mt-3 grid gap-2 text-sm leading-6 sm:grid-cols-2">
+              <div className="rounded-lg border border-white/10 bg-[#0c0524]/50 p-3">
+                <span className="text-xs font-bold uppercase tracking-[.14em] text-[#f4c44e]">Your answer</span>
+                <p className="mt-1 text-[#e2e8f0]">{formatReviewAnswer(item, answers[index])}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-[#0c0524]/50 p-3">
+                <span className="text-xs font-bold uppercase tracking-[.14em] text-[#00ff88]">Correct answer</span>
+                <p className="mt-1 text-[#e2e8f0]">{formatReviewAnswer(item, item.correct)}</p>
+              </div>
+            </div>
+            <div className={`mt-3 rounded-lg border p-3 text-sm leading-6 ${result ? "border-[#00ff88]/30 bg-[#0a2a1c]/40 text-[#c4f5dd]" : "border-[#ff8a7a]/30 bg-[#2a1412]/40 text-[#ffd6ce]"}`}>
+              <span className="font-bold">{result ? "Why it is correct: " : "Why you were wrong: "}</span>
+              {item.explanation || "Review the underlying learning outcome and retry this question."}
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>
+
+    <div className="flex flex-wrap gap-2">
+      <Button variant="outline" className="border-[#00e5ff] text-white" onClick={onReview}>Back to answers</Button>
+      <Button className="aft-button" onClick={onReset}><RotateCcw className="mr-2 h-4 w-4" /> New test</Button>
+    </div>
+  </div>;
+}
 
 function EmptyState() { return <Card className="mx-auto max-w-3xl border-[#00e5ff]/30 bg-[#120730]"><CardContent className="flex min-h-[360px] flex-col items-center justify-center p-10 text-center"><PackageOpen className="h-10 w-10 text-[#00e5ff]" /><h2 className="mt-5 text-2xl font-bold text-white">Objective test unavailable</h2><p className="mt-2 max-w-md text-[#c4b5fd]">No published Objective test is attached to this product yet. Please return to the store or contact an administrator.</p></CardContent></Card>; }
