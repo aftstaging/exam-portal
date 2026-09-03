@@ -78,6 +78,13 @@
       "when": 1788443287975,
       "tag": "0010_slow_miracleman",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1788451792991,
+      "tag": "0011_shocking_spirit",
+      "breakpoints": true
     }
   ]
 }

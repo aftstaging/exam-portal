@@ -460,7 +460,7 @@ export async function updateAdminObjectiveQuestionRationale(input: { userId: num
   return { success: true };
 }
 
-export async function uploadAdminResource(input: { userId: number; productId: number; title: string; kind: "pre_seen" | "formulae" | "printable_pdf" | "feedback" | "course_material" | "reference"; fileName: string; mimeType: string; base64: string }) {
+export async function uploadAdminResource(input: { userId: number; productId: number; title: string; kind: "pre_seen" | "formulae" | "printable_pdf" | "feedback" | "course_material" | "reference" | "email"; fileName: string; mimeType: string; base64: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const payload = input.base64.includes(",") ? input.base64.split(",")[1] : input.base64;
   const bytes = Buffer.from(payload, "base64");
@@ -515,6 +515,194 @@ export async function uploadProductImage(input: { userId: number; productId: num
   await db.update(products).set({ featuredImageUrl: uploaded.url }).where(eq(products.id, input.productId));
   await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: input.productId, action: "image_uploaded", metadata: JSON.stringify({ key: uploaded.key, mimeType: input.mimeType }) });
   return { key: uploaded.key, url: uploaded.url };
+}
+
+export type ExamBundleFile = { fileName: string; mimeType: string; base64: string };
+export type ExamBundleObjectiveQuestion = {
+  topic: string;
+  prompt: string;
+  questionType?: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input";
+  options: string[];
+  correct: number;
+  explanation?: string;
+  rationale?: string[];
+  attachment?: ExamBundleFile;
+};
+export type ExamBundleInput = {
+  userId: number;
+  title: string;
+  examType: "case_study" | "objective_test";
+  intro?: string;
+  description?: string;
+  priceCents: number;
+  accessDays: number;
+  totalDurationSeconds: number;
+  featuredImage?: ExamBundleFile;
+  featuredImageUrl?: string;
+  // pre-moderated exam PDF / document (uploaded, formatted) - used as extra resource if provided
+  preModeratedPdf?: ExamBundleFile;
+  // attachments by resource kind
+  preSeen?: ExamBundleFile;
+  formulae?: ExamBundleFile;
+  reference?: ExamBundleFile;
+  // case-study email: either typed text or an image file
+  emailText?: string;
+  emailImage?: ExamBundleFile;
+  // objective-test questions built inline in the studio (topics, questions, answers, feedback)
+  objectiveQuestions?: ExamBundleObjectiveQuestion[];
+};
+
+/**
+ * Creates a product, its linked mock exam, and any attached resources in a single
+ * orchestrating operation. This is the backend for the instructor "create exam"
+ * studio. New records are created as drafts so an administrator publishes them.
+ * For a case-study exam created manually (no pre-moderated PDF supplied) a branded
+ * AFT printable PDF is generated automatically from the exam record.
+ */
+export async function createExamBundle(input: ExamBundleInput) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const title = input.title.trim();
+  if (!title) throw new Error("Exam title is required");
+  if (!input.examType) throw new Error("Exam type is required");
+
+  // 1. Create the store product (draft)
+  const productId = (await db.insert(products).values({
+    title,
+    category: input.examType,
+    description: input.description?.trim() || null,
+    featuredImageUrl: input.featuredImageUrl?.trim() || null,
+    priceCents: Math.max(0, Math.round(input.priceCents)),
+    accessDays: input.accessDays && input.accessDays > 0 ? input.accessDays : 30,
+    status: "draft",
+  }).$returningId())[0]?.id;
+  if (!productId) throw new Error("Failed to create the store product");
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: productId, action: "created", metadata: JSON.stringify({ title, category: input.examType }) });
+
+  // 2. Upload featured image if provided
+  if (input.featuredImage) {
+    const allowed = new Set(["image/png", "image/jpeg"]);
+    if (!input.featuredImage.mimeType || !allowed.has(input.featuredImage.mimeType)) throw new Error("Featured image must be a PNG or JPEG");
+    const payload = input.featuredImage.base64.includes(",") ? input.featuredImage.base64.split(",")[1] : input.featuredImage.base64;
+    const bytes = Buffer.from(payload, "base64");
+    if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new Error("Featured image must be between 1 byte and 10 MB");
+    const ext = input.featuredImage.mimeType === "image/png" ? "png" : "jpg";
+    const uploaded = await storagePut(`product-images/${productId}/${Date.now()}-${(input.featuredImage.fileName || "product-image").replace(/[^a-zA-Z0-9._-]/g, "-")}.${ext}`, bytes, input.featuredImage.mimeType);
+    await db.update(products).set({ featuredImageUrl: uploaded.url }).where(eq(products.id, productId));
+    await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: productId, action: "image_uploaded", metadata: JSON.stringify({ key: uploaded.key, mimeType: input.featuredImage.mimeType }) });
+  }
+
+  // 3. Create the mock exam (draft)
+  const mockExamId = (await db.insert(mockExams).values({
+    productId,
+    title,
+    examType: input.examType,
+    intro: input.intro?.trim() || null,
+    totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)),
+    status: "draft",
+  }).$returningId())[0]?.id;
+  if (!mockExamId) throw new Error("Failed to create the exam record");
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "mock_exam", entityId: mockExamId, action: "created", metadata: JSON.stringify({ title, examType: input.examType }) });
+
+  // 3b. Create objective-test questions if any were authored inline in the studio
+  const createdQuestionIds: number[] = [];
+  if (input.objectiveQuestions && input.objectiveQuestions.length) {
+    for (const question of input.objectiveQuestions) {
+      if (!question.prompt?.trim()) continue;
+      const qtype = question.questionType ?? "single_choice";
+      const options = (question.options ?? []).map((option) => option?.trim()).filter(Boolean);
+      if (options.length < 2) continue;
+      const correct = Math.min(Math.max(Math.round(question.correct) || 0, 0), options.length - 1);
+      let attachmentUrl: string | null = null;
+      let attachmentFileName: string | null = null;
+      let attachmentMimeType: string | null = null;
+      if (question.attachment?.base64) {
+        const file = question.attachment;
+        const allowed = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+        if (file.mimeType && allowed.has(file.mimeType)) {
+          const raw = file.base64.includes(",") ? file.base64.split(",")[1] : file.base64;
+          const bytes = Buffer.from(raw, "base64");
+          if (bytes.length && bytes.length <= 10 * 1024 * 1024) {
+            try {
+              const uploaded = await storagePut(`objective-attachments/${mockExamId}/${Date.now()}-${(file.fileName || "question-image").replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, file.mimeType);
+              attachmentUrl = uploaded.url;
+              attachmentFileName = file.fileName || "question-image";
+              attachmentMimeType = file.mimeType;
+            } catch (error) {
+              console.warn("[createExamBundle] question attachment upload failed", error);
+            }
+          }
+        }
+      }
+      const rationaleJson = question.rationale && question.rationale.length ? question.rationale.map((r) => r?.trim() || null) : null;
+      const row = (await db.insert(objectiveQuestions).values({
+        mockExamId,
+        topic: question.topic?.trim() || "General",
+        learningOutcome: null,
+        questionType: qtype,
+        prompt: question.prompt.trim(),
+        optionsJson: JSON.stringify(options),
+        answerJson: JSON.stringify(correct),
+        attachmentUrl,
+        attachmentFileName,
+        attachmentMimeType,
+        explanation: question.explanation?.trim() || null,
+        rationaleJson: rationaleJson ? JSON.stringify(rationaleJson) : null,
+        difficulty: "medium",
+        status: "draft",
+      }).$returningId())[0]?.id;
+      if (row) createdQuestionIds.push(row);
+    }
+    if (createdQuestionIds.length) {
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "objective_question", entityId: mockExamId, action: "bundle_created", metadata: JSON.stringify({ mockExamId, count: createdQuestionIds.length, ids: createdQuestionIds }) });
+    }
+  }
+
+  const uploadResource = async (kind: "pre_seen" | "formulae" | "reference" | "email" | "printable_pdf", file: ExamBundleFile, resTitle: string) => {
+    if (!file || !file.base64) return;
+    const payload = file.base64.includes(",") ? file.base64.split(",")[1] : file.base64;
+    const bytes = Buffer.from(payload, "base64");
+    if (!bytes.length) return;
+    const uploaded = await storagePut(`admin-resources/${productId}/${Date.now()}-${(file.fileName || resTitle).replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, file.mimeType || "application/octet-stream");
+    const resourceId = (await db.insert(resources).values({ productId, title: resTitle, kind, fileKey: uploaded.key, fileUrl: uploaded.url, status: "draft" }).$returningId())[0]?.id;
+    await db.insert(auditEvents).values({ userId: input.userId, entityType: "resource", entityId: resourceId ?? 0, action: "uploaded", metadata: JSON.stringify({ productId, fileName: file.fileName, kind }) });
+  };
+
+  // 4. Attach resources
+  if (input.preSeen) await uploadResource("pre_seen", input.preSeen, `${title} · Pre-seen`);
+  if (input.formulae) await uploadResource("formulae", input.formulae, `${title} · Formulae + tables`);
+  if (input.reference) await uploadResource("reference", input.reference, `${title} · Reference material`);
+
+  // 5. Pre-moderated PDF - treated as the protected printable question paper
+  if (input.preModeratedPdf) {
+    await uploadResource("printable_pdf", input.preModeratedPdf, `${title} · Printable exam`);
+  }
+
+  // 6. Email attachment - either typed text (stored as a resource without a file) or an image
+  if (input.emailText && input.emailText.trim()) {
+    await db.insert(resources).values({ productId, title: `${title} · Email`, kind: "email", fileKey: null, fileUrl: null, status: "draft" });
+  }
+  if (input.emailImage && input.emailImage.base64) {
+    await uploadResource("email", input.emailImage, `${title} · Email`);
+  }
+
+  // 7. Auto-generate the branded AFT PDF for a manually created case-study exam
+  //    (no pre-moderated PDF provided). Uses the existing AFT-logo generation.
+  let generatedPdfUrl: string | null = null;
+  if (input.examType === "case_study" && !input.preModeratedPdf) {
+    const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
+    const exam = { title, intro: input.intro?.trim() || null, totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)) };
+    try {
+      const bytes = await generateBrandedPrintablePdf(exam, sections.length ? sections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }]);
+      const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
+      const resourceId = (await db.insert(resources).values({ productId, title: `${title} · Printable exam`, kind: "printable_pdf", fileKey: uploaded.key, fileUrl: uploaded.url, status: "draft" }).$returningId())[0]?.id;
+      generatedPdfUrl = uploaded.url;
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "mock_exam", entityId: mockExamId, action: "printable_pdf_generated", metadata: JSON.stringify({ mockExamId, resourceId }) });
+    } catch (error) {
+      console.warn("[createExamBundle] PDF generation failed", error);
+    }
+  }
+
+  return { productId, mockExamId, generatedPdfUrl, questionCount: createdQuestionIds.length };
 }
 
 export async function claimFreeProduct(input: { userId: number; productId: number }) {

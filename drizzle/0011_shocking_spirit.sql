@@ -1,0 +1,1 @@
+ALTER TABLE `resources` MODIFY COLUMN `kind` enum('pre_seen','formulae','printable_pdf','feedback','course_material','reference','email') NOT NULL;

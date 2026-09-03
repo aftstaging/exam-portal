@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
+import ExamStudio from "@/components/ExamStudio";
 
 const zar = (cents: number) => (cents / 100).toLocaleString("en-ZA", { style: "currency", currency: "ZAR" });
 const shortDate = (value?: Date | string | null) => (value ? new Date(value).toLocaleDateString() : "—");
@@ -553,7 +554,7 @@ function ContentTab() {
 
       {section === "Exams" && (
         <>
-          <ExamCreateForm refresh={() => { utils.admin.contentItems.invalidate(); contentQuery.refetch(); }} />
+          <ExamStudio onCreated={() => { utils.admin.contentItems.invalidate(); contentQuery.refetch(); }} />
           <Card className="mt-6">
             <CardContent className="pt-6">
               {items.length ? items.map((item) => (
@@ -651,8 +652,14 @@ function ProductsPanel({ publish }: { publish: { mutate: (input: { productId: nu
           <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" className="min-h-20 border-white/10 bg-[#0c0524] text-white" />
           <Input value={image} onChange={(event) => setImage(event.target.value)} placeholder="Featured image URL (https://…)" className="border-white/10 bg-[#0c0524] text-white" />
           <div className="grid grid-cols-2 gap-2">
-            <Input type="number" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Price ZAR" className="border-white/10 bg-[#0c0524] text-white" />
-            <Input type="number" value={accessDays} onChange={(event) => setAccessDays(event.target.value)} placeholder="Access days" className="border-white/10 bg-[#0c0524] text-white" />
+            <div>
+              <label className="text-xs font-semibold text-[#c4b5fd]">Price (ZAR)</label>
+              <Input type="number" value={price} onChange={(event) => setPrice(event.target.value)} min="0" step="0.01" placeholder="0.00" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label="New product price" />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-[#c4b5fd]">Subscription duration (days)</label>
+              <Input type="number" value={accessDays} onChange={(event) => setAccessDays(event.target.value)} min="1" max="3650" placeholder="30" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label="New product access days" />
+            </div>
           </div>
           <Button className="aft-button w-full" disabled={createProduct.isPending || !title.trim()} onClick={() => createProduct.mutate({ title, category, description: description || undefined, featuredImageUrl: image || undefined, priceCents: Math.round(Number(price || 0) * 100), accessDays: Number(accessDays) || 30 })}>
             Create draft product
@@ -767,43 +774,6 @@ function ProductEditor({ product, onSaved }: { product: { id: number; title: str
         Save product
       </Button>
     </div>
-  );
-}
-
-function ExamCreateForm({ refresh }: { refresh: () => void }) {
-  const productsQuery = trpc.admin.products.useQuery(undefined, { retry: false });
-  const productsRows = productsQuery.data ?? [];
-  const [productId, setProductId] = useState("");
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState<"case_study" | "objective_test">("objective_test");
-  const [duration, setDuration] = useState("45");
-  const createExam = trpc.admin.createMockExam.useMutation({
-    onSuccess: () => { toast.success("Exam created as draft"); refresh(); setTitle(""); },
-    onError: (error) => toast.error(error.message),
-  });
-  return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-white"><BookOpen className="h-5 w-5 text-[#00e5ff]" /> Create exam</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3 md:grid-cols-[1.2fr_1.3fr_0.7fr_0.6fr_auto]">
-          <select value={productId} onChange={(event) => setProductId(event.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white" aria-label="Product">
-            <option value="">Select product…</option>
-            {productsRows.map(({ product }) => <option key={product.id} value={product.id}>{product.title}</option>)}
-          </select>
-          <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Exam title" className="border-white/10 bg-[#0c0524] text-white" />
-          <select value={type} onChange={(event) => setType(event.target.value as typeof type)} className="h-10 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white" aria-label="Exam type">
-            <option value="objective_test">Objective test</option>
-            <option value="case_study">Case study</option>
-          </select>
-          <Input type="number" value={duration} onChange={(event) => setDuration(event.target.value)} placeholder="Minutes" className="border-white/10 bg-[#0c0524] text-white" />
-          <Button variant="outline" className="border-[#00e5ff] text-white" disabled={createExam.isPending || !productId || !title.trim()} onClick={() => createExam.mutate({ productId: Number(productId), title, examType: type, totalDurationSeconds: Math.max(60, Number(duration || 45) * 60) })}>
-            Create draft exam
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
