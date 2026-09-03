@@ -157,6 +157,56 @@ function QuestionEditor({ question, index, onChange, onRemove }: { question: Que
   );
 }
 
+type SectionDraft = {
+  title: string;
+  duration: string;
+  introduction: string;
+  scenario: string;
+  question: string;
+};
+
+const emptySection = (number: number): SectionDraft => ({
+  title: `Task ${number}`,
+  duration: "45",
+  introduction: "",
+  scenario: "",
+  question: "",
+});
+
+function SectionEditor({ section, index, onChange, onRemove }: { section: SectionDraft; index: number; onChange: (section: SectionDraft) => void; onRemove: () => void }) {
+  const set = (patch: Partial<SectionDraft>) => onChange({ ...section, ...patch });
+  return (
+    <div className="space-y-3 rounded-xl border border-[#f4c44e]/30 bg-[#18093c]/50 p-4">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#00ff88]"><Layers3 className="h-4 w-4" /> Task {index + 1}</span>
+        <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-[#ff8278]" onClick={onRemove} disabled={index === 0}><Trash2 className="h-3.5 w-3.5" /> Remove</Button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-[1.6fr_0.7fr]">
+        <div>
+          <label className="text-xs font-semibold text-[#c4b5fd]">Section title</label>
+          <Input value={section.title} onChange={(event) => set({ title: event.target.value })} placeholder="e.g. Task 1 — Risks and negotiations" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label={`Section title ${index + 1}`} />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-[#c4b5fd]">Duration (minutes)</label>
+          <Input type="number" min="1" value={section.duration} onChange={(event) => set({ duration: event.target.value })} placeholder="45" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label={`Section duration ${index + 1}`} />
+        </div>
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-[#c4b5fd]">Introduction / instructions</label>
+        <Textarea value={section.introduction} onChange={(event) => set({ introduction: event.target.value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="mt-1 min-h-16 border-white/10 bg-[#0c0524] text-white" aria-label={`Section introduction ${index + 1}`} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-[#c4b5fd]">Scenario (optional)</label>
+        <Textarea value={section.scenario} onChange={(event) => set({ scenario: event.target.value })} placeholder="Case scenario / advance information specific to this task…" className="mt-1 min-h-16 border-white/10 bg-[#0c0524] text-white" aria-label={`Section scenario ${index + 1}`} />
+      </div>
+      <div>
+        <label className="text-xs font-semibold text-[#c4b5fd]">Task / question</label>
+        <Textarea value={section.question} onChange={(event) => set({ question: event.target.value })} placeholder="The task candidates must answer…" className="mt-1 min-h-16 border-white/10 bg-[#0c0524] text-white" aria-label={`Section question ${index + 1}`} />
+      </div>
+    </div>
+  );
+}
+
 export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
   const [title, setTitle] = useState("");
   const [examType, setExamType] = useState<"case_study" | "objective_test">("case_study");
@@ -174,6 +224,9 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
   const [preSeen, setPreSeen] = useState<BundleFile | null>(null);
   const [formulae, setFormulae] = useState<BundleFile | null>(null);
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
+  const [sections, setSections] = useState<SectionDraft[]>([emptySection(1)]);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackFile, setFeedbackFile] = useState<BundleFile | null>(null);
   const [createdId, setCreatedId] = useState<number | null>(null);
 
   const createBundle = trpc.admin.createExamBundle.useMutation({
@@ -196,6 +249,9 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
     } else {
       setEmailText("");
       setEmailImage(null);
+      setSections([emptySection(1)]);
+      setFeedbackText("");
+      setFeedbackFile(null);
     }
   };
 
@@ -216,6 +272,9 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
     setPreSeen(null);
     setFormulae(null);
     setQuestions([emptyQuestion()]);
+    setSections([emptySection(1)]);
+    setFeedbackText("");
+    setFeedbackFile(null);
     setCreatedId(null);
   };
 
@@ -261,6 +320,22 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
     if (examType === "objective_test" && bundleQuestions && bundleQuestions.length === 0) {
       return toast.error("Add at least one objective question with a prompt and options");
     }
+    const bundleSections =
+      examType === "case_study"
+        ? sections
+            .map((section, index) => ({
+              sectionNumber: index + 1,
+              title: section.title.trim() || `Task ${index + 1}`,
+              introduction: section.introduction.trim() || undefined,
+              scenario: section.scenario.trim() || undefined,
+              question: section.question.trim() || undefined,
+              durationSeconds: Math.max(60, Math.round(Number(section.duration || 45) * 60)),
+            }))
+            .filter((section) => section.title.trim())
+        : undefined;
+    if (examType === "case_study" && bundleSections && bundleSections.length === 0) {
+      return toast.error("Add at least one case-study section (task)");
+    }
     const payload: Parameters<typeof createBundle.mutate>[0] = {
       title: title.trim(),
       examType,
@@ -277,6 +352,9 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
       reference: reference ?? undefined,
       emailText: examType === "case_study" ? emailText.trim() || undefined : undefined,
       emailImage: examType === "case_study" ? emailImage ?? undefined : undefined,
+      caseStudySections: bundleSections,
+      feedbackText: examType === "case_study" ? feedbackText.trim() || undefined : undefined,
+      feedbackFile: examType === "case_study" ? feedbackFile ?? undefined : undefined,
       objectiveQuestions: bundleQuestions,
     };
     createBundle.mutate(payload);
@@ -395,19 +473,56 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
 
           {/* Conditional body: case-study → email attachment; objective test → question builder */}
           {isCaseStudy ? (
-            <section>
-              <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Mail className="h-4 w-4" /> Email attachment · case study</div>
-              <div className="grid gap-3 lg:grid-cols-2">
-                <div className="rounded-xl border border-white/10 bg-[#18093c]/60 p-4">
-                  <p className="text-sm font-semibold text-white">Type the email content</p>
-                  <Textarea value={emailText} onChange={(event) => setEmailText(event.target.value)} placeholder="Paste or type the email that accompanies the case-study task…" className="mt-2 min-h-28 border-white/10 bg-[#0c0524] text-white" />
+            <>
+              <section>
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Mail className="h-4 w-4" /> Email attachment · case study</div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-[#18093c]/60 p-4">
+                    <p className="text-sm font-semibold text-white">Type the email content</p>
+                    <Textarea value={emailText} onChange={(event) => setEmailText(event.target.value)} placeholder="Paste or type the email that accompanies the case-study task…" className="mt-2 min-h-28 border-white/10 bg-[#0c0524] text-white" />
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-white">Or attach an email image</p>
+                    <AttachSlot label="Email image" icon={<ImageUp className="h-4 w-4 text-[#00e5ff]" />} hint="A PNG or JPEG screenshot of the email." accept="image/png,image/jpeg" value={emailImage} onChange={setEmailImage} note="PNG / JPEG only, up to 10 MB." />
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-white">Or attach an email image</p>
-                  <AttachSlot label="Email image" icon={<ImageUp className="h-4 w-4 text-[#00e5ff]" />} hint="A PNG or JPEG screenshot of the email." accept="image/png,image/jpeg" value={emailImage} onChange={setEmailImage} note="PNG / JPEG only, up to 10 MB." />
+              </section>
+
+              <section>
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> Sections / tasks & timing</div>
+                <p className="mb-3 text-xs leading-5 text-white/50">
+                  Add each case-study task in order. Each section has its own title, time limit, instructions, optional scenario and task wording (like the example Cartn Mock Exams with four 45-minute tasks).
+                </p>
+                <div className="space-y-4">
+                  {sections.map((section, index) => (
+                    <SectionEditor
+                      key={index}
+                      section={section}
+                      index={index}
+                      onChange={(updated) => setSections((list) => list.map((s, i) => (i === index ? updated : s)))}
+                      onRemove={() => setSections((list) => (list.length > 1 ? list.filter((_, i) => i !== index) : list))}
+                    />
+                  ))}
                 </div>
-              </div>
-            </section>
+                <Button type="button" variant="outline" className="mt-4 border-[#00e5ff] text-[#00e5ff]" onClick={() => setSections((list) => [...list, emptySection(list.length + 1)])}>
+                  <Plus className="mr-2 h-4 w-4" /> Add section
+                </Button>
+              </section>
+
+              <section>
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><FileText className="h-4 w-4" /> Exam feedback</div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-[#18093c]/60 p-4">
+                    <p className="text-sm font-semibold text-white">Type the feedback / suggested solutions</p>
+                    <Textarea value={feedbackText} onChange={(event) => setFeedbackText(event.target.value)} placeholder="Paste or type the marking guide / suggested solutions…" className="mt-2 min-h-28 border-white/10 bg-[#0c0524] text-white" />
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-white">Or attach a feedback document</p>
+                    <AttachSlot label="Feedback document" icon={<FileText className="h-4 w-4 text-[#00e5ff]" />} hint="Suggested solutions / answers and marking guide." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={feedbackFile} onChange={setFeedbackFile} note="PDF, document, PNG or JPG." />
+                  </div>
+                </div>
+              </section>
+            </>
           ) : (
             <section>
               <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><ListChecks className="h-4 w-4" /> Objective test — questions by topic</div>

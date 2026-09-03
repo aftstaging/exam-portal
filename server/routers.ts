@@ -139,6 +139,17 @@ export const appRouter = router({
       reference: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
       emailText: z.string().max(50000).optional(),
       emailImage: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
+      caseStudySections: z.array(z.object({
+        sectionNumber: z.number().int().min(1).max(100),
+        title: z.string().max(240),
+        introduction: z.string().max(10000).optional(),
+        scenario: z.string().max(100000).optional(),
+        question: z.string().max(100000).optional(),
+        durationSeconds: z.number().int().min(60).max(86400),
+        cooldownSeconds: z.number().int().min(0).max(86400).optional(),
+      })).max(100).optional(),
+      feedbackText: z.string().max(100000).optional(),
+      feedbackFile: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
       objectiveQuestions: z.array(z.object({
         topic: z.string().max(180),
         prompt: z.string().max(10000),

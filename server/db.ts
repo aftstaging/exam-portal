@@ -528,6 +528,15 @@ export type ExamBundleObjectiveQuestion = {
   rationale?: string[];
   attachment?: ExamBundleFile;
 };
+export type ExamBundleCaseStudySection = {
+  sectionNumber: number;
+  title: string;
+  introduction?: string;
+  scenario?: string;
+  question?: string;
+  durationSeconds: number;
+  cooldownSeconds?: number;
+};
 export type ExamBundleInput = {
   userId: number;
   title: string;
@@ -548,6 +557,11 @@ export type ExamBundleInput = {
   // case-study email: either typed text or an image file
   emailText?: string;
   emailImage?: ExamBundleFile;
+  // case-study exam sections (tasks) with per-section timing
+  caseStudySections?: ExamBundleCaseStudySection[];
+  // exam feedback: either typed text or a file (e.g. suggested solutions / marking guide)
+  feedbackText?: string;
+  feedbackFile?: ExamBundleFile;
   // objective-test questions built inline in the studio (topics, questions, answers, feedback)
   objectiveQuestions?: ExamBundleObjectiveQuestion[];
 };
@@ -657,7 +671,33 @@ export async function createExamBundle(input: ExamBundleInput) {
     }
   }
 
-  const uploadResource = async (kind: "pre_seen" | "formulae" | "reference" | "email" | "printable_pdf", file: ExamBundleFile, resTitle: string) => {
+  // 3c. Create case-study sections (tasks with per-section timing) if authored inline in the studio
+  const sectionNumbers: number[] = [];
+  if (input.caseStudySections && input.caseStudySections.length) {
+    for (const section of input.caseStudySections) {
+      const secNumber = Math.max(1, Math.round(section.sectionNumber) || 0);
+      const secTitle = section.title?.trim();
+      if (!secTitle) continue;
+      const existing = await db.select({ id: caseStudySections.id }).from(caseStudySections).where(and(eq(caseStudySections.mockExamId, mockExamId), eq(caseStudySections.sectionNumber, secNumber))).limit(1);
+      if (existing.length) continue;
+      const created = (await db.insert(caseStudySections).values({
+        mockExamId,
+        sectionNumber: secNumber,
+        title: secTitle.slice(0, 240),
+        introduction: section.introduction?.trim() || null,
+        scenario: section.scenario?.trim() || null,
+        question: section.question?.trim() || null,
+        durationSeconds: Math.max(60, Math.round(section.durationSeconds) || 2700),
+        cooldownSeconds: Math.max(0, Math.round(section.cooldownSeconds ?? 30)),
+      }).$returningId())[0]?.id;
+      if (created) sectionNumbers.push(secNumber);
+    }
+    if (sectionNumbers.length) {
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "case_study_section", entityId: mockExamId, action: "bundle_created", metadata: JSON.stringify({ mockExamId, sectionNumbers }) });
+    }
+  }
+
+  const uploadResource = async (kind: "pre_seen" | "formulae" | "reference" | "email" | "printable_pdf" | "feedback", file: ExamBundleFile, resTitle: string) => {
     if (!file || !file.base64) return;
     const payload = file.base64.includes(",") ? file.base64.split(",")[1] : file.base64;
     const bytes = Buffer.from(payload, "base64");
@@ -683,6 +723,13 @@ export async function createExamBundle(input: ExamBundleInput) {
   }
   if (input.emailImage && input.emailImage.base64) {
     await uploadResource("email", input.emailImage, `${title} · Email`);
+  }
+
+  // 6b. Exam feedback - either typed text or a document (e.g. suggested solutions / marking guide)
+  if (input.feedbackText && input.feedbackText.trim()) {
+    await db.insert(resources).values({ productId, title: `${title} · Feedback`, kind: "feedback", fileKey: null, fileUrl: null, status: "draft" });
+  } else if (input.feedbackFile && input.feedbackFile.base64) {
+    await uploadResource("feedback", input.feedbackFile, `${title} · Feedback`);
   }
 
   // 7. Auto-generate the branded AFT PDF for a manually created case-study exam
