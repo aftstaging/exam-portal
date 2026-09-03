@@ -4,12 +4,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { PublicHeader } from "@/components/PortalHeader";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { calculateExamExpression } from "@shared/examCalculator";
 import { ObjectiveAnswer, objectiveAnswerMatches, parseObjectiveQuestion, scoreObjectiveAnswers, selectObjectiveQuestions } from "@shared/objectiveTest";
 
 type Stage = "course" | "extra-instructions" | "customize" | "mock-instructions" | "welcome" | "quiz";
+
+function shuffleQuestions<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
 
 export default function ObjectiveTestsPanel() {
   const mockExamsQuery = trpc.catalogue.mockExams.useQuery(undefined, { retry: false });
@@ -18,6 +29,7 @@ export default function ObjectiveTestsPanel() {
   const [timed, setTimed] = useState(true);
   const [topic, setTopic] = useState("All topics");
   const [questionCount, setQuestionCount] = useState<number | "all">(20);
+  const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof parseObjectiveQuestion>[]>([]);
   const [question, setQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, ObjectiveAnswer>>({});
   const [flags, setFlags] = useState<Set<number>>(new Set());
@@ -31,19 +43,20 @@ export default function ObjectiveTestsPanel() {
   const allQuestions = useMemo(() => rawQuestions.map((item) => parseObjectiveQuestion(item)), [rawQuestions]);
   const topics = useMemo(() => ["All topics", ...Array.from(new Set(allQuestions.map((item) => item.topic)))], [allQuestions]);
   const questions = selectObjectiveQuestions(allQuestions, topic, questionCount);
-  const current = questions[question];
-  const score = useMemo(() => scoreObjectiveAnswers(questions, answers), [answers, questions]);
+  const activeQuestions = stage === "quiz" ? quizQuestions : questions;
+  const current = activeQuestions[question];
+  const score = useMemo(() => scoreObjectiveAnswers(activeQuestions, answers), [activeQuestions, answers]);
   const title = selectedMock?.mockExam.title ?? "AFT Objective Test Practice";
-  const reset = () => { setAnswers({}); setFlags(new Set()); setSubmitted(false); setQuestion(0); setSeconds(90 * 60); };
-  const begin = (next: Stage) => { reset(); setStage(next); };
+  const resetAttempt = () => { setAnswers({}); setFlags(new Set()); setSubmitted(false); setQuestion(0); setSeconds(90 * 60); };
+  const begin = (next: Stage) => { resetAttempt(); if (next === "quiz") setQuizQuestions(shuffleQuestions(selectObjectiveQuestions(allQuestions, topic, questionCount))); setStage(next); };
   const toggleFlag = () => setFlags((old) => { const next = new Set(old); next.has(question) ? next.delete(question) : next.add(question); return next; });
   const time = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
   useEffect(() => {
-    if (stage !== "quiz" || !timed || submitted || seconds <= 0 || !questions.length) return;
+    if (stage !== "quiz" || !timed || submitted || seconds <= 0 || !activeQuestions.length) return;
     const timer = window.setInterval(() => setSeconds((value) => { if (value <= 1) { window.clearInterval(timer); setSubmitted(true); toast.info("Time is up. Your practice set has been submitted for review."); return 0; } return value - 1; }), 1000);
     return () => window.clearInterval(timer);
-  }, [stage, timed, submitted, seconds, questions.length]);
+  }, [stage, timed, submitted, seconds, activeQuestions.length]);
 
   if (mockExamsQuery.isLoading || questionQuery.isLoading) return <Shell><div className="h-72 animate-pulse rounded-2xl border border-white/10 bg-[#120730]" /></Shell>;
   if (!selectedMock) return <Shell><EmptyState /></Shell>;
@@ -69,9 +82,10 @@ function InstructionScreen({ title, label, copy, action, onAction, onBack }: { t
 
 function WelcomeScreen({ title, onStart, onBack }: { title: string; onStart: () => void; onBack: () => void }) { return <div className="mx-auto flex min-h-[560px] max-w-4xl items-center"><Card className="w-full border-[#00e5ff]/30 bg-[#120730]"><CardContent className="p-8 text-center sm:p-14"><Badge className="bg-[#102b36] text-[#00ff88]">Welcome to your online mock</Badge><h1 className="mt-6 text-4xl font-black text-white sm:text-5xl">Ready to begin?</h1><p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-[#c4b5fd]">{title} will open in the AFT assessment workspace. Work through each question, use the question navigator to move around, and submit when you are ready.</p><div className="mt-9 flex flex-wrap justify-center gap-3"><Button variant="outline" className="border-[#00e5ff] text-white" onClick={onBack}>Back</Button><Button className="aft-button" onClick={onStart}>Start mock exam <ChevronRight className="ml-2 h-4 w-4" /></Button></div></CardContent></Card></div>; }
 
-function CustomizeScreen({ topics, topic, setTopic, questionCount, setQuestionCount, timed, setTimed, time, onStart, onBack }: { topics: string[]; topic: string; setTopic: (value: string) => void; questionCount: number | "all"; setQuestionCount: (value: number | "all") => void; timed: boolean; setTimed: (value: boolean) => void; time: string; onStart: () => void; onBack: () => void }) { return <div className="mx-auto max-w-5xl"><button className="mb-6 text-sm font-bold text-[#00e5ff]" onClick={onBack}>← Back to instructions</button><div className="grid gap-5"><Card className="border-white/10 bg-[#120730]"><CardHeader><CardTitle className="text-white">Customize your test</CardTitle><p className="text-sm text-[#c4b5fd]">Choose your question bank and exam conditions.</p></CardHeader><CardContent className="space-y-5"><label className="block text-sm font-bold text-white">Topic<select value={topic} onChange={(event) => setTopic(event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-[#18093c] px-3 text-sm font-normal text-white">{topics.map((item) => <option key={item}>{item}</option>)}</select></label><label className="block text-sm font-bold text-white">Number of questions<select value={questionCount} onChange={(event) => setQuestionCount(event.target.value === "all" ? "all" : Number(event.target.value))} className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-[#18093c] px-3 text-sm font-normal text-white"><option value="20">20 questions</option><option value="60">60 questions</option></select></label><div className="flex items-center justify-between rounded-xl bg-[#102b36] p-4"><div><div className="font-bold text-white">Timed mode</div><div className="text-xs text-[#c4b5fd]">{timed ? `${time} starting time` : "No countdown"}</div></div><button aria-label="Toggle timed mode" onClick={() => setTimed(!timed)} className={`h-6 w-11 rounded-full p-1 ${timed ? "bg-[#00ff88]" : "bg-[#24105c]"}`}><span className={`block h-4 w-4 rounded-full bg-white transition ${timed ? "translate-x-5" : ""}`} /></button></div><Button className="w-full aft-button" onClick={onStart}>Start test <ChevronRight className="ml-2 h-4 w-4" /></Button></CardContent></Card></div></div>; }
+function CustomizeScreen({ topics, topic, setTopic, questionCount, setQuestionCount, timed, setTimed, time, onStart, onBack }: { topics: string[]; topic: string; setTopic: (value: string) => void; questionCount: number | "all"; setQuestionCount: (value: number | "all") => void; timed: boolean; setTimed: (value: boolean) => void; time: string; onStart: () => void; onBack: () => void }) { return <div className="mx-auto max-w-5xl"><button className="mb-6 text-sm font-bold text-[#00e5ff]" onClick={onBack}>← Back to instructions</button><div className="grid gap-5"><Card className="border-white/10 bg-[#120730]"><CardHeader><CardTitle className="text-white">Customize your test</CardTitle><p className="text-sm text-[#c4b5fd]">Choose your question bank and exam conditions.</p></CardHeader><CardContent className="space-y-5"><label className="block text-sm font-bold text-white">Topic<select value={topic} onChange={(event) => setTopic(event.target.value)} className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-[#18093c] px-3 text-sm font-normal text-white">{topics.map((item) => <option key={item}>{item}</option>)}</select></label><label className="block text-sm font-bold text-white">Number of questions<Input type="number" aria-label="Number of questions" min={1} max={100} value={questionCount === "all" ? 60 : questionCount} onChange={(event) => { const value = Math.max(1, Math.min(100, Number(event.target.value))); setQuestionCount(Number.isNaN(value) ? 1 : value); }} className="mt-2 h-11 w-full rounded-lg border border-white/10 bg-[#18093c] px-3 text-sm font-normal text-white" /></label><div className="flex items-center justify-between rounded-xl bg-[#102b36] p-4"><div><div className="font-bold text-white">Timed mode</div><div className="text-xs text-[#c4b5fd]">{timed ? `${time} starting time` : "No countdown"}</div></div><button aria-label="Toggle timed mode" onClick={() => setTimed(!timed)} className={`h-6 w-11 rounded-full p-1 ${timed ? "bg-[#00ff88]" : "bg-[#24105c]"}`}><span className={`block h-4 w-4 rounded-full bg-white transition ${timed ? "translate-x-5" : ""}`} /></button></div><Button className="w-full aft-button" onClick={onStart}>Start test <ChevronRight className="ml-2 h-4 w-4" /></Button></CardContent></Card></div></div>; }
 
 function QuizScreen({ title, questions, current, question, setQuestion, answers, setAnswers, flags, toggleFlag, timed, time, submitted, setSubmitted, score, onReset }: { title: string; questions: ReturnType<typeof parseObjectiveQuestion>[]; current?: ReturnType<typeof parseObjectiveQuestion>; question: number; setQuestion: (value: number) => void; answers: Record<number, ObjectiveAnswer>; setAnswers: React.Dispatch<React.SetStateAction<Record<number, ObjectiveAnswer>>>; flags: Set<number>; toggleFlag: () => void; timed: boolean; time: string; submitted: boolean; setSubmitted: (value: boolean) => void; score: number; onReset: () => void }) {
+  const [panel, setPanel] = useState<null | "calculator" | "scratchpad" | "navigation">(null);
   if (!current) return <EmptyState />;
   const darkControl = "bg-[#18093c] text-white hover:bg-[#24105c]";
   return <div data-objective-workspace="reference-style" className="objective-reference-workspace flex min-h-screen items-start bg-[#0c0524] px-3 py-4 text-[#18212b] sm:items-center sm:px-6 sm:py-8 lg:px-10">
@@ -98,14 +112,79 @@ function QuizScreen({ title, questions, current, question, setQuestion, answers,
     <footer className="flex min-h-[66px] flex-wrap items-center justify-between gap-3 border-t border-slate-300 bg-[#d9d9d9] px-4 py-3 sm:px-6">
       <button className={`${darkControl} inline-flex h-8 items-center px-3 text-xs font-semibold`} onClick={() => setSubmitted(true)}>↪ End Assessment</button>
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={() => toast.info("Calculator is available from the Objective assessment toolbar.")}>Calculator</button>
-        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={() => toast.info("Scratch Pad is disabled for this AFT assessment attempt.")}>✎ Scratch Pad</button>
-        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={toggleFlag}>⚑ {flags.has(question) ? "Flagged" : "Flag"}</button>
-        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={() => toast.info(`Question ${question + 1} of ${questions.length}`)}>Navigation</button>
+        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={() => setPanel("calculator")}>Calculator</button>
+        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={() => setPanel("scratchpad")}>✎ Scratch Pad</button>
+        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={toggleFlag} title={flags.has(question) ? "Remove flag" : "Flag for review"}>{flags.has(question) ? "⚑ Flagged" : "⚑ Flag"}</button>
+        <button className={`${darkControl} h-8 px-3 text-xs font-semibold`} onClick={() => setPanel("navigation")}>Navigation</button>
         <button className={`${darkControl} h-8 px-3 text-xs font-semibold disabled:opacity-40`} disabled={question === 0} onClick={() => setQuestion(Math.max(0, question - 1))}>‹ Back</button>
         {question < questions.length - 1 ? <button className="h-8 bg-[#18093c] px-4 text-xs font-semibold text-white hover:bg-[#24105c]" onClick={() => setQuestion(Math.min(questions.length - 1, question + 1))}>Next ›</button> : <button className="h-8 bg-[#18093c] px-4 text-xs font-semibold text-white hover:bg-[#24105c]" onClick={() => { setSubmitted(true); toast.success("Practice set submitted"); }}>Submit ›</button>}
       </div>
     </footer>
+    </div>
+    {panel === "calculator" && <CalculatorModal onClose={() => setPanel(null)} />}
+    {panel === "scratchpad" && <ScratchPadModal onClose={() => setPanel(null)} />}
+    {panel === "navigation" && <NavigationModal questions={questions} question={question} setQuestion={(value) => { setQuestion(value); setPanel(null); }} answers={answers} flags={flags} onClose={() => setPanel(null)} />}
+  </div>;
+}
+
+function CalculatorModal({ onClose }: { onClose: () => void }) {
+  const [expression, setExpression] = useState("");
+  const [display, setDisplay] = useState("0");
+  const [notes, setNotes] = useState("");
+  const press = (value: string) => {
+    if (value === "C") { setExpression(""); setDisplay("0"); return; }
+    if (value === "⌫") { const next = expression.slice(0, -1); setExpression(next); setDisplay(next || "0"); return; }
+    if (value === "=") { try { const result = calculateExamExpression(expression); setExpression(result); setDisplay(result); } catch { setDisplay("Invalid calculation"); } return; }
+    const next = `${expression}${value}`;
+    setExpression(next);
+    setDisplay(next);
+  };
+  return <ModalShell title="Calculator" onClose={onClose}>
+    <div className="exam-calculator" style={{ background: "transparent" }}>
+      <div className="exam-calculator-display">{display}</div>
+      <div className="exam-calculator-grid">{["C", "⌫", "%", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "(", ")", "="].map((key) => <button key={key} type="button" onClick={() => press(key)} className={key === "=" ? "exam-calculator-key exam-calculator-equals" : key === "C" ? "exam-calculator-key exam-calculator-clear" : "exam-calculator-key"}>{key}</button>)}</div>
+    </div>
+    <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Calculator working notes (not saved to your submission)" className="mt-4 min-h-20 w-full resize-none border-slate-300 bg-white text-[#18212b] placeholder:text-slate-400" />
+  </ModalShell>;
+}
+
+function ScratchPadModal({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState("");
+  return <ModalShell title="Scratch Pad" onClose={onClose}>
+    <Textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="Take notes here for this assessment. Content is kept for the current session only and is not submitted." className="min-h-56 w-full resize-none border-slate-300 bg-white text-[#18212b] placeholder:text-slate-400" />
+    <div className="mt-2 text-right text-xs text-slate-500">{text.length} characters</div>
+  </ModalShell>;
+}
+
+function NavigationModal({ questions, question, setQuestion, answers, flags, onClose }: { questions: ReturnType<typeof parseObjectiveQuestion>[]; question: number; setQuestion: (value: number) => void; answers: Record<number, ObjectiveAnswer>; flags: Set<number>; onClose: () => void }) {
+  const hasAnswer = (index: number) => answers[index] !== undefined && !(Array.isArray(answers[index]) && (answers[index] as unknown[]).length === 0);
+  const answeredCount = questions.filter((_, index) => hasAnswer(index)).length;
+  return <ModalShell title="Question navigation" onClose={onClose}>
+    <div className="mb-4 flex flex-wrap gap-4 text-xs text-slate-600">
+      <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-sm border border-slate-300 bg-white" /> Not answered</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-sm border border-slate-300 bg-[#c9e7ff]" /> Answered</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded-sm border border-slate-300 bg-[#ffe3a3]" /> Flagged</span>
+      <span className="ml-auto font-semibold">{answeredCount} of {questions.length} answered</span>
+    </div>
+    <div className="grid max-h-64 grid-cols-6 gap-2 overflow-y-auto pr-1 sm:grid-cols-8">
+      {questions.map((item, index) => {
+        const answered = hasAnswer(index);
+        const flagged = flags.has(index);
+        const active = index === question;
+        return <button key={index} type="button" onClick={() => setQuestion(index)} className={`flex h-9 items-center justify-center rounded border text-sm font-semibold ${active ? "border-[#0877bd] bg-[#0877bd] text-white" : flagged ? "border-[#e0a800] bg-[#ffe3a3] text-[#18212b]" : answered ? "border-[#3a9bdc] bg-[#c9e7ff] text-[#18212b]" : "border-slate-300 bg-white text-[#18212b] hover:border-[#0877bd]"} ${flagged && active ? "!border-[#0877bd] !bg-[#0877bd] !text-white" : ""}`}>{index + 1}</button>;
+      })}
+    </div>
+  </ModalShell>;
+}
+
+function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c0524]/70 p-4" onClick={onClose}>
+    <div className="w-full max-w-lg rounded-lg border border-slate-300 bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-[#18212b]">{title}</h2>
+        <button type="button" onClick={onClose} aria-label="Close" className="flex h-7 w-7 items-center justify-center rounded border border-slate-300 text-slate-500 hover:bg-slate-100">✕</button>
+      </div>
+      {children}
     </div>
   </div>;
 }

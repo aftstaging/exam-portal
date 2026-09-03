@@ -468,6 +468,44 @@ export async function updateProductPrice(input: { productId: number; priceCents:
   return { success: true, priceCents: input.priceCents };
 }
 
+export async function updateAdminProduct(input: { userId: number; productId: number; title: string; category: "case_study" | "objective_test" | "marking" | "resource"; description?: string; featuredImageUrl?: string; priceCents: number; accessDays: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = (await db.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];
+  if (!existing) throw new Error("Product not found");
+  const title = input.title.trim();
+  if (!title) throw new Error("Product title is required");
+  if (!Number.isInteger(input.priceCents) || input.priceCents < 0) throw new Error("Price cannot be negative");
+  if (!Number.isInteger(input.accessDays) || input.accessDays < 1 || input.accessDays > 3650) throw new Error("Access period must be between 1 and 3650 days");
+  const description = input.description?.trim() ?? existing.description;
+  const featuredImageUrl = input.featuredImageUrl?.trim() ?? existing.featuredImageUrl;
+  await db.update(products).set({
+    title,
+    category: input.category,
+    description,
+    featuredImageUrl,
+    priceCents: Math.round(input.priceCents),
+    accessDays: input.accessDays,
+  }).where(eq(products.id, input.productId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: input.productId, action: "updated", metadata: JSON.stringify({ title, category: input.category, description, featuredImageUrl, priceCents: input.priceCents, accessDays: input.accessDays }) });
+  return { success: true };
+}
+
+export async function uploadProductImage(input: { userId: number; productId: number; fileName: string; mimeType: string; base64: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = (await db.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];
+  if (!existing) throw new Error("Product not found");
+  const allowed = new Set(["image/png", "image/jpeg"]);
+  if (!input.mimeType || !allowed.has(input.mimeType)) throw new Error("Product image must be a PNG or JPEG");
+  const payload = input.base64.includes(",") ? input.base64.split(",")[1] : input.base64;
+  const bytes = Buffer.from(payload, "base64");
+  if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new Error("Product image must be between 1 byte and 10 MB");
+  const ext = input.mimeType === "image/png" ? "png" : "jpg";
+  const uploaded = await storagePut(`product-images/${input.productId}/${Date.now()}-${(input.fileName || "product-image").replace(/[^a-zA-Z0-9._-]/g, "-")}.${ext}`, bytes, input.mimeType);
+  await db.update(products).set({ featuredImageUrl: uploaded.url }).where(eq(products.id, input.productId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: input.productId, action: "image_uploaded", metadata: JSON.stringify({ key: uploaded.key, mimeType: input.mimeType }) });
+  return { key: uploaded.key, url: uploaded.url };
+}
+
 export async function claimFreeProduct(input: { userId: number; productId: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const product = (await db.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];

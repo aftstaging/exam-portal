@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight,
@@ -6,10 +6,12 @@ import {
   CreditCard,
   FileText,
   GraduationCap,
+  ImageUp,
   Layers3,
   ListChecks,
   LockKeyhole,
   Package,
+  Pencil,
   Plus,
   ShieldCheck,
   Trash2,
@@ -620,6 +622,7 @@ function ProductsPanel({ publish }: { publish: { mutate: (input: { productId: nu
   const [image, setImage] = useState("");
   const [price, setPrice] = useState("149");
   const [accessDays, setAccessDays] = useState("30");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const utils = trpc.useUtils();
   const createProduct = trpc.admin.createProduct.useMutation({
     onSuccess: () => { toast.success("Product created as draft"); utils.admin.products.invalidate(); setTitle(""); setImage(""); },
@@ -666,8 +669,16 @@ function ProductsPanel({ publish }: { publish: { mutate: (input: { productId: nu
               <div key={product.id} className="rounded-xl border border-white/10 bg-[#18093c]/40 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="min-w-0 truncate text-sm font-semibold text-white">{product.title}</span>
-                  <StatusAction status={product.status} onPublish={() => publish.mutate({ productId: product.id, status: "published" })} onArchive={() => publish.mutate({ productId: product.id, status: "archived" })} />
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" className="h-7 border-[#f4c44e] px-2 text-[11px] text-[#f4c44e]" onClick={() => setEditingId(editingId === product.id ? null : product.id)}>
+                      <Pencil className="mr-1 h-3 w-3" /> Edit
+                    </Button>
+                    <StatusAction status={product.status} onPublish={() => publish.mutate({ productId: product.id, status: "published" })} onArchive={() => publish.mutate({ productId: product.id, status: "archived" })} />
+                  </div>
                 </div>
+                {product.featuredImageUrl && (
+                  <img src={product.featuredImageUrl} alt={product.title} className="mt-3 h-24 w-full rounded-lg object-cover" />
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="text-xs capitalize text-white/40">{product.category}</span>
                   {product.priceCents > 0 && (
@@ -676,11 +687,85 @@ function ProductsPanel({ publish }: { publish: { mutate: (input: { productId: nu
                   <Input aria-label={`Access days for ${product.title}`} defaultValue={String(product.accessDays)} type="number" min="1" max="3650" className="h-8 w-24 border-white/10 bg-[#0c0524] text-white" onBlur={(event) => { const days = Number(event.target.value); if (days !== product.accessDays) updateAccess.mutate({ productId: product.id, accessDays: days }); }} />
                   <span className="text-xs text-white/45">days</span>
                 </div>
+                {editingId === product.id && <ProductEditor product={product} onSaved={() => { setEditingId(null); productsQuery.refetch(); }} />}
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ProductEditor({ product, onSaved }: { product: { id: number; title: string; category: string; description?: string | null; featuredImageUrl?: string | null; priceCents: number; accessDays: number }; onSaved: () => void }) {
+  const [title, setTitle] = useState(product.title);
+  const [category, setCategory] = useState<"case_study" | "objective_test" | "marking" | "resource">(product.category as "case_study" | "objective_test" | "marking" | "resource");
+  const [description, setDescription] = useState(product.description ?? "");
+  const [imageUrl, setImageUrl] = useState(product.featuredImageUrl ?? "");
+  const [price, setPrice] = useState((product.priceCents / 100).toFixed(2));
+  const [accessDays, setAccessDays] = useState(String(product.accessDays));
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const utils = trpc.useUtils();
+
+  const updateProduct = trpc.admin.updateProduct.useMutation({
+    onSuccess: () => { toast.success("Product updated"); utils.admin.products.invalidate(); onSaved(); },
+    onError: (error) => toast.error(error.message),
+  });
+  const uploadImage = trpc.admin.uploadProductImage.useMutation({
+    onSuccess: (data) => { toast.success("Image uploaded"); setImageUrl(data.url); utils.admin.products.invalidate(); },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const handleImageFile = (file: File) => {
+    if (!file) return;
+    const mimeType = file.type;
+    if (mimeType !== "image/png" && mimeType !== "image/jpeg") {
+      toast.error("Product image must be a PNG or JPEG");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = String(reader.result);
+      setUploading(true);
+      uploadImage.mutate({ productId: product.id, fileName: file.name, mimeType, base64 }, { onSettled: () => setUploading(false) });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <div className="mt-4 space-y-3 rounded-xl border border-[#f4c44e]/30 bg-[#0c0524]/60 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-[.14em] text-[#f4c44e]">Edit product</span>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-white/50" onClick={onSaved}>Close</Button>
+      </div>
+      <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Product title" className="border-white/10 bg-[#0c0524] text-white" aria-label="Product title" />
+      <select value={category} onChange={(event) => setCategory(event.target.value as typeof category)} className="h-10 w-full rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white" aria-label="Category">
+        <option value="objective_test">Objective test</option>
+        <option value="case_study">Case study</option>
+        <option value="marking">Instructor marking</option>
+        <option value="resource">Resource</option>
+      </select>
+      <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" className="min-h-20 border-white/10 bg-[#0c0524] text-white" />
+      <div className="grid grid-cols-2 gap-2">
+        <Input type="number" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Price ZAR" className="border-white/10 bg-[#0c0524] text-white" aria-label="Price" />
+        <Input type="number" value={accessDays} onChange={(event) => setAccessDays(event.target.value)} placeholder="Access days" className="border-white/10 bg-[#0c0524] text-white" aria-label="Access days" />
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="h-9 border-[#00e5ff] px-3 text-xs text-[#00e5ff]" disabled={uploading || uploadImage.isPending} onClick={() => fileRef.current?.click()}>
+            <ImageUp className="mr-1 h-3 w-3" /> {uploading ? "Uploading…" : "Upload image (PNG/JPEG)"}
+          </Button>
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(event) => { const file = event.target.files?.[0]; if (file) handleImageFile(file); event.target.value = ""; }} />
+        </div>
+        <Input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="Or paste an image URL (https://…)" className="border-white/10 bg-[#0c0524] text-white" aria-label="Featured image URL" />
+        {(imageUrl || product.featuredImageUrl) && (
+          <img src={imageUrl || product.featuredImageUrl || ""} alt="Product preview" className="h-28 w-full rounded-lg object-cover" />
+        )}
+      </div>
+      <Button className="aft-button w-full" disabled={updateProduct.isPending || !title.trim()} onClick={() => updateProduct.mutate({ productId: product.id, title, category, description, featuredImageUrl: imageUrl || undefined, priceCents: Math.round(Number(price || 0) * 100), accessDays: Number(accessDays) || 30 })}>
+        Save product
+      </Button>
     </div>
   );
 }
