@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle } from "./db";
+import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, validateCoupon } from "./db";
 import { createCheckoutSession } from "./stripe";
 import { isAdminRole } from "@shared/integrity";
 import { getDb } from "./db";
@@ -83,15 +83,34 @@ export const appRouter = router({
   }),
   payments: router({
     createCheckout: protectedProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(({ ctx, input }) => createCheckoutSession({ userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, productId: input.productId, origin: `${ctx.req.protocol}://${ctx.req.get("host")}` })),
-    createPayfastCartCheckout: protectedProcedure.input(z.object({ productIds: z.array(z.number().int().positive()).min(1).max(20) })).mutation(async ({ ctx, input }) => {
+    createPayfastCartCheckout: protectedProcedure.input(z.object({ productIds: z.array(z.number().int().positive()).min(1).max(20), couponCode: z.string().max(40).optional() })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "Database unavailable" });
       const selected = await db.select().from(products).where(inArray(products.id, Array.from(new Set(input.productIds))));
       const available = selected.filter((product) => product.status === "published" && product.priceCents > 0);
       if (!available.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Your cart has no paid products" });
+      const subtotal = available.reduce((sum, product) => sum + product.priceCents, 0);
+      let amountCents = subtotal;
+      let couponCode: string | null = null;
+      if (input.couponCode) {
+        try {
+          const validated = await validateCoupon({ code: input.couponCode, subtotalCents: subtotal });
+          amountCents = validated.totalCents;
+          couponCode = validated.code;
+        } catch (error) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Invalid coupon code" });
+        }
+      }
       const settings = await getPayFastGatewaySettings();
-      const checkout = createPayFastHostedCheckout({ productId: available[0].id, userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, origin: `${ctx.req.protocol}://${ctx.req.get("host")}`, mode: settings.mode as PayFastMode, amount: (available.reduce((sum, product) => sum + product.priceCents, 0) / 100).toFixed(2), itemName: `AFT cart · ${available.length} product${available.length === 1 ? "" : "s"}`, extraFields: { custom_str3: available.map((product) => product.id).join(",") } });
+      const checkout = createPayFastHostedCheckout({ productId: available[0].id, userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, origin: `${ctx.req.protocol}://${ctx.req.get("host")}`, mode: settings.mode as PayFastMode, amount: (amountCents / 100).toFixed(2), itemName: `AFT cart · ${available.length} product${available.length === 1 ? "" : "s"}`, extraFields: { custom_str3: available.map((product) => product.id).join(","), ...(couponCode ? { custom_str4: couponCode } : {}) } });
       if (!checkout) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PayFast is not configured for the selected gateway mode" });
       return checkout;
+    }),
+    validateCoupon: protectedProcedure.input(z.object({ code: z.string().min(1).max(40), subtotalCents: z.number().int().min(0) })).mutation(async ({ input }) => {
+      try {
+        return await validateCoupon({ code: input.code, subtotalCents: input.subtotalCents });
+      } catch (error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Invalid coupon code" });
+      }
     }),
     claimFreeProduct: protectedProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(({ ctx, input }) => claimFreeProduct({ userId: ctx.user.id, productId: input.productId })),
     createPayfastCheckout: protectedProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
@@ -173,6 +192,9 @@ export const appRouter = router({
     grantAccess: adminProcedure.input(z.object({ userId: z.number().int().positive(), productId: z.number().int().positive(), accessDays: z.number().int().min(1).max(3650).optional() })).mutation(({ ctx, input }) => adminGrantEntitlement({ adminUserId: ctx.user.id, userId: input.userId, productId: input.productId, accessDays: input.accessDays })),
     revokeAccess: adminProcedure.input(z.object({ entitlementId: z.number().int().positive() })).mutation(({ ctx, input }) => revokeEntitlement({ adminUserId: ctx.user.id, entitlementId: input.entitlementId })),
     learnerEntitlements: adminProcedure.input(z.object({ userId: z.number().int().positive() })).query(({ input }) => listAdminUserEntitlements(input.userId)),
+    coupons: adminProcedure.query(() => listAdminCoupons()),
+    createCoupon: adminProcedure.input(z.object({ code: z.string().min(1).max(40), discountType: z.enum(["percent", "fixed"]), value: z.number().int().min(0), maxUses: z.number().int().min(0).optional(), expiresAt: z.string().datetime().nullable().optional() })).mutation(({ ctx, input }) => createAdminCoupon({ userId: ctx.user.id, code: input.code, discountType: input.discountType, value: input.value, maxUses: input.maxUses, expiresAt: input.expiresAt })),
+    revokeCoupon: adminProcedure.input(z.object({ couponId: z.number().int().positive() })).mutation(({ ctx, input }) => revokeCoupon({ userId: ctx.user.id, couponId: input.couponId })),
   }),
   marking: router({
     queue: staffProcedure.query(() => listMarkerQueue()),

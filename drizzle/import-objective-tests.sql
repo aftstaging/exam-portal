@@ -12,15 +12,15 @@
 -- 1. Products
 -- ---------------------------------------------------------------------------
 INSERT INTO `products` (`qualificationId`, `title`, `category`, `description`, `priceCents`, `accessDays`, `status`)
-SELECT NULL, 'Operational Objective Practice Set', 'objective_test', 'Original AFT-created practice questions for the Operational level (E1/P1/F1): business, performance management and financial reporting fundamentals. 20- or 60-question practice sets and an online mock.', 0, 30, 'published'
+SELECT NULL, 'Operational Objective Practice Set', 'objective_test', 'Original AFT-created practice questions for the Operational level (E1/P1/F1): business, performance management and financial reporting fundamentals. 20- or 60-question practice sets and an online mock.', 14900, 30, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `products` WHERE `title` = 'Operational Objective Practice Set' AND `category` = 'objective_test');
 
 INSERT INTO `products` (`qualificationId`, `title`, `category`, `description`, `priceCents`, `accessDays`, `status`)
-SELECT NULL, 'Management Objective Practice Set', 'objective_test', 'Original AFT-created practice questions for the Management level (E2/P2/F2): project management, advanced management accounting and advanced financial reporting. 20- or 60-question practice sets and an online mock.', 0, 30, 'published'
+SELECT NULL, 'Management Objective Practice Set', 'objective_test', 'Original AFT-created practice questions for the Management level (E2/P2/F2): project management, advanced management accounting and advanced financial reporting. 20- or 60-question practice sets and an online mock.', 14900, 30, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `products` WHERE `title` = 'Management Objective Practice Set' AND `category` = 'objective_test');
 
 INSERT INTO `products` (`qualificationId`, `title`, `category`, `description`, `priceCents`, `accessDays`, `status`)
-SELECT NULL, 'Strategic Objective Practice Set', 'objective_test', 'Original AFT-created practice questions for the Strategic level (E3/P3/F3): strategic management, risk management and strategic financial management. 20- or 60-question practice sets and an online mock.', 0, 30, 'published'
+SELECT NULL, 'Strategic Objective Practice Set', 'objective_test', 'Original AFT-created practice questions for the Strategic level (E3/P3/F3): strategic management, risk management and strategic financial management. 20- or 60-question practice sets and an online mock.', 14900, 30, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `products` WHERE `title` = 'Strategic Objective Practice Set' AND `category` = 'objective_test');
 
 SET @pop = (SELECT `id` FROM `products` WHERE `title` = 'Operational Objective Practice Set' AND `category` = 'objective_test' LIMIT 1);

@@ -2,15 +2,15 @@
 -- Source PDFs are stored in private managed storage; only metadata and protected file keys are persisted here.
 
 INSERT INTO `products` (`qualificationId`, `title`, `category`, `description`, `priceCents`, `accessDays`, `status`)
-SELECT NULL, 'Cartn Mock Exam 3', 'case_study', 'CIMA Management Case Study mock exam based on the supplied Cartn Mock Exam 3 question and suggested-solutions PDFs.', 0, 365, 'published'
+SELECT NULL, 'Cartn Mock Exam 3', 'case_study', 'CIMA Management Case Study mock exam based on the supplied Cartn Mock Exam 3 question and suggested-solutions PDFs.', 49900, 365, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `products` WHERE `title` = 'Cartn Mock Exam 3' AND `category` = 'case_study');
 
 INSERT INTO `products` (`qualificationId`, `title`, `category`, `description`, `priceCents`, `accessDays`, `status`)
-SELECT NULL, 'Cartn Mock Exam 4', 'case_study', 'CIMA Management Case Study mock exam based on the supplied Cartn Mock Exam 4 question and suggested-solutions PDFs.', 0, 365, 'published'
+SELECT NULL, 'Cartn Mock Exam 4', 'case_study', 'CIMA Management Case Study mock exam based on the supplied Cartn Mock Exam 4 question and suggested-solutions PDFs.', 49900, 365, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `products` WHERE `title` = 'Cartn Mock Exam 4' AND `category` = 'case_study');
 
 INSERT INTO `products` (`qualificationId`, `title`, `category`, `description`, `priceCents`, `accessDays`, `status`)
-SELECT NULL, 'CIMA MCS Mock B — May & August 2026', 'case_study', 'Management-level homework mock based on the supplied May & August 2026 question paper and answers with marking guide.', 0, 365, 'published'
+SELECT NULL, 'CIMA MCS Mock B — May & August 2026', 'case_study', 'Management-level homework mock based on the supplied May & August 2026 question paper and answers with marking guide.', 59900, 365, 'published'
 WHERE NOT EXISTS (SELECT 1 FROM `products` WHERE `title` = 'CIMA MCS Mock B — May & August 2026' AND `category` = 'case_study');
 
 SET @p3 = (SELECT `id` FROM `products` WHERE `title` = 'Cartn Mock Exam 3' AND `category` = 'case_study' LIMIT 1);

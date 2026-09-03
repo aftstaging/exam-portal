@@ -195,6 +195,27 @@ export const paymentGatewaySettings = mysqlTable("paymentGatewaySettings", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const coupons = mysqlTable("coupons", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 40 }).notNull().unique(),
+  discountType: mysqlEnum("discountType", ["percent", "fixed"]).notNull(),
+  value: int("value").notNull(),
+  maxUses: int("maxUses").default(0).notNull(),
+  usedCount: int("usedCount").default(0).notNull(),
+  status: mysqlEnum("status", ["active", "disabled"]).default("active").notNull(),
+  expiresAt: timestamp("expiresAt"),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const couponRedemptions = mysqlTable("couponRedemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  couponId: int("couponId").notNull(),
+  userId: int("userId").notNull(),
+  amountCents: int("amountCents").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const payments = mysqlTable("payments", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -214,3 +235,5 @@ export type Product = typeof products.$inferSelect;
 export type MockExam = typeof mockExams.$inferSelect;
 export type Attempt = typeof attempts.$inferSelect;
 export type Answer = typeof answers.$inferSelect;
+export type Coupon = typeof coupons.$inferSelect;
+export type CouponRedemption = typeof couponRedemptions.$inferSelect;

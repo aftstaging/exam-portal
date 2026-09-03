@@ -22,6 +22,8 @@ import {
   submissions,
   notifications,
   auditEvents,
+  coupons,
+  couponRedemptions,
   type InsertUser,
   users,
   paymentGatewaySettings,
@@ -879,4 +881,88 @@ export async function listAdminUserEntitlements(userId: number) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ entitlement: entitlements, product: products }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(eq(entitlements.userId, userId)).orderBy(desc(entitlements.createdAt));
   return rows.map((row) => ({ ...row, entitlement: { ...row.entitlement, status: hasActiveEntitlement(row.entitlement) ? "active" as const : row.entitlement.status === "revoked" ? "revoked" as const : "expired" as const } }));
+}
+
+export async function listAdminCoupons() {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ coupon: coupons, creator: users.name, creatorEmail: users.email }).from(coupons).leftJoin(users, eq(coupons.createdBy, users.id)).orderBy(desc(coupons.createdAt));
+  return rows.map(({ coupon, creator, creatorEmail }) => ({ ...coupon, createdByName: creator ?? null, createdByEmail: creatorEmail ?? null }));
+}
+
+export async function createAdminCoupon(input: { userId: number; code: string; discountType: "percent" | "fixed"; value: number; maxUses?: number; expiresAt?: string | null }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const code = input.code.trim().toUpperCase().replace(/\s+/g, "-");
+  if (!code) throw new Error("Coupon code is required");
+  if (!/^[A-Z0-9][A-Z0-9-]{1,39}$/.test(code)) throw new Error("Code must be 2-40 characters using letters, numbers and dashes");
+  const value = Math.round(input.value);
+  if (input.discountType === "percent") {
+    if (value < 1 || value > 100) throw new Error("Percent coupons must be between 1 and 100");
+  } else {
+    if (value < 1) throw new Error("Fixed coupon value must be at least R0.01");
+  }
+  const maxUses = Math.max(0, Math.round(input.maxUses ?? 0));
+  const existing = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0];
+  if (existing) throw new Error("A coupon with this code already exists");
+  const created = await db.insert(coupons).values({
+    code,
+    discountType: input.discountType,
+    value,
+    maxUses,
+    usedCount: 0,
+    status: "active",
+    expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+    createdBy: input.userId,
+  }).$returningId();
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: created[0]?.id ?? 0, action: "created", metadata: JSON.stringify({ code, discountType: input.discountType, value, maxUses, expiresAt: input.expiresAt ?? null }) });
+  return { id: created[0]?.id };
+}
+
+export async function revokeCoupon(input: { userId: number; couponId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const coupon = (await db.select().from(coupons).where(eq(coupons.id, input.couponId)).limit(1))[0];
+  if (!coupon) throw new Error("Coupon not found");
+  await db.update(coupons).set({ status: coupon.status === "active" ? "disabled" : "active" }).where(eq(coupons.id, input.couponId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: input.couponId, action: coupon.status === "active" ? "disabled" : "enabled", metadata: JSON.stringify({ code: coupon.code }) });
+  return { success: true, status: coupon.status === "active" ? "disabled" : "active" };
+}
+
+export type ValidatedCoupon = {
+  code: string;
+  discountType: "percent" | "fixed";
+  value: number;
+  discountCents: number;
+  subtotalCents: number;
+  totalCents: number;
+};
+
+export async function validateCoupon(input: { code: string; subtotalCents: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const code = input.code.trim().toUpperCase();
+  const subtotal = Math.max(0, Math.round(input.subtotalCents));
+  if (!code) throw new Error("Enter a coupon code");
+  const coupon = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0];
+  if (!coupon || coupon.status !== "active") throw new Error("This coupon code is not valid");
+  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) throw new Error("This coupon has expired");
+  if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) throw new Error("This coupon has reached its usage limit");
+  const discountCents = coupon.discountType === "percent"
+    ? Math.round((subtotal * coupon.value) / 100)
+    : Math.min(coupon.value, subtotal);
+  const totalCents = Math.max(0, subtotal - discountCents);
+  return {
+    code: coupon.code,
+    discountType: coupon.discountType,
+    value: coupon.value,
+    discountCents,
+    subtotalCents: subtotal,
+    totalCents,
+  } satisfies ValidatedCoupon;
+}
+
+export async function clickCoupon(input: { couponId: number; userId: number; amountCents: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const coupon = (await db.select().from(coupons).where(eq(coupons.id, input.couponId)).limit(1))[0];
+  if (!coupon) throw new Error("Coupon not found");
+  await db.update(coupons).set({ usedCount: coupon.usedCount + 1 }).where(eq(coupons.id, input.couponId));
+  await db.insert(couponRedemptions).values({ couponId: input.couponId, userId: input.userId, amountCents: Math.round(input.amountCents) });
+  return { success: true, usedCount: coupon.usedCount + 1 };
 }

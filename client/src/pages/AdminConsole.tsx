@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   ShieldCheck,
+  Ticket,
   Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -950,6 +951,106 @@ function MarkingTab() {
   );
 }
 
+function CouponsTab() {
+  const couponsQuery = trpc.admin.coupons.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
+  const [code, setCode] = useState("");
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
+  const [value, setValue] = useState("");
+  const [maxUses, setMaxUses] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const coupons = couponsQuery.data ?? [];
+  const create = trpc.admin.createCoupon.useMutation({
+    onSuccess: () => {
+      toast.success("Coupon created");
+      utils.admin.coupons.invalidate();
+      setCode(""); setValue(""); setMaxUses(""); setExpiresAt("");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const toggle = trpc.admin.revokeCoupon.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.status === "disabled" ? "Coupon disabled" : "Coupon enabled");
+      utils.admin.coupons.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const submit = () => {
+    if (!code.trim()) { toast.error("Enter a coupon code"); return; }
+    const numValue = Number(value);
+    if (!Number.isFinite(numValue) || numValue <= 0) { toast.error("Enter a valid discount value"); return; }
+    create.mutate({
+      code: code.trim(),
+      discountType,
+      value: Math.round(numValue),
+      maxUses: maxUses ? Math.max(0, Math.round(Number(maxUses))) : undefined,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+    });
+  };
+  return (
+    <div className="space-y-7">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white"><Ticket className="h-5 w-5 text-[#00ff88]" /> Create a coupon code</CardTitle>
+          <p className="text-sm leading-6 text-white/50">
+            Learners apply the code at checkout for a discount. Percent coupons reduce the cart total by a percentage; fixed coupons reduce it by a set rand amount.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-[1.2fr_160px_140px_140px_170px_auto]">
+            <Input value={code} onChange={(event) => setCode(event.target.value)} placeholder="e.g. SAVE10" className="border-white/10 bg-[#0c0524] text-white uppercase" />
+            <select
+              value={discountType}
+              onChange={(event) => setDiscountType(event.target.value as "percent" | "fixed")}
+              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              aria-label="Discount type"
+            >
+              <option value="percent">Percent %</option>
+              <option value="fixed">Fixed R</option>
+            </select>
+            <Input value={value} onChange={(event) => setValue(event.target.value)} type="number" min="1" placeholder={discountType === "percent" ? "Percent" : "Rand"} className="border-white/10 bg-[#0c0524] text-white" />
+            <Input value={maxUses} onChange={(event) => setMaxUses(event.target.value)} type="number" min="0" placeholder="Max uses" className="border-white/10 bg-[#0c0524] text-white" />
+            <Input value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} type="datetime-local" aria-label="Expiry" className="border-white/10 bg-[#0c0524] text-white" />
+            <Button className="aft-button" disabled={create.isPending} onClick={submit}>{create.isPending ? "Creating..." : "Create coupon"}</Button>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-white/50">Leave "Max uses" empty for unlimited use and the expiry field empty for no expiry.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-white">Coupon codes</CardTitle>
+          {coupons.length ? <Badge className="bg-[#102b36] text-[#00ff88]">{coupons.length} coupon{coupons.length === 1 ? "" : "s"}</Badge> : null}
+        </CardHeader>
+        <CardContent>
+          {coupons.length === 0 ? (
+            <p className="py-8 text-center text-sm text-white/45">No coupons yet. Create your first coupon above.</p>
+          ) : (
+            <div className="space-y-3">
+              {coupons.map((coupon) => (
+                <div key={coupon.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#18093c]/50 px-4 py-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-bold text-white">{coupon.code} <Badge className={coupon.status === "active" ? "bg-[#102b36] text-[#00ff88]" : "bg-[#3a2030] text-[#ff6b6b]"}>{coupon.status}</Badge></div>
+                    <div className="mt-1 text-xs text-white/45">
+                      {coupon.discountType === "percent" ? `${coupon.value}% off` : `R${(coupon.value / 100).toFixed(2)} off`}
+                      {coupon.maxUses > 0 ? ` · ${coupon.usedCount}/${coupon.maxUses} used` : ` · ${coupon.usedCount} used`}
+                      {coupon.expiresAt ? ` · expires ${new Date(coupon.expiresAt).toLocaleDateString()}` : ""}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-white/35">{coupon.createdByName ?? coupon.createdByEmail ?? "Staff"}</div>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-8 border-[#00ff88] px-3 text-xs text-[#00ff88]" disabled={toggle.isPending} onClick={() => toggle.mutate({ couponId: coupon.id })}>
+                    {coupon.status === "active" ? "Disable" : "Enable"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminConsole({ mode }: { mode: "admin" | "instructor" }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
@@ -962,7 +1063,7 @@ export default function AdminConsole({ mode }: { mode: "admin" | "instructor" })
   }
 
   const isAdmin = user.role === "admin";
-  const tabs = isAdmin ? ["Overview", "Payments", "Users", "Entitlements", "Content", "Marking queue"] : ["Content", "Marking queue"];
+  const tabs = isAdmin ? ["Overview", "Payments", "Coupons", "Users", "Entitlements", "Content", "Marking queue"] : ["Content", "Marking queue"];
 
   return (
     <div className="min-h-screen bg-[#0c0524]">
@@ -1012,6 +1113,7 @@ export default function AdminConsole({ mode }: { mode: "admin" | "instructor" })
           <Separator className="my-6" />
           {tab === "Overview" && <OverviewTab />}
           {tab === "Payments" && <PaymentsTab />}
+          {tab === "Coupons" && <CouponsTab />}
           {tab === "Users" && <UsersTab />}
           {tab === "Entitlements" && <EntitlementsTab />}
           {tab === "Content" && <ContentTab />}
