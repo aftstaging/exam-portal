@@ -831,10 +831,11 @@ function QuestionForm({ refresh, examItems }: { refresh: () => void; examItems: 
   const [prompt, setPrompt] = useState("");
   const [options, setOptions] = useState("");
   const [correct, setCorrect] = useState("0");
+  const [rationale, setRationale] = useState("");
   const [qtype, setQtype] = useState<"single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input">("single_choice");
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
   const createQuestion = trpc.admin.createObjectiveQuestion.useMutation({
-    onSuccess: () => { toast.success("Objective question created as draft"); refresh(); setPrompt(""); setTopic(""); setOptions(""); },
+    onSuccess: () => { toast.success("Objective question created as draft"); refresh(); setPrompt(""); setTopic(""); setOptions(""); setRationale(""); },
     onError: (error) => toast.error(error.message),
   });
   return (
@@ -852,6 +853,9 @@ function QuestionForm({ refresh, examItems }: { refresh: () => void; examItems: 
         </div>
         <Textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Original AFT question" className="mt-3 min-h-20 border-white/10 bg-[#0c0524] text-white" />
         <Textarea value={options} onChange={(event) => setOptions(event.target.value)} placeholder="Options, one per line" className="mt-3 min-h-16 border-white/10 bg-[#0c0524] text-white" />
+        {qtype !== "numerical" && qtype !== "text_input" && (
+          <Textarea value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="Why each option is correct/wrong — one reason per line, aligned with the options above. Leave a line blank if an option has no specific reason." className="mt-3 min-h-16 border-[#f4c44e]/30 bg-[#0c0524] text-sm text-[#e8e2f7]" />
+        )}
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <select value={qtype} onChange={(event) => setQtype(event.target.value as typeof qtype)} className="h-10 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white" aria-label="Question type">
             <option value="single_choice">Single choice</option>
@@ -872,7 +876,9 @@ function QuestionForm({ refresh, examItems }: { refresh: () => void; examItems: 
           disabled={createQuestion.isPending || !examId || !topic.trim() || !prompt.trim() || options.split("\n").filter(Boolean).length < 2 || Number(correct) < 0}
           onClick={() => {
             const optionList = options.split("\n").map((line) => line.trim()).filter(Boolean);
-            createQuestion.mutate({ mockExamId: Number(examId), topic: topic.trim(), prompt: prompt.trim(), options: optionList, correct: Number(correct), questionType: qtype, difficulty });
+            const rationaleList = (qtype === "numerical" || qtype === "text_input") ? [] : rationale.split("\n").map((line) => line.trim());
+            while (rationaleList.length < optionList.length) rationaleList.push("");
+            createQuestion.mutate({ mockExamId: Number(examId), topic: topic.trim(), prompt: prompt.trim(), options: optionList, correct: Number(correct), questionType: qtype, difficulty, rationale: rationaleList.slice(0, optionList.length) });
           }}
         >
           Create draft question

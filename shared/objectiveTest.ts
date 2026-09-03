@@ -7,6 +7,7 @@ export type ObjectiveQuestionRecord = {
   attachmentFileName?: string | null;
   attachmentMimeType?: string | null;
   explanation?: string | null;
+  rationaleJson?: string | null;
   topic?: string | null;
 };
 
@@ -21,16 +22,22 @@ export type ParsedObjectiveQuestion = {
   attachmentFileName?: string | null;
   topic: string;
   explanation: string;
+  rationale: (string | null)[];
 };
 
 export function parseObjectiveQuestion(item: ObjectiveQuestionRecord): ParsedObjectiveQuestion {
   let options: string[] = [];
   let correct: ObjectiveAnswer = 0;
+  let rationale: (string | null)[] = [];
   try { options = JSON.parse(item.optionsJson) as string[]; } catch { options = []; }
   try {
     const parsed = JSON.parse(item.answerJson);
     correct = Array.isArray(parsed) ? parsed : parsed;
   } catch { correct = 0; }
+  try {
+    const parsed = JSON.parse(item.rationaleJson ?? "[]");
+    rationale = Array.isArray(parsed) ? parsed : [];
+  } catch { rationale = []; }
   const rawType = item.questionType ?? "single_choice";
   const questionType = ["single_choice", "multiple_choice", "dropdown", "numerical", "text_input"].includes(rawType)
     ? rawType as ParsedObjectiveQuestion["questionType"]
@@ -44,6 +51,7 @@ export function parseObjectiveQuestion(item: ObjectiveQuestionRecord): ParsedObj
     attachmentFileName: item.attachmentFileName,
     topic: item.topic ?? "General",
     explanation: item.explanation ?? "Review the underlying learning outcome and retry this question.",
+    rationale,
   };
 }
 

@@ -71,6 +71,13 @@
       "when": 1788272569722,
       "tag": "0009_dark_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1788443287975,
+      "tag": "0010_slow_miracleman",
+      "breakpoints": true
     }
   ]
 }

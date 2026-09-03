@@ -62,7 +62,7 @@ export default function ObjectiveTestsPanel() {
   if (mockExamsQuery.isLoading || questionQuery.isLoading) return <Shell><div className="h-72 animate-pulse rounded-2xl border border-white/10 bg-[#120730]" /></Shell>;
   if (!selectedMock) return <Shell><EmptyState /></Shell>;
 
-  if (stage === "quiz") return <QuizScreen title={title} questions={questions} current={current} question={question} setQuestion={setQuestion} answers={answers} setAnswers={setAnswers} flags={flags} toggleFlag={toggleFlag} timed={timed} time={time} submitted={submitted} setSubmitted={setSubmitted} score={score} onReset={() => begin("customize")} />;
+  if (stage === "quiz") return <QuizScreen title={title} questions={activeQuestions} current={current} question={question} setQuestion={setQuestion} answers={answers} setAnswers={setAnswers} flags={flags} toggleFlag={toggleFlag} timed={timed} time={time} submitted={submitted} setSubmitted={setSubmitted} score={score} onReset={() => begin("customize")} />;
 
   return <Shell>
     {stage === "course" && <CourseOverview title={title} questionCount={allQuestions.length} onExtra={() => setStage("extra-instructions")} onMock={() => setStage("mock-instructions")} />}
@@ -283,6 +283,26 @@ function ResultPanel({ questions, answers, score, onReset, onReview }: { questio
                 <p className="mt-1 text-[#e2e8f0]">{formatReviewAnswer(item, item.correct)}</p>
               </div>
             </div>
+            {(item.questionType === "single_choice" || item.questionType === "multiple_choice" || item.questionType === "dropdown") && item.options.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-[.14em] text-white/50">Option breakdown</p>
+                {item.options.map((opt, oi) => {
+                  const isCorrect = item.questionType === "multiple_choice" ? (item.correct as number[]).includes(oi) : item.correct === oi;
+                  const selected = item.questionType === "multiple_choice" ? Array.isArray(answers[index]) && (answers[index] as number[]).includes(oi) : answers[index] === oi;
+                  const reason = item.rationale[oi]?.trim();
+                  return <div key={oi} className={`flex items-start gap-2 rounded-lg border p-2.5 text-sm leading-5 ${isCorrect ? "border-[#00ff88]/30 bg-[#0a2a1c]/40" : "border-white/10 bg-[#0c0524]/40"}`}>
+                    <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
+                      <span className={`flex h-[18px] w-[18px] items-center justify-center rounded-full border text-[10px] font-bold ${isCorrect ? "border-[#00ff88] text-[#00ff88]" : selected ? "border-[#f4c44e] text-[#f4c44e]" : "border-slate-500 text-slate-400"}`}>{isCorrect ? "✓" : selected ? "✎" : ""}</span>
+                      <span className="text-xs font-bold text-white/60">{String.fromCharCode(65 + oi)}</span>
+                    </span>
+                    <div className="min-w-0">
+                      <div className={selected || isCorrect ? "font-medium text-white" : "text-[#c4b5fd]"}>{opt}</div>
+                      {reason ? <div className={`mt-0.5 text-xs leading-5 ${isCorrect ? "text-[#9ef5c0]" : selected && !isCorrect ? "text-[#ffd9a8]" : "text-white/55"}`}><span className="font-bold">{isCorrect ? "Why correct: " : selected && !isCorrect ? "Why your answer is wrong: " : "Why wrong: "}</span>{reason}</div> : selected && !isCorrect ? <div className="mt-0.5 text-xs leading-5 text-[#ffd9a8]"><span className="font-bold">Why your answer is wrong: </span>This option is not the correct one.</div> : null}
+                    </div>
+                  </div>;
+                })}
+              </div>
+            )}
             <div className={`mt-3 rounded-lg border p-3 text-sm leading-6 ${result ? "border-[#00ff88]/30 bg-[#0a2a1c]/40 text-[#c4f5dd]" : "border-[#ff8a7a]/30 bg-[#2a1412]/40 text-[#ffd6ce]"}`}>
               <span className="font-bold">{result ? "Why it is correct: " : "Why you were wrong: "}</span>
               {item.explanation || "Review the underlying learning outcome and retry this question."}

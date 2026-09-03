@@ -128,6 +128,7 @@ export const objectiveQuestions = mysqlTable("objectiveQuestions", {
   attachmentFileName: varchar("attachmentFileName", { length: 240 }),
   attachmentMimeType: varchar("attachmentMimeType", { length: 120 }),
   explanation: text("explanation"),
+  rationaleJson: text("rationaleJson"),
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).default("medium").notNull(),
   status: mysqlEnum("status", ["draft", "published", "retired"]).default("published").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -147,7 +147,7 @@ export async function listPublishedCaseStudySections(mockExamId: number) {
 export async function listPublishedObjectiveQuestions(mockExamId?: number) {
   const db = await getDb(); if (!db) return [];
   const conditions = mockExamId ? and(eq(objectiveQuestions.status, "published"), eq(objectiveQuestions.mockExamId, mockExamId)) : eq(objectiveQuestions.status, "published");
-  return db.select({ id: objectiveQuestions.id, mockExamId: objectiveQuestions.mockExamId, topic: objectiveQuestions.topic, learningOutcome: objectiveQuestions.learningOutcome, questionType: objectiveQuestions.questionType, prompt: objectiveQuestions.prompt, optionsJson: objectiveQuestions.optionsJson, answerJson: objectiveQuestions.answerJson, explanation: objectiveQuestions.explanation, difficulty: objectiveQuestions.difficulty }).from(objectiveQuestions).where(conditions).orderBy(objectiveQuestions.id);
+  return db.select({ id: objectiveQuestions.id, mockExamId: objectiveQuestions.mockExamId, topic: objectiveQuestions.topic, learningOutcome: objectiveQuestions.learningOutcome, questionType: objectiveQuestions.questionType, prompt: objectiveQuestions.prompt, optionsJson: objectiveQuestions.optionsJson, answerJson: objectiveQuestions.answerJson, explanation: objectiveQuestions.explanation, rationaleJson: objectiveQuestions.rationaleJson, difficulty: objectiveQuestions.difficulty }).from(objectiveQuestions).where(conditions).orderBy(objectiveQuestions.id);
 }
 
 export async function listUserEntitlements(userId: number) {
@@ -427,7 +427,7 @@ export async function createAdminMockExam(input: { userId: number; productId: nu
   return { id: created[0]?.id };
 }
 
-export async function createAdminObjectiveQuestion(input: { userId: number; mockExamId: number; topic: string; prompt: string; options: string[]; correct: number; questionType?: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input"; explanation?: string; difficulty: "easy" | "medium" | "hard"; attachmentBase64?: string; attachmentFileName?: string; attachmentMimeType?: string }) {
+export async function createAdminObjectiveQuestion(input: { userId: number; mockExamId: number; topic: string; prompt: string; options: string[]; correct: number; questionType?: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input"; explanation?: string; rationale?: string[]; difficulty: "easy" | "medium" | "hard"; attachmentBase64?: string; attachmentFileName?: string; attachmentMimeType?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   if (!input.prompt.trim() || input.options.length < 2 || input.correct < 0 || input.correct >= input.options.length) throw new Error("Question, options, and a valid correct answer are required");
   let attachmentUrl: string | null = null;
@@ -444,9 +444,20 @@ export async function createAdminObjectiveQuestion(input: { userId: number; mock
     attachmentFileName = input.attachmentFileName || "question-image";
     attachmentMimeType = input.attachmentMimeType;
   }
-  const created = await db.insert(objectiveQuestions).values({ mockExamId: input.mockExamId, topic: input.topic.trim(), learningOutcome: null, questionType: input.questionType ?? "single_choice", prompt: input.prompt.trim(), optionsJson: JSON.stringify(input.options), answerJson: JSON.stringify(input.correct), attachmentUrl, attachmentFileName, attachmentMimeType, explanation: input.explanation?.trim() || null, difficulty: input.difficulty, status: "draft" }).$returningId();
+  const rationaleJson = input.rationale && input.rationale.length ? input.rationale.map((r) => r?.trim() || null) : null;
+  const created = await db.insert(objectiveQuestions).values({ mockExamId: input.mockExamId, topic: input.topic.trim(), learningOutcome: null, questionType: input.questionType ?? "single_choice", prompt: input.prompt.trim(), optionsJson: JSON.stringify(input.options), answerJson: JSON.stringify(input.correct), attachmentUrl, attachmentFileName, attachmentMimeType, explanation: input.explanation?.trim() || null, rationaleJson: rationaleJson ? JSON.stringify(rationaleJson) : null, difficulty: input.difficulty, status: "draft" }).$returningId();
   await db.insert(auditEvents).values({ userId: input.userId, entityType: "objective_question", entityId: created[0]?.id ?? 0, action: "created", metadata: JSON.stringify({ mockExamId: input.mockExamId, topic: input.topic, questionType: input.questionType ?? "single_choice", attachmentFileName }) });
   return { id: created[0]?.id, attachmentUrl };
+}
+
+export async function updateAdminObjectiveQuestionRationale(input: { userId: number; questionId: number; rationale: string[] }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = (await db.select().from(objectiveQuestions).where(eq(objectiveQuestions.id, input.questionId)).limit(1))[0];
+  if (!existing) throw new Error("Objective question not found");
+  const rationaleJson = input.rationale.map((r) => r?.trim() || null);
+  await db.update(objectiveQuestions).set({ rationaleJson: JSON.stringify(rationaleJson) }).where(eq(objectiveQuestions.id, input.questionId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "objective_question", entityId: input.questionId, action: "rationale_updated", metadata: JSON.stringify({ rationale: rationaleJson }) });
+  return { success: true };
 }
 
 export async function uploadAdminResource(input: { userId: number; productId: number; title: string; kind: "pre_seen" | "formulae" | "printable_pdf" | "feedback" | "course_material" | "reference"; fileName: string; mimeType: string; base64: string }) {

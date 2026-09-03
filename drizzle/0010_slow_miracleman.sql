@@ -1,0 +1,1 @@
+ALTER TABLE `objectiveQuestions` ADD `rationaleJson` text;
