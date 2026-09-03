@@ -4,6 +4,7 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  base: '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -20,24 +21,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (id.includes("pdf-lib") || id.includes("streamdown")) return "pdf";
-          if (id.includes("recharts") || id.includes("/d3-")) return "charts";
-          if (id.includes("framer-motion") || id.includes("/motion/")) return "motion";
-          if (id.includes("@radix-ui")) return "radix";
-          if (
-            id.includes("/react/") ||
-            id.includes("react-dom") ||
-            id.includes("react-hook-form") ||
-            id.includes("react-day-picker") ||
-            id.includes("@tanstack") ||
-            id.includes("@trpc") ||
-            id.includes("superjson") ||
-            id.includes("wouter")
-          ) {
-            return "react-vendor";
+          if (id.includes('node_modules/react/') || 
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/react/jsx-runtime') ||
+              id.includes('node_modules/scheduler/')) {
+            return 'react-vendor';
           }
-          return "vendor";
+          if (id.includes('@radix-ui')) {
+            return 'radix';
+          }
+          if (id.includes('recharts') || id.includes('d3-')) {
+            return 'charts';
+          }
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
         },
       },
     },
