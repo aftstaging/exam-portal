@@ -556,7 +556,10 @@ export type ExamBundleInput = {
   preSeen?: ExamBundleFile;
   formulae?: ExamBundleFile;
   reference?: ExamBundleFile;
-  // case-study email: either typed text or an image file
+  // case-study email: composed fields (from / to / subject) and rich-text HTML body, plus optional image
+  emailFrom?: string;
+  emailTo?: string;
+  emailSubject?: string;
   emailText?: string;
   emailImage?: ExamBundleFile;
   // case-study exam sections (tasks) with per-section timing
@@ -719,9 +722,20 @@ export async function createExamBundle(input: ExamBundleInput) {
     await uploadResource("printable_pdf", input.preModeratedPdf, `${title} · Printable exam`);
   }
 
-  // 6. Email attachment - either typed text (stored as a resource without a file) or an image
-  if (input.emailText && input.emailText.trim()) {
-    await db.insert(resources).values({ productId, title: `${title} · Email`, kind: "email", fileKey: null, fileUrl: null, status: "draft" });
+  // 6. Email attachment - either composed email fields (stored as JSON in fileUrl) or an image upload
+  const hasEmailText = input.emailText && input.emailText.trim();
+  const hasEmailImage = input.emailImage && input.emailImage.base64;
+  if (hasEmailText || hasEmailImage) {
+    const emailMeta = JSON.stringify({
+      from: input.emailFrom?.trim() || null,
+      to: input.emailTo?.trim() || null,
+      subject: input.emailSubject?.trim() || null,
+      html: input.emailText?.trim() || null,
+    });
+    await db.insert(resources).values({ productId, title: `${title} · Email`, kind: "email", fileKey: null, fileUrl: emailMeta, status: "draft" });
+    if (hasEmailText) {
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "resource", entityId: 0, action: "email_composed", metadata: JSON.stringify({ productId, from: input.emailFrom, to: input.emailTo, subject: input.emailSubject }) });
+    }
   }
   if (input.emailImage && input.emailImage.base64) {
     await uploadResource("email", input.emailImage, `${title} · Email`);
@@ -921,9 +935,57 @@ export async function revokeCoupon(input: { userId: number; couponId: number }) 
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const coupon = (await db.select().from(coupons).where(eq(coupons.id, input.couponId)).limit(1))[0];
   if (!coupon) throw new Error("Coupon not found");
-  await db.update(coupons).set({ status: coupon.status === "active" ? "disabled" : "active" }).where(eq(coupons.id, input.couponId));
-  await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: input.couponId, action: coupon.status === "active" ? "disabled" : "enabled", metadata: JSON.stringify({ code: coupon.code }) });
-  return { success: true, status: coupon.status === "active" ? "disabled" : "active" };
+  const newStatus = coupon.status === "active" ? "disabled" : "active";
+  await db.update(coupons).set({ status: newStatus }).where(eq(coupons.id, input.couponId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: input.couponId, action: newStatus === "disabled" ? "disabled" : "enabled", metadata: JSON.stringify({ code: coupon.code }) });
+  return { success: true, status: newStatus };
+}
+
+export async function updateAdminCoupon(input: { userId: number; couponId: number; code?: string; discountType?: "percent" | "fixed"; value?: number; maxUses?: number; expiresAt?: string | null; status?: "active" | "disabled" }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const coupon = (await db.select().from(coupons).where(eq(coupons.id, input.couponId)).limit(1))[0];
+  if (!coupon) throw new Error("Coupon not found");
+
+  const updates: Partial<typeof coupons.$inferInsert> = {};
+  if (input.code !== undefined) {
+    const code = input.code.trim().toUpperCase().replace(/\s+/g, "-");
+    if (!code) throw new Error("Coupon code is required");
+    if (!/^[A-Z0-9][A-Z0-9-]{1,39}$/.test(code)) throw new Error("Code must be 2-40 characters using letters, numbers and dashes");
+    if (code !== coupon.code) {
+      const dup = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0];
+      if (dup) throw new Error("A coupon with this code already exists");
+    }
+    updates.code = code;
+  }
+  if (input.discountType !== undefined) updates.discountType = input.discountType;
+  if (input.value !== undefined) {
+    const value = Math.round(input.value);
+    if (input.discountType === "percent") {
+      if (value < 1 || value > 100) throw new Error("Percent coupons must be between 1 and 100");
+    } else {
+      if (value < 1) throw new Error("Fixed coupon value must be at least R0.01");
+    }
+    updates.value = value;
+  }
+  if (input.maxUses !== undefined) updates.maxUses = Math.max(0, Math.round(input.maxUses));
+  if (input.expiresAt !== undefined) updates.expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
+  if (input.status !== undefined) updates.status = input.status;
+
+  if (Object.keys(updates).length) {
+    await db.update(coupons).set(updates).where(eq(coupons.id, input.couponId));
+    await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: input.couponId, action: "updated", metadata: JSON.stringify({ code: updates.code ?? coupon.code, updates }) });
+  }
+  return { success: true };
+}
+
+export async function deleteAdminCoupon(input: { userId: number; couponId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const coupon = (await db.select().from(coupons).where(eq(coupons.id, input.couponId)).limit(1))[0];
+  if (!coupon) throw new Error("Coupon not found");
+  await db.delete(couponRedemptions).where(eq(couponRedemptions.couponId, input.couponId));
+  await db.delete(coupons).where(eq(coupons.id, input.couponId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: input.couponId, action: "deleted", metadata: JSON.stringify({ code: coupon.code }) });
+  return { success: true };
 }
 
 export type ValidatedCoupon = {
@@ -942,7 +1004,13 @@ export async function validateCoupon(input: { code: string; subtotalCents: numbe
   if (!code) throw new Error("Enter a coupon code");
   const coupon = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0];
   if (!coupon || coupon.status !== "active") throw new Error("This coupon code is not valid");
-  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) throw new Error("This coupon has expired");
+  if (coupon.expiresAt) {
+    const expires = new Date(coupon.expiresAt);
+    const expiresMs = expires.getTime();
+    const atMidnight = expires.getHours() === 0 && expires.getMinutes() === 0 && expires.getSeconds() === 0;
+    const effectiveExpiry = atMidnight ? expiresMs + 24 * 60 * 60 * 1000 - 1 : expiresMs;
+    if (effectiveExpiry < Date.now()) throw new Error("This coupon has expired");
+  }
   if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) throw new Error("This coupon has reached its usage limit");
   const discountCents = coupon.discountType === "percent"
     ? Math.round((subtotal * coupon.value) / 100)

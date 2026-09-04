@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, validateCoupon, checkoutWithCoupon } from "./db";
+import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, updateAdminCoupon, deleteAdminCoupon, validateCoupon, checkoutWithCoupon } from "./db";
 import { createCheckoutSession } from "./stripe";
 import { isAdminRole } from "@shared/integrity";
 import { getDb } from "./db";
@@ -164,6 +164,9 @@ export const appRouter = router({
       preSeen: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
       formulae: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
       reference: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
+      emailFrom: z.string().max(320).optional(),
+      emailTo: z.string().max(320).optional(),
+      emailSubject: z.string().max(500).optional(),
       emailText: z.string().max(50000).optional(),
       emailImage: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
       caseStudySections: z.array(z.object({
@@ -203,6 +206,8 @@ export const appRouter = router({
     coupons: adminProcedure.query(() => listAdminCoupons()),
     createCoupon: adminProcedure.input(z.object({ code: z.string().min(1).max(40), discountType: z.enum(["percent", "fixed"]), value: z.number().int().min(0), maxUses: z.number().int().min(0).optional(), expiresAt: z.string().datetime().nullable().optional() })).mutation(({ ctx, input }) => createAdminCoupon({ userId: ctx.user.id, code: input.code, discountType: input.discountType, value: input.value, maxUses: input.maxUses, expiresAt: input.expiresAt })),
     revokeCoupon: adminProcedure.input(z.object({ couponId: z.number().int().positive() })).mutation(({ ctx, input }) => revokeCoupon({ userId: ctx.user.id, couponId: input.couponId })),
+    updateCoupon: adminProcedure.input(z.object({ couponId: z.number().int().positive(), code: z.string().min(1).max(40).optional(), discountType: z.enum(["percent", "fixed"]).optional(), value: z.number().int().min(0).optional(), maxUses: z.number().int().min(0).optional(), expiresAt: z.string().datetime().nullable().optional(), status: z.enum(["active", "disabled"]).optional() })).mutation(({ ctx, input }) => updateAdminCoupon({ userId: ctx.user.id, couponId: input.couponId, code: input.code, discountType: input.discountType, value: input.value, maxUses: input.maxUses, expiresAt: input.expiresAt, status: input.status })),
+    deleteCoupon: adminProcedure.input(z.object({ couponId: z.number().int().positive() })).mutation(({ ctx, input }) => deleteAdminCoupon({ userId: ctx.user.id, couponId: input.couponId })),
   }),
   marking: router({
     queue: staffProcedure.query(() => listMarkerQueue()),

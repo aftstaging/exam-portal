@@ -960,10 +960,19 @@ function CouponsTab() {
   const [maxUses, setMaxUses] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const coupons = couponsQuery.data ?? [];
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editCode, setEditCode] = useState("");
+  const [editDiscountType, setEditDiscountType] = useState<"percent" | "fixed">("percent");
+  const [editValue, setEditValue] = useState("");
+  const [editMaxUses, setEditMaxUses] = useState("");
+  const [editExpiresAt, setEditExpiresAt] = useState("");
+
+  const refresh = () => utils.admin.coupons.invalidate();
+
   const create = trpc.admin.createCoupon.useMutation({
     onSuccess: () => {
       toast.success("Coupon created");
-      utils.admin.coupons.invalidate();
+      refresh();
       setCode(""); setValue(""); setMaxUses(""); setExpiresAt("");
     },
     onError: (error) => toast.error(error.message),
@@ -971,10 +980,26 @@ function CouponsTab() {
   const toggle = trpc.admin.revokeCoupon.useMutation({
     onSuccess: (result) => {
       toast.success(result.status === "disabled" ? "Coupon disabled" : "Coupon enabled");
-      utils.admin.coupons.invalidate();
+      refresh();
     },
     onError: (error) => toast.error(error.message),
   });
+  const update = trpc.admin.updateCoupon.useMutation({
+    onSuccess: () => {
+      toast.success("Coupon updated");
+      refresh();
+      setEditingId(null);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const remove = trpc.admin.deleteCoupon.useMutation({
+    onSuccess: () => {
+      toast.success("Coupon deleted");
+      refresh();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const submit = () => {
     if (!code.trim()) { toast.error("Enter a coupon code"); return; }
     const numValue = Number(value);
@@ -987,6 +1012,36 @@ function CouponsTab() {
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
     });
   };
+
+  const startEdit = (coupon: { id: number; code: string; discountType: "percent" | "fixed"; value: number; maxUses: number; expiresAt: Date | null }) => {
+    setEditingId(coupon.id);
+    setEditCode(coupon.code);
+    setEditDiscountType(coupon.discountType);
+    setEditValue(String(coupon.value));
+    setEditMaxUses(coupon.maxUses > 0 ? String(coupon.maxUses) : "");
+    setEditExpiresAt(coupon.expiresAt ? toDatetimeLocal(new Date(coupon.expiresAt)) : "");
+  };
+
+  const submitEdit = () => {
+    if (!editCode.trim()) { toast.error("Enter a coupon code"); return; }
+    const numValue = Number(editValue);
+    if (!Number.isFinite(numValue) || numValue <= 0) { toast.error("Enter a valid discount value"); return; }
+    update.mutate({
+      couponId: editingId!,
+      code: editCode.trim(),
+      discountType: editDiscountType,
+      value: Math.round(numValue),
+      maxUses: editMaxUses ? Math.max(0, Math.round(Number(editMaxUses))) : undefined,
+      expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+    });
+  };
+
+  const confirmDelete = (coupon: { id: number; code: string }) => {
+    if (window.confirm(`Delete coupon "${coupon.code}"? This permanently removes it and its redemptions.`)) {
+      remove.mutate({ couponId: coupon.id });
+    }
+  };
+
   return (
     <div className="space-y-7">
       <Card>
@@ -1029,7 +1084,7 @@ function CouponsTab() {
             <div className="space-y-3">
               {coupons.map((coupon) => (
                 <div key={coupon.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#18093c]/50 px-4 py-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 font-bold text-white">{coupon.code} <Badge className={coupon.status === "active" ? "bg-[#102b36] text-[#00ff88]" : "bg-[#3a2030] text-[#ff6b6b]"}>{coupon.status}</Badge></div>
                     <div className="mt-1 text-xs text-white/45">
                       {coupon.discountType === "percent" ? `${coupon.value}% off` : `R${(coupon.value / 100).toFixed(2)} off`}
@@ -1038,17 +1093,67 @@ function CouponsTab() {
                     </div>
                     <div className="mt-0.5 text-[11px] text-white/35">{coupon.createdByName ?? coupon.createdByEmail ?? "Staff"}</div>
                   </div>
-                  <Button size="sm" variant="outline" className="h-8 border-[#00ff88] px-3 text-xs text-[#00ff88]" disabled={toggle.isPending} onClick={() => toggle.mutate({ couponId: coupon.id })}>
-                    {coupon.status === "active" ? "Disable" : "Enable"}
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {editingId === coupon.id ? (
+                      <>
+                        <Button size="sm" className="h-8 px-3 text-xs text-[#00ff88]" disabled={update.isPending} onClick={submitEdit}>{update.isPending ? "Saving..." : "Save"}</Button>
+                        <Button size="sm" variant="ghost" className="h-8 px-3 text-xs text-white/60" onClick={() => setEditingId(null)}>Cancel</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" className="h-8 border-[#00e5ff]/60 px-3 text-xs text-[#00e5ff]" onClick={() => startEdit(coupon)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
+                        <Button size="sm" variant="outline" className="h-8 border-white/10 px-3 text-xs text-white/60" disabled={toggle.isPending} onClick={() => toggle.mutate({ couponId: coupon.id })}>
+                          {coupon.status === "active" ? "Disable" : "Enable"}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 px-2 text-[#ff8278]" disabled={remove.isPending} onClick={() => confirmDelete(coupon)}><Trash2 className="h-4 w-4" /></Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {editingId !== null && (
+        <Card className="border-[#00e5ff]/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-white"><Pencil className="h-5 w-5 text-[#00e5ff]" /> Edit coupon</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-[1fr_160px_120px_140px_170px]">
+              <Input value={editCode} onChange={(event) => setEditCode(event.target.value)} placeholder="Coupon code" className="border-white/10 bg-[#0c0524] text-white uppercase" />
+              <select
+                value={editDiscountType}
+                onChange={(event) => setEditDiscountType(event.target.value as "percent" | "fixed")}
+                className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+                aria-label="Edit discount type"
+              >
+                <option value="percent">Percent %</option>
+                <option value="fixed">Fixed R</option>
+              </select>
+              <Input value={editValue} onChange={(event) => setEditValue(event.target.value)} type="number" min="1" placeholder={editDiscountType === "percent" ? "Percent" : "Rand"} className="border-white/10 bg-[#0c0524] text-white" />
+              <Input value={editMaxUses} onChange={(event) => setEditMaxUses(event.target.value)} type="number" min="0" placeholder="Max uses" className="border-white/10 bg-[#0c0524] text-white" />
+              <div className="flex items-center gap-2">
+                <Input value={editExpiresAt} onChange={(event) => setEditExpiresAt(event.target.value)} type="datetime-local" aria-label="Edit expiry" className="border-white/10 bg-[#0c0524] text-white" />
+                {editExpiresAt && <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-white/50" onClick={() => setEditExpiresAt("")}>Clear</Button>}
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+              <Button className="aft-button" disabled={update.isPending} onClick={submitEdit}>{update.isPending ? "Saving..." : "Save changes"}</Button>
+              <Button variant="outline" className="border-white/15 text-white/70" onClick={() => setEditingId(null)}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
+}
+
+function toDatetimeLocal(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export default function AdminConsole({ mode }: { mode: "admin" | "instructor" }) {
@@ -1083,7 +1188,7 @@ export default function AdminConsole({ mode }: { mode: "admin" | "instructor" })
             ))}
           </nav>
           <div className="mt-12 space-y-2">
-            <Button variant="outline" className="w-full border-[#00e5ff] text-white" onClick={() => navigate("/dashboard")}>
+            <Button variant="outline" className="w-full border-[#00e5ff] text-white" onClick={() => navigate("/mock-exams")}>
               View store
             </Button>
             <Button

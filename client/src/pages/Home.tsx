@@ -40,6 +40,7 @@ import { startLogin } from "@/const";
 import { toast } from "sonner";
 import ObjectiveTestsPanel from "@/components/ObjectiveTestsPanel";
 import { trpc } from "@/lib/trpc";
+import { clearCartStorage } from "@/pages/Cart";
 import { getAttemptProgress, humanizeStatus } from "@shared/learning";
 import { calculateRubricScore, RUBRIC_CRITERIA } from "@shared/rubric";
 import { getAttemptRoute, getDashboardSelection, getDashboardSelectionState, getDashboardView, getProductRoute, type DashboardTab } from "@shared/dashboard";
@@ -236,6 +237,15 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
   );
 }
 
+function DashboardRedirect({ role }: { role: "admin" | "instructor" }) {
+  const [, navigate] = useLocation();
+  const target = role === "admin" ? "/admin" : "/instructor";
+  useEffect(() => {
+    navigate(target, { replace: true });
+  }, [navigate, target]);
+  return <div className="min-h-screen bg-[#0c0524]" />;
+}
+
 function Dashboard() {
   const [location] = useLocation();
   const initialSelection = getDashboardSelection(location);
@@ -247,6 +257,11 @@ function Dashboard() {
   const feedbackQuery = trpc.student.feedback.useQuery(undefined, { retry: false, enabled: isAuthenticated });
   const markNotificationRead = trpc.student.markNotificationRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
   const selection = getDashboardSelection(location);
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("payment") === "success") {
+      clearCartStorage();
+    }
+  }, []);
   useEffect(() => {
     const nextTab = getDashboardSelectionState(getDashboardSelection(location)).tab;
     setActiveTab((current) => current === nextTab ? current : nextTab);
@@ -376,7 +391,11 @@ function AppRouter() {
     if (currentScreen === "solutions") return <Solutions setScreen={go} />;
   }
   if (mockRoute) return <MockExams setScreen={go} />;
-  if (dashRoute) return isAuthenticated ? <Dashboard /> : <HomePage onLogin={handleLogin} />;
+  if (dashRoute) {
+    if (!isAuthenticated) return <HomePage onLogin={handleLogin} />;
+    if (user?.role === "admin" || user?.role === "instructor") return <DashboardRedirect role={user.role} />;
+    return <Dashboard />;
+  }
   if (objectiveRoute) return <ObjectiveTestsPanel />;
   if (adminRoute) return user?.role === "admin" ? <Admin /> : <HomePage onLogin={handleLogin} />;
   return <HomePage onLogin={handleLogin} />;

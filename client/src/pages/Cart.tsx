@@ -15,6 +15,9 @@ export function addToCart(productId: number) {
   const current = JSON.parse(window.localStorage.getItem(CART_KEY) ?? "[]") as number[];
   window.localStorage.setItem(CART_KEY, JSON.stringify(Array.from(new Set([...current, productId]))));
 }
+export function clearCartStorage() {
+  window.localStorage.setItem(CART_KEY, "[]");
+}
 
 export default function Cart() {
   const [, navigate] = useLocation();
@@ -36,6 +39,8 @@ export default function Cart() {
         return;
       }
       const { endpoint, fields } = result;
+      clearCart();
+      clearCartStorage();
       const form = document.createElement("form"); form.method = "POST"; form.action = endpoint;
       Object.entries(fields).forEach(([name, value]) => { const input = document.createElement("input"); input.type = "hidden"; input.name = name; input.value = value; form.appendChild(input); });
       document.body.appendChild(form); form.submit();
