@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BookOpen,
   CreditCard,
+  Eye,
   FileText,
   GraduationCap,
   ImageUp,
@@ -535,6 +536,9 @@ function ContentTab() {
   });
   const items = contentItemsQuery.data ?? [];
 
+  const [previewId, setPreviewId] = useState<number | null>(null);
+  const previewQuery = trpc.admin.examPreview.useQuery({ mockExamId: previewId ?? 0 }, { enabled: previewId !== null });
+
   const nav = ["Products", "Exams", "Sections", "Question bank", "Resources"];
 
   return (
@@ -562,13 +566,21 @@ function ContentTab() {
                 <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
                   <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs capitalize text-white/45">{item.detail}</div></div>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="h-7 border-[#00e5ff] px-2 text-[11px] text-[#00e5ff]" onClick={() => generatePdf.mutate({ mockExamId: item.id })}><FileText className="mr-1 h-3 w-3" /> PDF</Button>
+                    <Button size="sm" variant="outline" className="h-7 border-[#00e5ff] px-2 text-[11px] text-[#00e5ff]" onClick={() => setPreviewId(item.id)}><Eye className="mr-1 h-3 w-3" /> Preview</Button>
+                    <Button size="sm" variant="outline" className="h-7 border-white/10 px-2 text-[11px] text-white/60" onClick={() => generatePdf.mutate({ mockExamId: item.id })}><FileText className="mr-1 h-3 w-3" /> PDF</Button>
                     <StatusAction status={item.status} onPublish={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "archived" })} />
                   </div>
                 </div>
               )) : <p className="py-8 text-center text-sm text-white/45">No exams yet.</p>}
             </CardContent>
           </Card>
+          {previewId !== null && (
+            <ExamPreviewModal
+              data={previewQuery.data ?? null}
+              loading={previewQuery.isLoading}
+              onClose={() => { setPreviewId(null); }}
+            />
+          )}
         </>
       )}
 
@@ -1154,6 +1166,103 @@ function CouponsTab() {
 function toDatetimeLocal(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { title: string; examType: string; intro: string | null; totalDurationSeconds: number; status: string }; product: { title: string; description: string | null; priceCents: number; accessDays: number }; sections: { sectionNumber: number; title: string; introduction: string | null; scenario: string | null; question: string | null; durationSeconds: number }[]; questions: { topic: string; learningOutcome: string | null; questionType: string; prompt: string; optionsJson: string; answerJson: string; explanation: string | null; difficulty: string }[]; email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null } | null; loading: boolean; onClose: () => void }) {
+  const isCaseStudy = data?.mockExam.examType === "case_study";
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#120730]/85 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="mx-auto my-8 w-full max-w-4xl rounded-2xl border border-white/10 bg-[#0c0524] p-6 sm:p-8" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+          <div>
+            <p className="eyebrow">Exam preview · {data?.mockExam.examType === "case_study" ? "Case study" : data?.mockExam.examType === "objective_test" ? "Objective test" : "—"}</p>
+            <h2 className="mt-2 text-3xl font-black text-white">{data?.mockExam.title ?? "Loading preview…"}</h2>
+            <p className="mt-1 text-sm text-white/45">Read-only preview of this exam, including unfinished drafts.</p>
+          </div>
+          <Button variant="outline" className="border-[#00ff88] text-[#00ff88]" onClick={onClose}>Close preview</Button>
+        </div>
+
+        {loading && <div className="mt-8 h-40 animate-pulse rounded-xl bg-[#18093c]" />}
+
+        {!loading && data && (
+          <div className="mt-6 space-y-8">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Status</div><StatusBadge status={data.mockExam.status} /></div>
+              <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Duration</div><div className="mt-1 font-bold text-white">{Math.round(data.mockExam.totalDurationSeconds / 60)} minutes</div></div>
+              <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Price</div><div className="mt-1 font-bold text-white">{zar(data.product.priceCents)}</div></div>
+              <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Access</div><div className="mt-1 font-bold text-white">{data.product.accessDays} days</div></div>
+            </div>
+
+            {data.mockExam.intro && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Introduction</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{data.mockExam.intro}</p></section>}
+            {data.product.description && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Store description</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{data.product.description}</p></section>}
+
+            {isCaseStudy && data.email && (data.email.from || data.email.to || data.email.subject || data.email.html) && (
+              <section>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Email attachment</h3>
+                <div className="overflow-hidden rounded-xl border border-white/10">
+                  <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+                    <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">From:</span> {data.email.from || "—"}</div>
+                    <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {data.email.to || "—"}</div>
+                  </div>
+                  <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {data.email.subject || "—"}</div>
+                  <div className="border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: data.email.html ?? "" }} />
+                </div>
+              </section>
+            )}
+
+            {isCaseStudy && data.sections.length > 0 && (
+              <section>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Sections / tasks ({data.sections.length})</h3>
+                <div className="space-y-3">
+                  {data.sections.map((section) => (
+                    <div key={section.sectionNumber} className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4">
+                      <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">{section.title}</span><Badge className="bg-[#102b36] text-[#00ff88]">{section.durationSeconds / 60} min</Badge></div>
+                      {section.introduction && <p className="mt-3 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Introduction: </span>{section.introduction}</p>}
+                      {section.scenario && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Scenario: </span>{section.scenario}</p>}
+                      {section.question && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Question: </span>{section.question}</p>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {!isCaseStudy && data.questions.length > 0 && (
+              <section>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Questions ({data.questions.length})</h3>
+                <div className="space-y-3">
+                  {data.questions.map((question, index) => {
+                    let options: string[] = [];
+                    try { options = JSON.parse(question.optionsJson) as string[]; } catch { /* ignore */ }
+                    let answers: string[] = [];
+                    try { answers = JSON.parse(question.answerJson) as string[]; } catch { /* ignore */ }
+                    const needsOptions = question.questionType !== "numerical" && question.questionType !== "text_input";
+                    return (
+                      <div key={index} className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4">
+                        <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">Q{index + 1} · {question.topic || "General"}</span><Badge className="bg-[#102b36] text-[#00e5ff]">{question.questionType.replace("_", " ")}</Badge></div>
+                        <p className="mt-3 text-sm leading-6 text-[#c4b5fd]">{question.prompt}</p>
+                        {needsOptions && options.length > 0 && (
+                          <ul className="mt-3 space-y-1">{options.map((option, optionIndex) => <li key={optionIndex} className="rounded-lg bg-[#0c0524] px-3 py-2 text-sm text-[#c4b5fd]">{String.fromCharCode(65 + optionIndex)}. {option}</li>)}</ul>
+                        )}
+                        {answers.length > 0 && <p className="mt-3 text-xs text-[#00ff88]">Correct: {answers.join(", ")}</p>}
+                        {question.explanation && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Explanation: </span>{question.explanation}</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {isCaseStudy && data.sections.length === 0 && <p className="text-sm text-white/45">No sections added yet.</p>}
+            {!isCaseStudy && data.questions.length === 0 && <p className="text-sm text-white/45">No questions added yet.</p>}
+          </div>
+        )}
+
+        <div className="mt-8 flex justify-end border-t border-white/10 pt-5">
+          <Button className="aft-button" onClick={onClose}>Close preview</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminConsole({ mode }: { mode: "admin" | "instructor" }) {

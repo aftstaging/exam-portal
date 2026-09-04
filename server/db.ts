@@ -356,6 +356,23 @@ export async function listAdminContent(kind: "mock_exams" | "sections" | "resour
   return rows.map((row) => ({ id: row.id, title: row.prompt.slice(0, 100), status: row.status === "retired" ? "archived" as const : row.status, detail: `${row.topic} · ${row.difficulty}` }));
 }
 
+export async function getAdminExamPreview(mockExamId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const examRow = (await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, mockExamId)).limit(1))[0];
+  if (!examRow) throw new Error("Exam not found");
+  const sections = await db.select({ id: caseStudySections.id, sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question, durationSeconds: caseStudySections.durationSeconds }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
+  const questions = await db.select({ id: objectiveQuestions.id, topic: objectiveQuestions.topic, learningOutcome: objectiveQuestions.learningOutcome, questionType: objectiveQuestions.questionType, prompt: objectiveQuestions.prompt, optionsJson: objectiveQuestions.optionsJson, answerJson: objectiveQuestions.answerJson, explanation: objectiveQuestions.explanation, rationaleJson: objectiveQuestions.rationaleJson, difficulty: objectiveQuestions.difficulty }).from(objectiveQuestions).where(eq(objectiveQuestions.mockExamId, mockExamId)).orderBy(objectiveQuestions.id);
+  const emailResources = await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), eq(resources.kind, "email"))).orderBy(desc(resources.createdAt));
+  const emailMeta = emailResources.map((resource) => { try { return JSON.parse(resource.fileUrl ?? "null") as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } }).filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
+  return {
+    mockExam: examRow.mockExam,
+    product: examRow.product,
+    sections,
+    questions,
+    email: emailMeta,
+  };
+}
+
 export async function updateSectionTitle(input: { sectionId: number; title: string; userId: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const title = input.title.trim();

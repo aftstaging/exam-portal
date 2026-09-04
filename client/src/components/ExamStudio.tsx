@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bold,
   BookOpen,
@@ -105,6 +105,15 @@ function RichTextEditor({ value, onChange, placeholder }: { value: string; onCha
     if (editor) onChange(editor.innerHTML);
   };
 
+  const setHtml = useCallback(() => {
+    const editor = editorRef.current;
+    if (editor && editor.innerHTML !== value) editor.innerHTML = value;
+  }, [value]);
+
+  useEffect(() => {
+    if (document.activeElement !== editorRef.current) setHtml();
+  }, [setHtml]);
+
   const toolButton = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0c0524] text-white/80 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]";
 
   return (
@@ -124,7 +133,6 @@ function RichTextEditor({ value, onChange, placeholder }: { value: string; onCha
         onInput={onInput}
         data-placeholder={placeholder}
         className="email-editor min-h-40 cursor-text px-3 py-2 text-sm leading-6 text-white outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-white/30"
-        dangerouslySetInnerHTML={{ __html: value }}
       />
       <style>{`.email-editor ul{list-style:disc;padding-left:1.5rem;margin:0.25rem 0;} .email-editor ol{list-style:decimal;padding-left:1.5rem;margin:0.25rem 0;}`}</style>
     </div>
