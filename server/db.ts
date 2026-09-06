@@ -260,6 +260,25 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
   return { resourceId: created[0]?.id, url: uploaded.url, regenerated: false };
 }
 
+export async function getPrintableExamPdf(userId: number, mockExamId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const exam = await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, mockExamId)).limit(1);
+  if (!exam[0]) throw new Error("Mock exam not found");
+  if ((exam[0].product.priceCents ?? 0) > 0) {
+    const access = await db.select().from(entitlements).where(and(eq(entitlements.userId, userId), eq(entitlements.productId, exam[0].product.id), eq(entitlements.status, "active"))).limit(1);
+    if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
+  }
+  const existing = await db.select().from(resources).where(and(eq(resources.productId, exam[0].product.id), eq(resources.kind, "printable_pdf"))).limit(1);
+  if (existing[0]?.fileKey) {
+    return { resourceId: existing[0].id, url: await storageGetSignedUrl(existing[0].fileKey), generated: false };
+  }
+  const generated = await generatePrintablePdf(userId, mockExamId);
+  const row = generated.resourceId ? await db.select().from(resources).where(eq(resources.id, generated.resourceId)).limit(1) : existing;
+  const key = row[0]?.fileKey;
+  if (!key) throw new Error("Printable PDF could not be generated");
+  return { resourceId: row[0]?.id, url: await storageGetSignedUrl(key), generated: true };
+}
+
 function inferResourceMimeType(fileKey: string | null | undefined): string {
   const ext = (fileKey ?? "").split(".").pop()?.toLowerCase() ?? "";
   if (ext === "pdf") return "application/pdf";
@@ -324,6 +343,9 @@ export async function createLockedSubmission(input: { userId: number; attemptId:
   const status = input.optOutOfMarking ? "submitted" : "awaiting_marking";
   await db.update(attempts).set({ status, optOutOfMarking: input.optOutOfMarking ? 1 : 0, submittedAt: new Date() }).where(eq(attempts.id, input.attemptId));
   const created = await db.insert(submissions).values({ attemptId: input.attemptId, submittedBy: input.userId, status: input.optOutOfMarking ? "locked" : "received" }).$returningId();
+  if (!input.optOutOfMarking) {
+    await db.insert(markings).values({ attemptId: input.attemptId, status: "unassigned", totalPoints: 0, awardedPoints: 0 });
+  }
   await db.insert(notifications).values({ userId: input.userId, type: "submission", subject: "Exam submission received", body: "Your submission has been securely locked and recorded." });
   return { submissionId: created[0]?.id, status };
 }
