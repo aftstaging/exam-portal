@@ -33,14 +33,16 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
 type BundleFile = { fileName: string; mimeType: string; base64: string };
+type ExistingFile = { fileName: string; keepUrl: string };
+type EditableFile = BundleFile | ExistingFile | null;
 
 type AttachSlotProps = {
   label: string;
   icon: React.ReactNode;
   hint: string;
   accept: string;
-  value: BundleFile | null;
-  onChange: (file: BundleFile | null) => void;
+  value: EditableFile;
+  onChange: (file: EditableFile) => void;
   note?: string;
 };
 
@@ -147,7 +149,7 @@ type QuestionDraft = {
   correct: string;
   explanation: string;
   rationale: string;
-  attachment: BundleFile | null;
+  attachment: EditableFile;
 };
 
 const emptyQuestion = (): QuestionDraft => ({
@@ -377,7 +379,8 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
   );
 }
 
-export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
+export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onCreated: () => void; onCancelled?: () => void; editExamId?: number }) {
+  const isEditMode = Boolean(editExamId);
   const [title, setTitle] = useState("");
   const [examType, setExamType] = useState<"case_study" | "objective_test">("case_study");
   const [duration, setDuration] = useState("45");
@@ -387,19 +390,20 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
   const [accessDays, setAccessDays] = useState("30");
   const [featuredImage, setFeaturedImage] = useState<BundleFile | null>(null);
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
-  const [preModeratedPdf, setPreModeratedPdf] = useState<BundleFile | null>(null);
+  const [preModeratedPdf, setPreModeratedPdf] = useState<EditableFile>(null);
   const [emailFrom, setEmailFrom] = useState("");
   const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailText, setEmailText] = useState("");
-  const [emailImage, setEmailImage] = useState<BundleFile | null>(null);
-  const [reference, setReference] = useState<BundleFile | null>(null);
-  const [preSeen, setPreSeen] = useState<BundleFile | null>(null);
-  const [formulae, setFormulae] = useState<BundleFile | null>(null);
+  const [emailImage, setEmailImage] = useState<EditableFile>(null);
+  const [reference, setReference] = useState<EditableFile>(null);
+  const [preSeen, setPreSeen] = useState<EditableFile>(null);
+  const [formulae, setFormulae] = useState<EditableFile>(null);
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
   const [sections, setSections] = useState<SectionDraft[]>([emptySection(1)]);
   const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackFile, setFeedbackFile] = useState<BundleFile | null>(null);
+  const [feedbackFile, setFeedbackFile] = useState<EditableFile>(null);
+  const [feedbackTouched, setFeedbackTouched] = useState(false);
   const [createdId, setCreatedId] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
@@ -411,6 +415,95 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
     },
     onError: (error) => toast.error(error.message),
   });
+
+  const updateBundle = trpc.admin.updateExamBundle.useMutation({
+    onSuccess: () => {
+      toast.success("Exam updated");
+      onCreated();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const detail = trpc.admin.examBundleDetail.useQuery(
+    { mockExamId: editExamId as number },
+    { enabled: isEditMode, retry: false },
+  );
+
+  const loadedRef = useRef(false);
+  useEffect(() => {
+    loadedRef.current = false;
+  }, [editExamId]);
+  useEffect(() => {
+    if (!detail.data || loadedRef.current) return;
+    loadedRef.current = true;
+    const { mockExam, product, sections: detailSections, questions: detailQuestions, email, resources, feedbackText: detailFeedbackText } = detail.data;
+    setTitle(mockExam.title ?? "");
+    setExamType(mockExam.examType);
+    setDuration(String(Math.max(1, Math.round((mockExam.totalDurationSeconds ?? 2700) / 60))));
+    setIntro(mockExam.intro ?? "");
+    setDescription(product.description ?? "");
+    setPrice(String(Math.round((product.priceCents ?? 0) / 100)));
+    setAccessDays(String(product.accessDays ?? 30));
+    setFeaturedImageUrl(product.featuredImageUrl ?? "");
+    const existingFile = (resource?: typeof resources[number]): ExistingFile | null => (resource ? { fileName: resource.title, keepUrl: resource.fileUrl ?? resource.title } : null);
+    setPreModeratedPdf(existingFile(resources.find((r) => r.kind === "printable_pdf")));
+    setPreSeen(existingFile(resources.find((r) => r.kind === "pre_seen")));
+    setFormulae(existingFile(resources.find((r) => r.kind === "formulae")));
+    setReference(existingFile(resources.find((r) => r.kind === "reference")));
+    if (email) {
+      setEmailFrom(email.from ?? "");
+      setEmailTo(email.to ?? "");
+      setEmailSubject(email.subject ?? "");
+      setEmailText(email.html ?? "");
+    }
+    const emailImg = resources.find((r) => r.kind === "email" && r.fileUrl && !r.fileUrl.trim().startsWith("{"));
+    if (emailImg) setEmailImage(existingFile(emailImg));
+    if (mockExam.examType === "objective_test") {
+      const validTypes: QuestionDraft["questionType"][] = ["single_choice", "multiple_choice", "dropdown", "numerical", "text_input"];
+      setQuestions(detailQuestions.length
+        ? detailQuestions.map((q) => {
+            let options: string[] = [];
+            try { const parsed = JSON.parse(q.optionsJson); if (Array.isArray(parsed)) options = parsed.map(String); } catch { /* ignore */ }
+            let answerText = "";
+            try { const parsed = JSON.parse(q.answerJson); answerText = Array.isArray(parsed) ? parsed.join(",") : String(parsed); } catch { answerText = String(q.answerJson ?? ""); }
+            let rationale = "";
+            try { const parsed = JSON.parse(q.rationaleJson ?? "null"); if (Array.isArray(parsed)) rationale = parsed.filter(Boolean).join("\n"); } catch { /* ignore */ }
+            return {
+              topic: q.topic ?? "",
+              prompt: q.prompt ?? "",
+              questionType: validTypes.includes(q.questionType) ? q.questionType : "single_choice",
+              options: options.join("\n"),
+              correct: answerText,
+              explanation: q.explanation ?? "",
+              rationale,
+              attachment: q.attachmentUrl ? { fileName: q.attachmentFileName || "question-image", keepUrl: q.attachmentUrl } : null,
+            };
+          })
+        : [emptyQuestion()]);
+    } else {
+      setSections(detailSections.length
+        ? detailSections.map((s) => ({
+            title: s.title,
+            duration: String(Math.max(1, Math.round(s.durationSeconds / 60))),
+            introduction: s.introduction ?? "",
+            scenario: s.scenario ?? "",
+            question: s.question ?? "",
+          }))
+        : [emptySection(1)]);
+      const fb = resources.find((r) => r.kind === "feedback");
+      if (fb && fb.fileUrl && !fb.fileUrl.trim().startsWith("{")) {
+        setFeedbackFile(existingFile(fb));
+        setFeedbackText("");
+      } else if (detailFeedbackText) {
+        setFeedbackText(detailFeedbackText);
+        setFeedbackFile(null);
+      } else {
+        setFeedbackText("");
+        setFeedbackFile(null);
+      }
+      setFeedbackTouched(false);
+    }
+  }, [detail.data]);
 
   const isCaseStudy = examType === "case_study";
 
@@ -490,7 +583,7 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
 
   const submit = async () => {
     if (!title.trim()) return toast.error("Enter an exam title");
-    if (createBundle.isPending) return;
+    if (createBundle.isPending || updateBundle.isPending) return;
     const bundleQuestions =
       examType === "objective_test"
         ? questions
@@ -516,7 +609,7 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
     if (examType === "case_study" && bundleSections && bundleSections.length === 0) {
       return toast.error("Add at least one case-study section (task)");
     }
-    const payload: Parameters<typeof createBundle.mutate>[0] = {
+    const common = {
       title: title.trim(),
       examType,
       intro: intro.trim() || undefined,
@@ -526,19 +619,51 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
       totalDurationSeconds: Math.max(60, Math.round(Number(duration || 45) * 60)),
       featuredImageUrl: featuredImageUrl.trim() || undefined,
       featuredImage: featuredImage ?? undefined,
-      preModeratedPdf: preModeratedPdf ?? undefined,
-      preSeen: preSeen ?? undefined,
-      formulae: formulae ?? undefined,
-      reference: reference ?? undefined,
+      caseStudySections: bundleSections,
+      objectiveQuestions: bundleQuestions,
+    };
+    if (isEditMode) {
+      const feedbackActive = feedbackTouched;
+      const payload: Parameters<typeof updateBundle.mutate>[0] = {
+        ...common,
+        mockExamId: editExamId as number,
+        preModeratedPdf: preModeratedPdf ?? undefined,
+        preSeen: preSeen ?? undefined,
+        formulae: formulae ?? undefined,
+        reference: reference ?? undefined,
+        emailFrom: examType === "case_study" && emailFrom.trim() ? emailFrom.trim() : examType === "case_study" ? null : undefined,
+        emailTo: examType === "case_study" && emailTo.trim() ? emailTo.trim() : examType === "case_study" ? null : undefined,
+        emailSubject: examType === "case_study" && emailSubject.trim() ? emailSubject.trim() : examType === "case_study" ? null : undefined,
+        emailText: examType === "case_study" ? emailText.trim() || null : undefined,
+        emailImage: examType === "case_study" ? emailImage ?? null : undefined,
+        feedbackText: examType === "case_study" ? (feedbackActive ? feedbackText.trim() || null : undefined) : undefined,
+        feedbackFile: examType === "case_study" ? (feedbackActive ? feedbackFile ?? null : undefined) : undefined,
+      };
+      updateBundle.mutate(payload);
+      return;
+    }
+    const createQuestions: NonNullable<Parameters<typeof createBundle.mutate>[0]["objectiveQuestions"]> = (bundleQuestions ?? []).map((q) =>
+      q.attachment && "keepUrl" in q.attachment
+        ? { ...q, attachment: undefined }
+        : q.attachment && "base64" in q.attachment
+          ? { ...q, attachment: q.attachment }
+          : { ...q, attachment: undefined },
+    );
+    const payload: Parameters<typeof createBundle.mutate>[0] = {
+      ...common,
+      objectiveQuestions: createQuestions,
+      featuredImageUrl: featuredImageUrl.trim() || undefined,
+      preModeratedPdf: preModeratedPdf && "keepUrl" in preModeratedPdf ? undefined : preModeratedPdf ?? undefined,
+      preSeen: preSeen && "keepUrl" in preSeen ? undefined : preSeen ?? undefined,
+      formulae: formulae && "keepUrl" in formulae ? undefined : formulae ?? undefined,
+      reference: reference && "keepUrl" in reference ? undefined : reference ?? undefined,
       emailFrom: examType === "case_study" && emailFrom.trim() ? emailFrom.trim() : undefined,
       emailTo: examType === "case_study" && emailTo.trim() ? emailTo.trim() : undefined,
       emailSubject: examType === "case_study" && emailSubject.trim() ? emailSubject.trim() : undefined,
       emailText: examType === "case_study" ? emailText.trim() || undefined : undefined,
-      emailImage: examType === "case_study" ? emailImage ?? undefined : undefined,
-      caseStudySections: bundleSections,
+      emailImage: examType === "case_study" ? (emailImage && "keepUrl" in emailImage ? undefined : emailImage ?? undefined) : undefined,
       feedbackText: examType === "case_study" ? feedbackText.trim() || undefined : undefined,
-      feedbackFile: examType === "case_study" ? feedbackFile ?? undefined : undefined,
-      objectiveQuestions: bundleQuestions,
+      feedbackFile: examType === "case_study" ? (feedbackFile && "keepUrl" in feedbackFile ? undefined : feedbackFile ?? undefined) : undefined,
     };
     createBundle.mutate(payload);
   };
@@ -547,10 +672,16 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
     <div className="space-y-6">
       <Card className="mt-6 border-[#00e5ff]/30 bg-[#120730]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white"><GraduationCap className="h-5 w-5 text-[#00ff88]" /> Create an exam</CardTitle>
-          <p className="text-sm leading-6 text-white/50">Create a case study or objective test together with its store listing, pricing, subscription period, featured image, and protected resources — all in one place. New exams are saved as drafts until an administrator publishes them.</p>
+          <CardTitle className="flex items-center gap-2 text-white"><GraduationCap className="h-5 w-5 text-[#00ff88]" /> {isEditMode ? `Edit exam${editExamId != null ? ` #${editExamId}` : ""}` : "Create an exam"}</CardTitle>
+          <p className="text-sm leading-6 text-white/50">{isEditMode ? "Edit this exam and its store listing, pricing, subscription period, featured image, and protected resources. The current publish status is preserved — a published exam stays published after saving." : "Create a case study or objective test together with its store listing, pricing, subscription period, featured image, and protected resources — all in one place. New exams are saved as drafts until an administrator publishes them."}</p>
         </CardHeader>
         <CardContent className="space-y-7">
+          {isEditMode && detail.isLoading && (
+            <div className="rounded-xl border border-[#00e5ff]/30 bg-[#102b36]/40 p-4 text-sm text-[#00e5ff]">Loading exam details…</div>
+          )}
+          {isEditMode && detail.isError && (
+            <div className="rounded-xl border border-[#ff8278]/40 bg-[#2b1010]/40 p-4 text-sm text-[#ff8278]">Could not load this exam. It may have been deleted.</div>
+          )}
           {/* Exam details */}
           <section>
             <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Sparkles className="h-4 w-4" /> Exam details</div>
@@ -720,11 +851,11 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
                 <div className="grid gap-3 lg:grid-cols-2">
                   <div className="rounded-xl border border-white/10 bg-[#18093c]/60 p-4">
                     <p className="text-sm font-semibold text-white">Type the feedback / suggested solutions</p>
-                    <Textarea value={feedbackText} onChange={(event) => setFeedbackText(event.target.value)} placeholder="Paste or type the marking guide / suggested solutions…" className="mt-2 min-h-28 border-white/10 bg-[#0c0524] text-white" />
+                    <Textarea value={feedbackText} onChange={(event) => { setFeedbackText(event.target.value); setFeedbackTouched(true); }} placeholder="Paste or type the marking guide / suggested solutions…" className="mt-2 min-h-28 border-white/10 bg-[#0c0524] text-white" />
                   </div>
                   <div className="space-y-3">
                     <p className="text-sm font-semibold text-white">Or attach a feedback document</p>
-                    <AttachSlot label="Feedback document" icon={<FileText className="h-4 w-4 text-[#00e5ff]" />} hint="Suggested solutions / answers and marking guide." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={feedbackFile} onChange={setFeedbackFile} note="PDF, document, PNG or JPG." />
+                    <AttachSlot label="Feedback document" icon={<FileText className="h-4 w-4 text-[#00e5ff]" />} hint="Suggested solutions / answers and marking guide." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={feedbackFile} onChange={(file) => { setFeedbackFile(file); setFeedbackTouched(true); }} note="PDF, document, PNG or JPG." />
                   </div>
                 </div>
               </section>
@@ -766,10 +897,13 @@ export default function ExamStudio({ onCreated }: { onCreated: () => void }) {
 
           <div className="flex flex-wrap items-center justify-end gap-3">
             {createdId && <Badge className="bg-[#102b36] text-[#00ff88]">Exam draft #{createdId} created</Badge>}
+            {isEditMode && onCancelled && (
+              <Button variant="outline" className="border-white/15 text-white/70" onClick={onCancelled} disabled={updateBundle.isPending}><RefreshCw className="mr-2 h-4 w-4" /> Back to exams</Button>
+            )}
             <Button variant="outline" className="border-[#00e5ff] text-[#00e5ff]" onClick={() => setPreviewOpen(true)} disabled={!title.trim()}><Sparkles className="mr-2 h-4 w-4" /> Preview</Button>
-            <Button variant="outline" className="border-white/15 text-white/70" onClick={reset} disabled={createBundle.isPending}><RefreshCw className="mr-2 h-4 w-4" /> Reset</Button>
-            <Button className="aft-button" disabled={createBundle.isPending || !title.trim()} onClick={() => void submit()}>
-              {createBundle.isPending ? "Creating…" : isCaseStudy ? "Create case study exam" : "Create objective test exam"} <CreditCard className="ml-2 h-4 w-4" />
+            {!isEditMode && <Button variant="outline" className="border-white/15 text-white/70" onClick={reset} disabled={createBundle.isPending}><RefreshCw className="mr-2 h-4 w-4" /> Reset</Button>}
+            <Button className="aft-button" disabled={createBundle.isPending || updateBundle.isPending || !title.trim()} onClick={() => void submit()}>
+              {(createBundle.isPending || updateBundle.isPending) ? "Saving…" : isEditMode ? "Save changes" : isCaseStudy ? "Create case study exam" : "Create objective test exam"} <CreditCard className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </CardContent>

@@ -260,6 +260,19 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
   return { resourceId: created[0]?.id, url: uploaded.url, regenerated: false };
 }
 
+function inferResourceMimeType(fileKey: string | null | undefined): string {
+  const ext = (fileKey ?? "").split(".").pop()?.toLowerCase() ?? "";
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "png") return "image/png";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "gif") return "image/gif";
+  if (ext === "webp") return "image/webp";
+  if (ext === "txt") return "text/plain";
+  if (ext === "doc") return "application/msword";
+  if (ext === "docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  return "application/octet-stream";
+}
+
 export async function listProtectedResources(userId: number, productId: number) {
   const db = await getDb(); if (!db) return [];
   const product = await db.select({ priceCents: products.priceCents }).from(products).where(eq(products.id, productId)).limit(1);
@@ -269,7 +282,7 @@ export async function listProtectedResources(userId: number, productId: number) 
     if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
   }
   const rows = await db.select().from(resources).where(and(eq(resources.productId, productId), eq(resources.status, "published"))).orderBy(desc(resources.createdAt));
-  return rows.map(({ fileKey, fileUrl, ...resource }) => ({ ...resource, hasFile: Boolean(fileKey || fileUrl) }));
+  return rows.map(({ fileKey, fileUrl, ...resource }) => ({ ...resource, hasFile: Boolean(fileKey || fileUrl), mimeType: inferResourceMimeType(fileKey) }));
 }
 
 export async function getProtectedResourceDownload(userId: number, resourceId: number) {
@@ -364,12 +377,59 @@ export async function getAdminExamPreview(mockExamId: number) {
   const questions = await db.select({ id: objectiveQuestions.id, topic: objectiveQuestions.topic, learningOutcome: objectiveQuestions.learningOutcome, questionType: objectiveQuestions.questionType, prompt: objectiveQuestions.prompt, optionsJson: objectiveQuestions.optionsJson, answerJson: objectiveQuestions.answerJson, explanation: objectiveQuestions.explanation, rationaleJson: objectiveQuestions.rationaleJson, difficulty: objectiveQuestions.difficulty }).from(objectiveQuestions).where(eq(objectiveQuestions.mockExamId, mockExamId)).orderBy(objectiveQuestions.id);
   const emailResources = await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), eq(resources.kind, "email"))).orderBy(desc(resources.createdAt));
   const emailMeta = emailResources.map((resource) => { try { return JSON.parse(resource.fileUrl ?? "null") as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } }).filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
+  const feedbackResource = (await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), eq(resources.kind, "feedback"))).limit(1))[0];
+  let feedbackText: string | null = null;
+  if (feedbackResource?.fileUrl && feedbackResource.fileUrl.trim().startsWith("{")) {
+    try { feedbackText = (JSON.parse(feedbackResource.fileUrl) as { text?: string }).text ?? null; } catch { feedbackText = null; }
+  }
   return {
     mockExam: examRow.mockExam,
     product: examRow.product,
     sections,
     questions,
     email: emailMeta,
+    feedbackText,
+  };
+}
+
+export async function getAdminExamBundleDetail(mockExamId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const examRow = (await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, mockExamId)).limit(1))[0];
+  if (!examRow) throw new Error("Exam not found");
+  const sections = await db.select().from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
+  const questions = await db.select().from(objectiveQuestions).where(eq(objectiveQuestions.mockExamId, mockExamId)).orderBy(objectiveQuestions.id);
+  const allResources = await db.select().from(resources).where(eq(resources.productId, examRow.mockExam.productId)).orderBy(desc(resources.createdAt));
+  const emailMeta = allResources
+    .filter((resource) => resource.kind === "email" && resource.fileUrl && resource.fileUrl.trim().startsWith("{"))
+    .map((resource) => { try { return JSON.parse(resource.fileUrl as string) as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } })
+    .filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
+  const feedbackResource = allResources.find((resource) => resource.kind === "feedback");
+  let feedbackText: string | null = null;
+  if (feedbackResource?.fileUrl && feedbackResource.fileUrl.trim().startsWith("{")) {
+    try { feedbackText = (JSON.parse(feedbackResource.fileUrl) as { text?: string }).text ?? null; } catch { feedbackText = null; }
+  }
+  return {
+    mockExam: examRow.mockExam,
+    product: examRow.product,
+    sections: sections.map((section) => ({ id: section.id, sectionNumber: section.sectionNumber, title: section.title, introduction: section.introduction, scenario: section.scenario, question: section.question, durationSeconds: section.durationSeconds })),
+    questions: questions.map((question) => ({
+      id: question.id,
+      topic: question.topic,
+      learningOutcome: question.learningOutcome,
+      questionType: question.questionType,
+      prompt: question.prompt,
+      optionsJson: question.optionsJson,
+      answerJson: question.answerJson,
+      explanation: question.explanation,
+      rationaleJson: question.rationaleJson,
+      difficulty: question.difficulty,
+      attachmentUrl: question.attachmentUrl,
+      attachmentFileName: question.attachmentFileName,
+      attachmentMimeType: question.attachmentMimeType,
+    })),
+    email: emailMeta,
+    feedbackText,
+    resources: allResources.map((resource) => ({ id: resource.id, kind: resource.kind, title: resource.title, fileKey: resource.fileKey, fileUrl: resource.fileUrl })),
   };
 }
 
@@ -384,7 +444,16 @@ export async function updateSectionTitle(input: { sectionId: number; title: stri
 
 export async function updateAdminContentStatus(input: { kind: "mock_exams" | "resources" | "objective_questions"; id: number; status: "draft" | "published" | "archived"; userId: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  if (input.kind === "mock_exams") await db.update(mockExams).set({ status: input.status }).where(eq(mockExams.id, input.id));
+  if (input.kind === "mock_exams") {
+    await db.update(mockExams).set({ status: input.status }).where(eq(mockExams.id, input.id));
+    const exam = (await db.select({ productId: mockExams.productId }).from(mockExams).where(eq(mockExams.id, input.id)).limit(1))[0];
+    if (exam) {
+      await db.update(products).set({ status: input.status }).where(eq(products.id, exam.productId));
+      await db.update(resources).set({ status: input.status }).where(eq(resources.productId, exam.productId));
+      await db.update(objectiveQuestions).set({ status: input.status === "archived" ? "retired" : input.status }).where(eq(objectiveQuestions.mockExamId, input.id));
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: exam.productId, action: `status_${input.status}`, metadata: JSON.stringify({ status: input.status, origin: "mock_exam_publish" }) });
+    }
+  }
   if (input.kind === "resources") await db.update(resources).set({ status: input.status }).where(eq(resources.id, input.id));
   if (input.kind === "objective_questions") await db.update(objectiveQuestions).set({ status: input.status === "archived" ? "retired" : input.status }).where(eq(objectiveQuestions.id, input.id));
   await db.insert(auditEvents).values({ userId: input.userId, entityType: input.kind, entityId: input.id, action: `status_${input.status}`, metadata: JSON.stringify({ status: input.status }) });
@@ -393,7 +462,20 @@ export async function updateAdminContentStatus(input: { kind: "mock_exams" | "re
 
 export async function updateProductStatus(input: { productId: number; status: "draft" | "published" | "archived"; userId: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const product = (await db.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];
+  if (!product) throw new Error("Product not found");
   await db.update(products).set({ status: input.status }).where(eq(products.id, input.productId));
+
+  const relatedMockExams = await db.select({ id: mockExams.id }).from(mockExams).where(eq(mockExams.productId, input.productId));
+  const mockExamIds = relatedMockExams.map((row) => row.id);
+  if (mockExamIds.length) {
+    await db.update(mockExams).set({ status: input.status }).where(inArray(mockExams.id, mockExamIds));
+    await db.update(resources).set({ status: input.status }).where(eq(resources.productId, input.productId));
+    await db.update(objectiveQuestions).set({ status: input.status === "archived" ? "retired" : input.status }).where(inArray(objectiveQuestions.mockExamId, mockExamIds));
+    for (const mockExamId of mockExamIds) {
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "mock_exam", entityId: mockExamId, action: `status_${input.status}`, metadata: JSON.stringify({ status: input.status, origin: "product_publish" }) });
+    }
+  }
   await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: input.productId, action: `status_${input.status}`, metadata: JSON.stringify({ status: input.status }) });
   return { success: true };
 }
@@ -646,8 +728,9 @@ export async function createExamBundle(input: ExamBundleInput) {
       if (!question.prompt?.trim()) continue;
       const qtype = question.questionType ?? "single_choice";
       const options = (question.options ?? []).map((option) => option?.trim()).filter(Boolean);
-      if (options.length < 2) continue;
-      const correct = Math.min(Math.max(Math.round(question.correct) || 0, 0), options.length - 1);
+      const needsOptions = qtype !== "numerical" && qtype !== "text_input";
+      if (needsOptions && options.length < 2) continue;
+      const correct = Math.min(Math.max(Math.round(question.correct) || 0, 0), Math.max(options.length - 1, 0));
       let attachmentUrl: string | null = null;
       let attachmentFileName: string | null = null;
       let attachmentMimeType: string | null = null;
@@ -760,7 +843,7 @@ export async function createExamBundle(input: ExamBundleInput) {
 
   // 6b. Exam feedback - either typed text or a document (e.g. suggested solutions / marking guide)
   if (input.feedbackText && input.feedbackText.trim()) {
-    await db.insert(resources).values({ productId, title: `${title} · Feedback`, kind: "feedback", fileKey: null, fileUrl: null, status: "draft" });
+    await db.insert(resources).values({ productId, title: `${title} · Feedback`, kind: "feedback", fileKey: null, fileUrl: JSON.stringify({ text: input.feedbackText.trim() }), status: "draft" });
   } else if (input.feedbackFile && input.feedbackFile.base64) {
     await uploadResource("feedback", input.feedbackFile, `${title} · Feedback`);
   }
@@ -783,6 +866,292 @@ export async function createExamBundle(input: ExamBundleInput) {
   }
 
   return { productId, mockExamId, generatedPdfUrl, questionCount: createdQuestionIds.length };
+}
+
+export type ExamBundleExistingFile = { fileName: string; keepUrl: string };
+export type ExamBundleFileInput = { fileName: string; mimeType?: string; base64?: string; keepUrl?: string } | null;
+
+export type ExamBundleUpdateInput = {
+  userId: number;
+  mockExamId: number;
+  title: string;
+  examType: "case_study" | "objective_test";
+  intro?: string;
+  description?: string;
+  priceCents: number;
+  accessDays: number;
+  totalDurationSeconds: number;
+  featuredImage?: ExamBundleFile | null;
+  featuredImageUrl?: string | null;
+  preModeratedPdf?: ExamBundleFileInput;
+  preSeen?: ExamBundleFileInput;
+  formulae?: ExamBundleFileInput;
+  reference?: ExamBundleFileInput;
+  emailFrom?: string | null;
+  emailTo?: string | null;
+  emailSubject?: string | null;
+  emailText?: string | null;
+  emailImage?: ExamBundleFileInput;
+  caseStudySections?: ExamBundleCaseStudySection[];
+  feedbackText?: string | null;
+  feedbackFile?: ExamBundleFileInput;
+  objectiveQuestions?: (Omit<ExamBundleObjectiveQuestion, "attachment"> & { attachment?: ExamBundleFileInput })[];
+};
+
+function existingUrlName(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  try {
+    const clean = url.split("?")[0];
+    const segment = clean.split("/").filter(Boolean).pop();
+    return segment ? decodeURIComponent(segment) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Comprehensive save for an existing exam bundle. Mirrors createExamBundle so the
+ * exam studio can be used to edit drafts and published exams. Keeps the current
+ * status of the mock exam and its store product untouched.
+ *
+ * - Removed/omitted questions and case-study sections are replaced wholesale.
+ * - Resources (pre-seen, formulae, reference, printable PDF, email image,
+ *   feedback file) are uploaded when a new base64 file is supplied, kept when a
+ *   `keepUrl` payload is supplied, removed when an explicit `null` is supplied,
+ *   and left untouched when the field is undefined.
+ */
+export async function updateExamBundle(input: ExamBundleUpdateInput) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = (await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, input.mockExamId)).limit(1))[0];
+  if (!existing) throw new Error("Exam not found");
+  const title = input.title.trim();
+  if (!title) throw new Error("Exam title is required");
+  const productId = existing.mockExam.productId;
+
+  // 1. Update the store product (status untouched)
+  let featuredImageUrl = existing.product.featuredImageUrl;
+  if (input.featuredImage) {
+    const allowed = new Set(["image/png", "image/jpeg"]);
+    if (!input.featuredImage.mimeType || !allowed.has(input.featuredImage.mimeType)) throw new Error("Featured image must be a PNG or JPEG");
+    const payload = input.featuredImage.base64.includes(",") ? input.featuredImage.base64.split(",")[1] : input.featuredImage.base64;
+    const bytes = Buffer.from(payload, "base64");
+    if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new Error("Featured image must be between 1 byte and 10 MB");
+    const ext = input.featuredImage.mimeType === "image/png" ? "png" : "jpg";
+    const uploaded = await storagePut(`product-images/${productId}/${Date.now()}-${(input.featuredImage.fileName || "product-image").replace(/[^a-zA-Z0-9._-]/g, "-")}.${ext}`, bytes, input.featuredImage.mimeType);
+    featuredImageUrl = uploaded.url;
+    await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: productId, action: "image_uploaded", metadata: JSON.stringify({ key: uploaded.key, mimeType: input.featuredImage.mimeType }) });
+  } else if (typeof input.featuredImageUrl === "string") {
+    featuredImageUrl = input.featuredImageUrl.trim() || null;
+  } else if (input.featuredImageUrl === null) {
+    featuredImageUrl = null;
+  }
+  await db.update(products).set({
+    title,
+    category: input.examType,
+    description: input.description?.trim() || null,
+    featuredImageUrl,
+    priceCents: Math.max(0, Math.round(input.priceCents)),
+    accessDays: input.accessDays && input.accessDays > 0 ? input.accessDays : existing.product.accessDays,
+  }).where(eq(products.id, productId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "product", entityId: productId, action: "updated", metadata: JSON.stringify({ title, category: input.examType }) });
+
+  // 2. Update the mock exam (status untouched)
+  await db.update(mockExams).set({
+    title,
+    examType: input.examType,
+    intro: input.intro?.trim() || null,
+    totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)),
+  }).where(eq(mockExams.id, input.mockExamId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "mock_exam", entityId: input.mockExamId, action: "updated", metadata: JSON.stringify({ title, examType: input.examType }) });
+
+  // 3. Replace objective-test questions wholesale
+  const createdQuestionIds: number[] = [];
+  if (input.objectiveQuestions) {
+    await db.delete(objectiveQuestions).where(eq(objectiveQuestions.mockExamId, input.mockExamId));
+    for (const question of input.objectiveQuestions) {
+      if (!question.prompt?.trim()) continue;
+      const qtype = question.questionType ?? "single_choice";
+      const options = (question.options ?? []).map((option) => option?.trim()).filter(Boolean);
+      const needsOptions = qtype !== "numerical" && qtype !== "text_input";
+      if (needsOptions && options.length < 2) continue;
+      let answerValue: number | number[] = Math.min(Math.max(Math.round(question.correct) || 0, 0), Math.max(options.length - 1, 0));
+      if (qtype === "multiple_choice") {
+        const raw = String(question.correct).split(/[,;\s]+/).map((part) => parseInt(part, 10)).filter((n) => Number.isFinite(n) && n >= 0 && n < options.length);
+        answerValue = raw.length ? raw : [answerValue];
+      }
+      let attachmentUrl: string | null = null;
+      let attachmentFileName: string | null = null;
+      let attachmentMimeType: string | null = null;
+      const attachment = question.attachment;
+      if (attachment && "keepUrl" in attachment && attachment.keepUrl) {
+        attachmentUrl = attachment.keepUrl;
+        attachmentFileName = attachment.fileName || existingUrlName(attachment.keepUrl) || "attachment";
+      } else if (attachment && "base64" in attachment && attachment.base64) {
+        const allowed = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+        if (attachment.mimeType && allowed.has(attachment.mimeType)) {
+          const raw = attachment.base64.includes(",") ? attachment.base64.split(",")[1] : attachment.base64;
+          const bytes = Buffer.from(raw, "base64");
+          if (bytes.length && bytes.length <= 10 * 1024 * 1024) {
+            try {
+              const uploaded = await storagePut(`objective-attachments/${input.mockExamId}/${Date.now()}-${(attachment.fileName || "question-image").replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, attachment.mimeType);
+              attachmentUrl = uploaded.url;
+              attachmentFileName = attachment.fileName || "question-image";
+              attachmentMimeType = attachment.mimeType;
+            } catch (error) {
+              console.warn("[updateExamBundle] question attachment upload failed", error);
+            }
+          }
+        }
+      }
+      const rationaleJson = question.rationale && question.rationale.length ? question.rationale.map((r) => r?.trim() || null) : null;
+      const row = (await db.insert(objectiveQuestions).values({
+        mockExamId: input.mockExamId,
+        topic: question.topic?.trim() || "General",
+        learningOutcome: null,
+        questionType: qtype,
+        prompt: question.prompt.trim(),
+        optionsJson: JSON.stringify(options),
+        answerJson: JSON.stringify(answerValue),
+        attachmentUrl,
+        attachmentFileName,
+        attachmentMimeType,
+        explanation: question.explanation?.trim() || null,
+        rationaleJson: rationaleJson ? JSON.stringify(rationaleJson) : null,
+        difficulty: "medium",
+        status: existing.mockExam.status === "published" ? "published" : "draft",
+      }).$returningId())[0]?.id;
+      if (row) createdQuestionIds.push(row);
+    }
+    if (createdQuestionIds.length) {
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "objective_question", entityId: input.mockExamId, action: "bundle_updated", metadata: JSON.stringify({ mockExamId: input.mockExamId, count: createdQuestionIds.length, ids: createdQuestionIds }) });
+    }
+  }
+
+  // 4. Replace case-study sections wholesale
+  if (input.caseStudySections) {
+    await db.delete(caseStudySections).where(eq(caseStudySections.mockExamId, input.mockExamId));
+    const sectionNumbers: number[] = [];
+    for (const section of input.caseStudySections) {
+      const secNumber = Math.max(1, Math.round(section.sectionNumber) || 0);
+      const secTitle = section.title?.trim();
+      if (!secTitle) continue;
+      const created = (await db.insert(caseStudySections).values({
+        mockExamId: input.mockExamId,
+        sectionNumber: secNumber,
+        title: secTitle.slice(0, 240),
+        introduction: section.introduction?.trim() || null,
+        scenario: section.scenario?.trim() || null,
+        question: section.question?.trim() || null,
+        durationSeconds: Math.max(60, Math.round(section.durationSeconds) || 2700),
+        cooldownSeconds: Math.max(0, Math.round(section.cooldownSeconds ?? 30)),
+      }).$returningId())[0]?.id;
+      if (created) sectionNumbers.push(secNumber);
+    }
+    if (sectionNumbers.length) {
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "case_study_section", entityId: input.mockExamId, action: "bundle_updated", metadata: JSON.stringify({ mockExamId: input.mockExamId, sectionNumbers }) });
+    }
+  }
+
+  const uploadResource = async (kind: "pre_seen" | "formulae" | "reference" | "email" | "printable_pdf" | "feedback", file: { fileName: string; mimeType?: string; base64: string }, resTitle: string) => {
+    const payload = file.base64.includes(",") ? file.base64.split(",")[1] : file.base64;
+    const bytes = Buffer.from(payload, "base64");
+    if (!bytes.length) return;
+    const uploaded = await storagePut(`admin-resources/${productId}/${Date.now()}-${(file.fileName || resTitle).replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, file.mimeType || "application/octet-stream");
+    const resourceId = (await db.insert(resources).values({ productId, title: resTitle, kind, fileKey: uploaded.key, fileUrl: uploaded.url, status: existing.mockExam.status === "published" ? "published" : "draft" }).$returningId())[0]?.id;
+    await db.insert(auditEvents).values({ userId: input.userId, entityType: "resource", entityId: resourceId ?? 0, action: "uploaded", metadata: JSON.stringify({ productId, fileName: file.fileName, kind }) });
+    return uploaded.url;
+  };
+
+  const replaceResource = async (kind: "pre_seen" | "formulae" | "reference" | "printable_pdf", file: ExamBundleFileInput, resTitle: string) => {
+    if (file === null) {
+      await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, kind)));
+      await db.insert(auditEvents).values({ userId: input.userId, entityType: "resource", entityId: 0, action: "removed", metadata: JSON.stringify({ productId, kind }) });
+      return;
+    }
+    if (!file || "keepUrl" in file || !file.base64) return;
+    const url = await uploadResource(kind, { fileName: file.fileName, mimeType: file.mimeType, base64: file.base64 }, resTitle);
+    if (url) {
+      await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, kind)));
+    }
+  };
+
+  // 5. Resource attachments
+  if (input.preSeen !== undefined) await replaceResource("pre_seen", input.preSeen, `${title} · Pre-seen`);
+  if (input.formulae !== undefined) await replaceResource("formulae", input.formulae, `${title} · Formulae + tables`);
+  if (input.reference !== undefined) await replaceResource("reference", input.reference, `${title} · Reference material`);
+  if (input.preModeratedPdf !== undefined) await replaceResource("printable_pdf", input.preModeratedPdf, `${title} · Printable exam`);
+
+  // 6. Email attachment (composed JSON meta + optional image)
+  if (input.emailFrom !== undefined || input.emailTo !== undefined || input.emailSubject !== undefined || input.emailText !== undefined || input.emailImage !== undefined) {
+    const emailMeta = JSON.stringify({
+      from: input.emailFrom?.trim() || null,
+      to: input.emailTo?.trim() || null,
+      subject: input.emailSubject?.trim() || null,
+      html: input.emailText?.trim() || null,
+    });
+    await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, "email")));
+    if (input.emailText?.trim() || input.emailFrom?.trim() || input.emailTo?.trim() || input.emailSubject?.trim()) {
+      await db.insert(resources).values({ productId, title: `${title} · Email`, kind: "email", fileKey: null, fileUrl: emailMeta, status: existing.mockExam.status === "published" ? "published" : "draft" });
+    }
+    const emailImage = input.emailImage;
+    if (emailImage && "keepUrl" in emailImage && emailImage.keepUrl) {
+      await db.insert(resources).values({ productId, title: `${title} · Email`, kind: "email", fileKey: null, fileUrl: emailImage.keepUrl, status: existing.mockExam.status === "published" ? "published" : "draft" });
+    } else if (emailImage && "base64" in emailImage && emailImage.base64) {
+      await uploadResource("email", { fileName: emailImage.fileName, mimeType: emailImage.mimeType, base64: emailImage.base64 }, `${title} · Email`);
+    }
+    await db.insert(auditEvents).values({ userId: input.userId, entityType: "resource", entityId: 0, action: "email_composed", metadata: JSON.stringify({ productId, subject: input.emailSubject }) });
+  }
+
+  // 7. Feedback: typed text or attached document
+  if (input.feedbackText !== undefined || input.feedbackFile !== undefined) {
+    if (input.feedbackText?.trim()) {
+      await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, "feedback")));
+      await db.insert(resources).values({ productId, title: `${title} · Feedback`, kind: "feedback", fileKey: null, fileUrl: JSON.stringify({ text: input.feedbackText.trim() }), status: existing.mockExam.status === "published" ? "published" : "draft" });
+    } else if (input.feedbackFile) {
+      await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, "feedback")));
+      if ("keepUrl" in input.feedbackFile && input.feedbackFile.keepUrl) {
+        await db.insert(resources).values({ productId, title: `${title} · Feedback`, kind: "feedback", fileKey: null, fileUrl: input.feedbackFile.keepUrl, status: existing.mockExam.status === "published" ? "published" : "draft" });
+      } else if ("base64" in input.feedbackFile && input.feedbackFile.base64) {
+        await uploadResource("feedback", { fileName: input.feedbackFile.fileName, mimeType: input.feedbackFile.mimeType, base64: input.feedbackFile.base64 }, `${title} · Feedback`);
+      }
+    } else if (input.feedbackFile === null) {
+      await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, "feedback")));
+    }
+  }
+
+  return { success: true, mockExamId: input.mockExamId, questionCount: createdQuestionIds.length };
+}
+
+export async function deleteExamBundle(input: { userId: number; mockExamId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const exam = (await db.select({ id: mockExams.id, productId: mockExams.productId, title: mockExams.title, status: mockExams.status }).from(mockExams).where(eq(mockExams.id, input.mockExamId)).limit(1))[0];
+  if (!exam) throw new Error("Exam not found");
+  const attemptIds = (await db.select({ id: attempts.id }).from(attempts).where(eq(attempts.mockExamId, input.mockExamId))).map((row) => row.id);
+  if (attemptIds.length) {
+    await db.delete(answers).where(inArray(answers.attemptId, attemptIds));
+    await db.delete(feedbackStates).where(inArray(feedbackStates.attemptId, attemptIds));
+    await db.delete(markings).where(inArray(markings.attemptId, attemptIds));
+    await db.delete(submissions).where(inArray(submissions.attemptId, attemptIds));
+    await db.delete(attempts).where(inArray(attempts.id, attemptIds));
+  }
+  await db.delete(caseStudySections).where(eq(caseStudySections.mockExamId, input.mockExamId));
+  await db.delete(objectiveQuestions).where(eq(objectiveQuestions.mockExamId, input.mockExamId));
+  await db.delete(mockExams).where(eq(mockExams.id, input.mockExamId));
+  await db.delete(resources).where(eq(resources.productId, exam.productId));
+  await db.delete(entitlements).where(eq(entitlements.productId, exam.productId));
+  await db.delete(payments).where(eq(payments.productId, exam.productId));
+  await db.delete(products).where(eq(products.id, exam.productId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "mock_exam", entityId: input.mockExamId, action: "deleted", metadata: JSON.stringify({ title: exam.title, status: exam.status }) });
+  return { success: true, title: exam.title };
+}
+
+export async function listAdminCatalogue() {
+  const db = await getDb(); if (!db) return { products: [], mockExams: [] };
+  const [productsRows, rowset] = await Promise.all([
+    db.select({ product: products, qualification: qualifications }).from(products).leftJoin(qualifications, eq(products.qualificationId, qualifications.id)).orderBy(desc(products.createdAt)),
+    db.select({ mockExam: mockExams, product: products, qualification: qualifications }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).leftJoin(qualifications, eq(products.qualificationId, qualifications.id)).orderBy(desc(mockExams.createdAt)),
+  ]);
+  return { products: productsRows, mockExams: rowset };
 }
 
 export async function claimFreeProduct(input: { userId: number; productId: number }) {

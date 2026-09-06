@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, updateAdminCoupon, deleteAdminCoupon, validateCoupon, checkoutWithCoupon, getAdminExamPreview } from "./db";
+import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listMarkerQueue, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, updateAdminCoupon, deleteAdminCoupon, validateCoupon, checkoutWithCoupon, getAdminExamPreview, getAdminExamBundleDetail, updateExamBundle, deleteExamBundle, listAdminCatalogue } from "./db";
 import { createCheckoutSession } from "./stripe";
 import { isAdminRole } from "@shared/integrity";
 import { getDb } from "./db";
@@ -192,6 +192,62 @@ export const appRouter = router({
         attachment: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
       })).max(200).optional(),
     })).mutation(({ ctx, input }) => createExamBundle({ ...input, userId: ctx.user.id })),
+    examBundleDetail: staffProcedure.input(z.object({ mockExamId: z.number().int().positive() })).query(({ input }) => getAdminExamBundleDetail(input.mockExamId)),
+    updateExamBundle: staffProcedure.input(z.object({
+      mockExamId: z.number().int().positive(),
+      title: z.string().min(1).max(240),
+      examType: z.enum(["case_study", "objective_test"]),
+      intro: z.string().max(5000).optional(),
+      description: z.string().max(5000).optional().nullable(),
+      priceCents: z.number().int().min(0),
+      accessDays: z.number().int().min(1).max(3650),
+      totalDurationSeconds: z.number().int().min(60).max(86400),
+featuredImageUrl: z.string().max(1000).optional().nullable(),
+      featuredImage: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(15000000) }).optional().nullable(),
+      preModeratedPdf: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
+      preSeen: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
+      formulae: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
+      reference: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
+      emailFrom: z.string().max(320).optional().nullable(),
+      emailTo: z.string().max(320).optional().nullable(),
+      emailSubject: z.string().max(500).optional().nullable(),
+      emailText: z.string().max(50000).optional().nullable(),
+      emailImage: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
+      caseStudySections: z.array(z.object({
+        sectionNumber: z.number().int().min(1).max(100),
+        title: z.string().max(240),
+        introduction: z.string().max(10000).optional(),
+        scenario: z.string().max(100000).optional(),
+        question: z.string().max(100000).optional(),
+        durationSeconds: z.number().int().min(60).max(86400),
+        cooldownSeconds: z.number().int().min(0).max(86400).optional(),
+      })).max(100).optional(),
+      feedbackText: z.string().max(100000).optional().nullable(),
+      feedbackFile: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
+      objectiveQuestions: z.array(z.object({
+        topic: z.string().max(180),
+        prompt: z.string().max(10000),
+        questionType: z.enum(["single_choice", "multiple_choice", "dropdown", "numerical", "text_input"]).optional(),
+        options: z.array(z.string().min(0).max(1000)).min(0).max(8),
+        correct: z.number().int().min(0),
+        explanation: z.string().max(5000).optional(),
+        rationale: z.array(z.string().min(0).max(1000)).max(8).optional(),
+        attachment: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional(),
+      })).max(200).optional(),
+    })).mutation(({ ctx, input }) => updateExamBundle({
+      ...input,
+      userId: ctx.user.id,
+      description: input.description ?? undefined,
+      featuredImageUrl: input.featuredImageUrl ?? undefined,
+      intro: input.intro ?? undefined,
+      emailFrom: input.emailFrom ?? undefined,
+      emailTo: input.emailTo ?? undefined,
+      emailSubject: input.emailSubject ?? undefined,
+      emailText: input.emailText ?? undefined,
+      feedbackText: input.feedbackText ?? undefined,
+    })),
+    deleteExamBundle: staffProcedure.input(z.object({ mockExamId: z.number().int().positive() })).mutation(({ ctx, input }) => deleteExamBundle({ mockExamId: input.mockExamId, userId: ctx.user.id })),
+    staffCatalogue: staffProcedure.query(() => listAdminCatalogue()),
     createObjectiveQuestion: staffProcedure.input(z.object({ mockExamId: z.number().int().positive(), topic: z.string().min(1).max(180), prompt: z.string().min(1).max(10000), options: z.array(z.string().min(1).max(1000)).min(2).max(8), correct: z.number().int().min(0), questionType: z.enum(["single_choice", "multiple_choice", "dropdown", "numerical", "text_input"]).optional(), explanation: z.string().max(5000).optional(), rationale: z.array(z.string().max(1000)).max(8).optional(), difficulty: z.enum(["easy", "medium", "hard"]), attachmentBase64: z.string().max(15_000_000).optional(), attachmentFileName: z.string().max(240).optional(), attachmentMimeType: z.string().max(120).optional() })).mutation(({ ctx, input }) => createAdminObjectiveQuestion({ ...input, userId: ctx.user.id })),
     updateObjectiveQuestionRationale: staffProcedure.input(z.object({ questionId: z.number().int().positive(), rationale: z.array(z.string().max(1000)).max(8) })).mutation(({ ctx, input }) => updateAdminObjectiveQuestionRationale({ ...input, userId: ctx.user.id })),
     uploadResource: staffProcedure.input(z.object({ productId: z.number().int().positive(), title: z.string().max(240), kind: z.enum(["pre_seen", "formulae", "printable_pdf", "feedback", "course_material", "reference"]), fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().min(1).max(28000000) })).mutation(({ ctx, input }) => uploadAdminResource({ ...input, userId: ctx.user.id })),

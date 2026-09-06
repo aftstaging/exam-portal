@@ -6,10 +6,10 @@ type noop = (...args: any[]) => any;
  * usePersistFn instead of useCallback to reduce cognitive load
  */
 export function usePersistFn<T extends noop>(fn: T) {
-  const fnRef = useRef<T>(fn);
+  const fnRef = useRef<T>(fn) as { current: T };
   fnRef.current = fn;
 
-  const persistFn = useRef<T>(null);
+  const persistFn = useRef<T>(null) as { current: T | null };
   if (!persistFn.current) {
     persistFn.current = function (this: unknown, ...args) {
       return fnRef.current!.apply(this, args);

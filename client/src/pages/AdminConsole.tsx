@@ -539,6 +539,21 @@ function ContentTab() {
   const [previewId, setPreviewId] = useState<number | null>(null);
   const previewQuery = trpc.admin.examPreview.useQuery({ mockExamId: previewId ?? 0 }, { enabled: previewId !== null });
 
+  const [editingExamId, setEditingExamId] = useState<number | null>(null);
+  const [deletingExam, setDeletingExam] = useState<{ id: number; title: string } | null>(null);
+  const deleteExam = trpc.admin.deleteExamBundle.useMutation({
+    onSuccess: () => {
+      toast.success("Exam deleted");
+      setDeletingExam(null);
+      utils.admin.contentItems.invalidate();
+      utils.admin.contentOverview.invalidate();
+      utils.admin.products.invalidate();
+      utils.admin.overview.invalidate();
+      utils.admin.staffCatalogue.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const nav = ["Products", "Exams", "Sections", "Question bank", "Resources"];
 
   return (
@@ -559,7 +574,22 @@ function ContentTab() {
 
       {section === "Exams" && (
         <>
-          <ExamStudio onCreated={() => { utils.admin.contentItems.invalidate(); contentQuery.refetch(); }} />
+          {editingExamId === null ? (
+            <ExamStudio onCreated={() => { utils.admin.contentItems.invalidate(); contentQuery.refetch(); }} />
+          ) : (
+            <ExamStudio
+              editExamId={editingExamId}
+              onCancelled={() => setEditingExamId(null)}
+              onCreated={() => {
+                setEditingExamId(null);
+                utils.admin.contentItems.invalidate();
+                utils.admin.contentOverview.invalidate();
+                utils.admin.products.invalidate();
+                utils.admin.staffCatalogue.invalidate();
+                contentQuery.refetch();
+              }}
+            />
+          )}
           <Card className="mt-6">
             <CardContent className="pt-6">
               {items.length ? items.map((item) => (
@@ -568,6 +598,8 @@ function ContentTab() {
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="h-7 border-[#00e5ff] px-2 text-[11px] text-[#00e5ff]" onClick={() => setPreviewId(item.id)}><Eye className="mr-1 h-3 w-3" /> Preview</Button>
                     <Button size="sm" variant="outline" className="h-7 border-white/10 px-2 text-[11px] text-white/60" onClick={() => generatePdf.mutate({ mockExamId: item.id })}><FileText className="mr-1 h-3 w-3" /> PDF</Button>
+                    <Button size="sm" variant="outline" className="h-7 border-[#f4c44e]/50 px-2 text-[11px] text-[#f4c44e]" onClick={() => setEditingExamId(item.id)}><Pencil className="mr-1 h-3 w-3" /> Edit</Button>
+                    <Button size="sm" variant="outline" className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]" onClick={() => setDeletingExam({ id: item.id, title: item.title })}><Trash2 className="mr-1 h-3 w-3" /> Delete</Button>
                     <StatusAction status={item.status} onPublish={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "archived" })} />
                   </div>
                 </div>
@@ -580,6 +612,23 @@ function ContentTab() {
               loading={previewQuery.isLoading}
               onClose={() => { setPreviewId(null); }}
             />
+          )}
+          {deletingExam && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#120730]/85 p-4 backdrop-blur-sm" onClick={() => { if (!deleteExam.isPending) setDeletingExam(null); }}>
+              <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c0524] p-6" onClick={(event) => event.stopPropagation()}>
+                <p className="eyebrow">Permanently delete exam</p>
+                <h3 className="mt-2 text-2xl font-black text-white">Delete "{deletingExam.title}"?</h3>
+                <p className="mt-3 text-sm leading-6 text-[#c4b5fd]">
+                  This permanently removes the exam, its store listing, questions/sections, resources, and all learner attempts, markings, feedback and entitlement/payment records for it. This action cannot be undone.
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <Button variant="outline" className="border-white/15 text-white/70" onClick={() => setDeletingExam(null)} disabled={deleteExam.isPending}>Cancel</Button>
+                  <Button className="bg-[#ff8278] text-white hover:bg-[#ff6f63]" onClick={() => deleteExam.mutate({ mockExamId: deletingExam.id })} disabled={deleteExam.isPending}>
+                    <Trash2 className="mr-2 h-4 w-4" /> {deleteExam.isPending ? "Deleting…" : "Delete exam"}
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
@@ -1234,7 +1283,10 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                     let options: string[] = [];
                     try { options = JSON.parse(question.optionsJson) as string[]; } catch { /* ignore */ }
                     let answers: string[] = [];
-                    try { answers = JSON.parse(question.answerJson) as string[]; } catch { /* ignore */ }
+                    try {
+                      const parsed = JSON.parse(question.answerJson);
+                      answers = Array.isArray(parsed) ? (parsed as string[]) : parsed == null ? [] : [String(parsed)];
+                    } catch { answers = question.answerJson ? [question.answerJson] : []; }
                     const needsOptions = question.questionType !== "numerical" && question.questionType !== "text_input";
                     return (
                       <div key={index} className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4">
@@ -1243,7 +1295,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                         {needsOptions && options.length > 0 && (
                           <ul className="mt-3 space-y-1">{options.map((option, optionIndex) => <li key={optionIndex} className="rounded-lg bg-[#0c0524] px-3 py-2 text-sm text-[#c4b5fd]">{String.fromCharCode(65 + optionIndex)}. {option}</li>)}</ul>
                         )}
-                        {answers.length > 0 && <p className="mt-3 text-xs text-[#00ff88]">Correct: {answers.join(", ")}</p>}
+                        {Array.isArray(answers) && answers.length > 0 && <p className="mt-3 text-xs text-[#00ff88]">Correct: {answers.join(", ")}</p>}
                         {question.explanation && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Explanation: </span>{question.explanation}</p>}
                       </div>
                     );
