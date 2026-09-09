@@ -206,8 +206,9 @@ export async function startCaseStudyAttempt(input: { userId: number; mockExamId:
     const access = await db.select().from(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.productId, exam[0].product.id), eq(entitlements.status, "active"))).limit(1);
     if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
   }
-  const existing = await db.select().from(attempts).where(and(eq(attempts.userId, input.userId), eq(attempts.mockExamId, input.mockExamId), eq(attempts.mode, input.mode), eq(attempts.status, "in_progress"))).limit(1);
-  if (existing[0]) return existing[0];
+  if (input.mode === "interactive") {
+    await db.update(attempts).set({ status: "expired" }).where(and(eq(attempts.userId, input.userId), eq(attempts.mockExamId, input.mockExamId), eq(attempts.mode, "interactive"), eq(attempts.status, "in_progress")));
+  }
   const created = await db.insert(attempts).values({ userId: input.userId, mockExamId: input.mockExamId, mode: input.mode, status: "in_progress", startedAt: new Date(), currentSection: 1 }).$returningId();
   const row = await db.select().from(attempts).where(eq(attempts.id, created[0]?.id ?? 0)).limit(1);
   return row[0];
@@ -246,8 +247,17 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const exam = await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, mockExamId)).limit(1);
   if (!exam[0]) throw new Error("Mock exam not found");
-  const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
-  const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, sections);
+  const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
+  const productResources = await db.select().from(resources).where(eq(resources.productId, exam[0].product.id));
+  const emailMeta = productResources.filter((entry) => entry.kind === "email" && entry.fileUrl && entry.fileUrl.trim().startsWith("{"))
+    .map((entry) => { try { return JSON.parse(entry.fileUrl as string) as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } })
+    .filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
+  const attachmentRank: Record<string, number> = { pre_seen: 0, formulae: 1, reference: 2, printable_pdf: 3, feedback: 4, email: 5 };
+  const attachments = productResources
+    .filter((entry) => entry.title && entry.kind in attachmentRank)
+    .sort((a, b) => (attachmentRank[a.kind] ?? 9) - (attachmentRank[b.kind] ?? 9))
+    .map((entry) => ({ kind: entry.kind, title: entry.title }));
+  const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, sections, { email: emailMeta, attachments });
   const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
   const existing = await db.select().from(resources).where(and(eq(resources.productId, exam[0].product.id), eq(resources.kind, "printable_pdf"))).limit(1);
   if (existing[0]) {
@@ -874,10 +884,17 @@ export async function createExamBundle(input: ExamBundleInput) {
   //    (no pre-moderated PDF provided). Uses the existing AFT-logo generation.
   let generatedPdfUrl: string | null = null;
   if (input.examType === "case_study" && !input.preModeratedPdf) {
-    const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
+    const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
     const exam = { title, intro: input.intro?.trim() || null, totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)) };
+    const pdfEmail = hasEmailText ? { from: input.emailFrom?.trim() || null, to: input.emailTo?.trim() || null, subject: input.emailSubject?.trim() || null, html: input.emailText?.trim() || null } : null;
+    const pdfAttachments: { kind: string; title: string }[] = [];
+    if (input.preSeen?.base64) pdfAttachments.push({ kind: "pre_seen", title: `${title} · Pre-seen` });
+    if (input.formulae?.base64) pdfAttachments.push({ kind: "formulae", title: `${title} · Formulae + tables` });
+    if (input.reference?.base64) pdfAttachments.push({ kind: "reference", title: `${title} · Reference material` });
+    if (input.emailImage?.base64) pdfAttachments.push({ kind: "email", title: `${title} · Email` });
+    if (input.feedbackFile?.base64) pdfAttachments.push({ kind: "feedback", title: `${title} · Feedback` });
     try {
-      const bytes = await generateBrandedPrintablePdf(exam, sections.length ? sections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }]);
+      const bytes = await generateBrandedPrintablePdf(exam, sections.length ? sections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }], { email: pdfEmail, attachments: pdfAttachments });
       const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
       const resourceId = (await db.insert(resources).values({ productId, title: `${title} · Printable exam`, kind: "printable_pdf", fileKey: uploaded.key, fileUrl: uploaded.url, status: "draft" }).$returningId())[0]?.id;
       generatedPdfUrl = uploaded.url;

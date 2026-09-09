@@ -9,12 +9,18 @@ export function getDashboardView(tab: DashboardTab): DashboardView {
 }
 
 export function getAttemptRoute(attemptId: number, status: string): string {
-  return status === "in_progress" ? `/case-study/question?attempt=${attemptId}` : `/dashboard?attempt=${attemptId}`;
+  return `/dashboard?attempt=${attemptId}`;
 }
 
-export function getProductRoute(productId: number, attemptId?: number, status?: string, category?: string): string {
+export function getExamRetakeRoute(mockExamId: number, productId: number): string {
+  return `/case-study/debrief?mockExamId=${mockExamId}&productId=${productId}`;
+}
+
+export function getProductRoute(productId: number, attemptId?: number, status?: string, category?: string, mockExamId?: number): string {
   if (category === "objective_test") return `/objective-tests?productId=${productId}`;
-  return attemptId && status === "in_progress" ? getAttemptRoute(attemptId, status) : `/dashboard?product=${productId}`;
+  if (category === "case_study" && mockExamId) return getExamRetakeRoute(mockExamId, productId);
+  if (attemptId && status === "in_progress") return getAttemptRoute(attemptId, status);
+  return `/dashboard?product=${productId}`;
 }
 
 export function getDashboardSelection(search: string): { attemptId?: number; productId?: number } {

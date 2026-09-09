@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerStripeWebhook } from "../stripe";
 import { registerPayFastITN } from "../payfast";
 import { getPayFastGatewaySettings } from "../db";
+import { handleAutoSubmit } from "./autoSubmit";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +40,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerPayFastITN(app, async () => (await getPayFastGatewaySettings()).mode);
   registerStorageProxy(app);
+  app.post("/api/auto-submit", handleAutoSubmit);
   // tRPC API
   app.use(
     "/api/trpc",
