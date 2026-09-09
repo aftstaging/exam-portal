@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "@/pages/Home";
 import Catalogue from "@/pages/Catalogue";
 import Cart from "@/pages/Cart";
+import StudyResources from "@/pages/StudyResources";
 import { LoginDialog } from "@/components/LoginDialog";
 
 function Router() {
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/mock-exams" component={() => <Catalogue />} />
       <Route path="/mock-exam-store" component={() => <Catalogue />} />
       <Route path="/cart" component={Cart} />
+      <Route path="/study-resources" component={StudyResources} />
       <Route path="/case-study/:screen" component={Home} />
       <Route path="/objective-tests" component={Home} />
       <Route path="/admin" component={() => <AdminConsole mode="admin" />} />

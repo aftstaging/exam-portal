@@ -44,7 +44,7 @@ export function PublicHeader({ onLogin }: { onLogin: () => void }) {
                   <DropdownMenuSubTrigger className="text-white focus:bg-[#14265b] focus:text-white">
                     Mock exams
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent align="start" className="border-white/10 bg-[#120730] text-white">
+                  <DropdownMenuSubContent className="border-white/10 bg-[#120730] text-white">
                     <DropdownMenuItem asChild>
                       <Link href="/mock-exams" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
                         Case study exams
@@ -61,7 +61,7 @@ export function PublicHeader({ onLogin }: { onLogin: () => void }) {
                   <DropdownMenuSubTrigger className="text-white focus:bg-[#14265b] focus:text-white">
                     Other products
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent align="start" className="border-white/10 bg-[#120730] text-white">
+                  <DropdownMenuSubContent className="border-white/10 bg-[#120730] text-white">
                     <DropdownMenuItem asChild>
                       <Link href="/study-resources" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
                         Study resources
