@@ -1,10 +1,13 @@
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { startLogin } from "@/const";
@@ -30,34 +33,49 @@ export function PublicHeader({ onLogin }: { onLogin: () => void }) {
 
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-white lg:flex">
             <Link href="/" className="nav-link">Home</Link>
-            <div className="flex items-center">
-              <Link href="/mock-exams" className="nav-link rounded-r-none pr-1">
-                Mock exams
-              </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Choose mock exam type"
-                    className="nav-link rounded-l-none pl-1 pr-0"
-                  >
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="border-white/10 bg-[#120730] text-white">
-                  <DropdownMenuItem asChild>
-                    <Link href="/mock-exams" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
-                      Case study
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/objective-tests" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
-                      Objective test
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="nav-link flex items-center gap-1">
+                  Shop <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="border-white/10 bg-[#120730] text-white">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-white focus:bg-[#14265b] focus:text-white">
+                    Mock exams
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent align="start" className="border-white/10 bg-[#120730] text-white">
+                    <DropdownMenuItem asChild>
+                      <Link href="/mock-exams" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
+                        Case study exams
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/objective-tests" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
+                        Objective tests
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-white focus:bg-[#14265b] focus:text-white">
+                    Other products
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent align="start" className="border-white/10 bg-[#120730] text-white">
+                    <DropdownMenuItem asChild>
+                      <Link href="/mock-exams" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
+                        Case study exams
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/objective-tests" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
+                        Objective tests
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Link href="/study-resources" className="nav-link">Study resources</Link>
             <Link href="/dashboard" className="nav-link">My Account</Link>
             <Link href="/cart" className="nav-link">Cart</Link>

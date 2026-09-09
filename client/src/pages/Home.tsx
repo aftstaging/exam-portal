@@ -62,6 +62,25 @@ function BrandMark({ inverse = false }: { inverse?: boolean }) {
 }
 
 function PublicHeader({ onLogin }: { onLogin: () => void }) {
+  const [shopOpen, setShopOpen] = useState(false);
+  const [mockExamsOpen, setMockExamsOpen] = useState(false);
+  const [otherProductsOpen, setOtherProductsOpen] = useState(false);
+  const shopRef = useRef<HTMLDivElement>(null);
+  const mockExamsRef = useRef<HTMLDivElement>(null);
+  const otherProductsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shopRef.current && !shopRef.current.contains(event.target as Node)) {
+        setShopOpen(false);
+        setMockExamsOpen(false);
+        setOtherProductsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <>
       <div className="utility-bar">
@@ -75,10 +94,68 @@ function PublicHeader({ onLogin }: { onLogin: () => void }) {
           <Link href="/" className="shrink-0"><BrandMark /></Link>
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-white lg:flex">
             <Link href="/" className="nav-link nav-link-active">Home</Link>
-            
-            <Link href="/mock-exams" className="nav-link">Mock exams</Link>
+            <div className="relative" ref={shopRef}>
+              <button
+                type="button"
+                className="nav-link flex items-center gap-1"
+                onClick={() => { setShopOpen(!shopOpen); setMockExamsOpen(false); setOtherProductsOpen(false); }}
+                onMouseEnter={() => setShopOpen(true)}
+              >
+                Shop <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {shopOpen && (
+                <div
+                  className="absolute left-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-white/10 bg-[#120730] py-1 shadow-xl"
+                  onMouseLeave={() => { setShopOpen(false); setMockExamsOpen(false); setOtherProductsOpen(false); }}
+                >
+                  <div className="relative" ref={mockExamsRef}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between px-4 py-2 text-sm text-white hover:bg-[#14265b]"
+                      onClick={() => setMockExamsOpen(!mockExamsOpen)}
+                      onMouseEnter={() => setMockExamsOpen(true)}
+                    >
+                      Mock exams
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                    {mockExamsOpen && (
+                      <div className="absolute left-full top-0 z-50 ml-1 min-w-[180px] rounded-lg border border-white/10 bg-[#120730] py-1 shadow-xl">
+                        <Link href="/mock-exams" className="block px-4 py-2 text-sm text-white hover:bg-[#14265b]" onClick={() => { setShopOpen(false); setMockExamsOpen(false); }}>
+                          Case study exams
+                        </Link>
+                        <Link href="/objective-tests" className="block px-4 py-2 text-sm text-white hover:bg-[#14265b]" onClick={() => { setShopOpen(false); setMockExamsOpen(false); }}>
+                          Objective tests
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                  <div className="relative" ref={otherProductsRef}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between px-4 py-2 text-sm text-white hover:bg-[#14265b]"
+                      onClick={() => setOtherProductsOpen(!otherProductsOpen)}
+                      onMouseEnter={() => setOtherProductsOpen(true)}
+                    >
+                      Other products
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                    {otherProductsOpen && (
+                      <div className="absolute left-full top-0 z-50 ml-1 min-w-[180px] rounded-lg border border-white/10 bg-[#120730] py-1 shadow-xl">
+                        <Link href="/mock-exams" className="block px-4 py-2 text-sm text-white hover:bg-[#14265b]" onClick={() => { setShopOpen(false); setOtherProductsOpen(false); }}>
+                          Case study exams
+                        </Link>
+                        <Link href="/objective-tests" className="block px-4 py-2 text-sm text-white hover:bg-[#14265b]" onClick={() => { setShopOpen(false); setOtherProductsOpen(false); }}>
+                          Objective tests
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <a className="nav-link" href="#resources">Study resources</a>
             <Link href="/dashboard" className="nav-link">My Account</Link>
+            <Link href="/cart" className="nav-link">Cart</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Button variant="ghost" className="hidden text-white sm:inline-flex" onClick={onLogin}>Log in</Button>
