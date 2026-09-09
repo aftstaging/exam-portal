@@ -5,6 +5,7 @@ import {
   BookOpen,
   Calculator,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
