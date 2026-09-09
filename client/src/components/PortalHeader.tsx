@@ -63,20 +63,14 @@ export function PublicHeader({ onLogin }: { onLogin: () => void }) {
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent align="start" className="border-white/10 bg-[#120730] text-white">
                     <DropdownMenuItem asChild>
-                      <Link href="/mock-exams" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
-                        Case study exams
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/objective-tests" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
-                        Objective tests
+                      <Link href="/study-resources" className="w-full cursor-pointer text-white focus:bg-[#14265b] focus:text-white">
+                        Study resources
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href="/study-resources" className="nav-link">Study resources</Link>
             <Link href="/dashboard" className="nav-link">My Account</Link>
             <Link href="/cart" className="nav-link">Cart</Link>
           </nav>

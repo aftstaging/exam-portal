@@ -142,11 +142,8 @@ function PublicHeader({ onLogin }: { onLogin: () => void }) {
                     </button>
                     {otherProductsOpen && (
                       <div className="absolute left-full top-0 z-50 ml-1 min-w-[180px] rounded-lg border border-white/10 bg-[#120730] py-1 shadow-xl">
-                        <Link href="/mock-exams" className="block px-4 py-2 text-sm text-white hover:bg-[#14265b]" onClick={() => { setShopOpen(false); setOtherProductsOpen(false); }}>
-                          Case study exams
-                        </Link>
-                        <Link href="/objective-tests" className="block px-4 py-2 text-sm text-white hover:bg-[#14265b]" onClick={() => { setShopOpen(false); setOtherProductsOpen(false); }}>
-                          Objective tests
+                        <Link href="/study-resources" className="block px-4 py-2 text-sm text-white hover:bg-[#14265b]" onClick={() => { setShopOpen(false); setOtherProductsOpen(false); }}>
+                          Study resources
                         </Link>
                       </div>
                     )}
@@ -154,7 +151,6 @@ function PublicHeader({ onLogin }: { onLogin: () => void }) {
                 </div>
               )}
             </div>
-            <a className="nav-link" href="#resources">Study resources</a>
             <Link href="/dashboard" className="nav-link">My Account</Link>
             <Link href="/cart" className="nav-link">Cart</Link>
           </nav>
