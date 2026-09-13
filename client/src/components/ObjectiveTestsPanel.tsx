@@ -313,9 +313,9 @@ function ResultPanel({ questions, answers, score, onReset, onReview }: { questio
     </div>
 
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" className="border-[#00e5ff] bg-white text-[#18212b] hover:bg-[#e8f2ff]" onClick={onReview}>Back to answers</Button>
-      <Button className="aft-button" onClick={onReset}><RotateCcw className="mr-2 h-4 w-4" /> New test</Button>
-      <Button variant="outline" className="border-[#00e5ff] bg-white text-[#18212b] hover:bg-[#e8f2ff]" onClick={() => window.location.href = "/"}>Return to home</Button>
+      <Button variant="outline" className="border-[#00e5ff] text-white" onClick={onReview}>Back to answers</Button>
+      <Button variant="outline" className="border-[#00ff88] text-white" onClick={onReset}><RotateCcw className="mr-2 h-4 w-4" /> New test</Button>
+      <Button variant="outline" className="border-[#00e5ff] text-white" onClick={() => window.location.href = "/"}>Return to home</Button>
     </div>
   </div>;
 }
