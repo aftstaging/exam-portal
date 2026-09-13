@@ -55,8 +55,10 @@ export function parseObjectiveQuestion(item: ObjectiveQuestionRecord): ParsedObj
   };
 }
 
-export function selectObjectiveQuestions<T extends { topic: string }>(questions: T[], topic: string, count: number | "all") {
-  const filtered = topic === "All topics" ? questions : questions.filter((item) => item.topic === topic);
+export function selectObjectiveQuestions<T extends { topic: string }>(questions: T[], topics: string | string[], count: number | "all") {
+  const list = Array.isArray(topics) ? topics : [topics];
+  const all = list.length === 0 || list.includes("All topics");
+  const filtered = all ? questions : questions.filter((item) => list.includes(item.topic));
   return filtered.slice(0, count === "all" ? filtered.length : Math.min(count, filtered.length));
 }
 

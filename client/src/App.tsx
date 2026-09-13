@@ -16,8 +16,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/dashboard" component={Home} />
-      <Route path="/mock-exams" component={() => <Catalogue />} />
-      <Route path="/mock-exam-store" component={() => <Catalogue />} />
+      <Route path="/shop" component={() => <Catalogue kind="shop" />} />
+      <Route path="/mock-exams" component={() => <Catalogue kind="exams" />} />
+      <Route path="/mock-exam-store" component={() => <Catalogue kind="shop" />} />
       <Route path="/cart" component={Cart} />
       <Route path="/study-resources" component={StudyResources} />
       <Route path="/case-study/:screen" component={Home} />

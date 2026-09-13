@@ -883,15 +883,17 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             </section>
           )}
 
-          {/* Resources for objective tests */}
-          <section>
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> {isCaseStudy ? "Case study resources" : "Objective test resources"}</div>
-            <div className="grid gap-3 md:grid-cols-3">
-              <AttachSlot label="Pre-seen" icon={<BookOpen className="h-4 w-4 text-[#00e5ff]" />} hint="The scenario / advance information pdf." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={preSeen} onChange={setPreSeen} note="Document, PDF, PNG or JPG." />
-              <AttachSlot label="Formulae + tables" icon={<Calculator className="h-4 w-4 text-[#00e5ff]" />} hint="Formulae sheets and statistical tables." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={formulae} onChange={setFormulae} note="Document, PDF, PNG or JPG." />
-              <AttachSlot label="Reference material" icon={<MapPin className="h-4 w-4 text-[#00e5ff]" />} hint="Permitted reference documents." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={reference} onChange={setReference} note="Document, PDF, PNG or JPG." />
-            </div>
-          </section>
+          {/* Resources for case studies only */}
+          {isCaseStudy && (
+            <section>
+              <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> Case study resources</div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <AttachSlot label="Pre-seen" icon={<BookOpen className="h-4 w-4 text-[#00e5ff]" />} hint="The scenario / advance information pdf." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={preSeen} onChange={setPreSeen} note="Document, PDF, PNG or JPG." />
+                <AttachSlot label="Formulae + tables" icon={<Calculator className="h-4 w-4 text-[#00e5ff]" />} hint="Formulae sheets and statistical tables." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={formulae} onChange={setFormulae} note="Document, PDF, PNG or JPG." />
+                <AttachSlot label="Reference material" icon={<MapPin className="h-4 w-4 text-[#00e5ff]" />} hint="Permitted reference documents." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={reference} onChange={setReference} note="Document, PDF, PNG or JPG." />
+              </div>
+            </section>
+          )}
 
           <Separator />
 

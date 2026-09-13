@@ -11,8 +11,11 @@ import { addToCart } from "@/pages/Cart";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-export default function Catalogue({ kind = "mock-exams" }: { kind?: "mock-exams" }) {
-  void kind;
+const SHOP_CATEGORIES = ["case_study", "objective_test", "marking", "resource"] as const;
+const EXAM_CATEGORIES = ["case_study", "objective_test", "marking"] as const;
+
+export default function Catalogue({ kind = "exams" }: { kind?: "shop" | "exams" }) {
+  const isShop = kind === "shop";
   const { isAuthenticated, user } = useAuth();
   const isStaff = isAuthenticated && (user?.role === "admin" || user?.role === "instructor");
   const utils = trpc.useUtils();
@@ -28,8 +31,9 @@ export default function Catalogue({ kind = "mock-exams" }: { kind?: "mock-exams"
   const exams: NonNullable<typeof mocks.data> = (isStaff ? staffData?.mockExams : mocks.data) ?? ([] as NonNullable<typeof mocks.data>);
   const products: NonNullable<typeof productsQuery.data> = (isStaff ? staffData?.products : productsQuery.data) ?? ([] as NonNullable<typeof productsQuery.data>);
   const mockByProduct = useMemo(() => new Map(exams.map((item) => [item.product.id, item])), [exams]);
-  const filters = ["all", "case_study", "objective_test", "marking"];
-  const visibleProducts = useMemo(() => filter === "all" ? products.filter(({ product }) => ["case_study", "objective_test", "marking"].includes(product.category)) : products.filter(({ product }) => product.category === filter), [products, filter]);
+  const allCategories: readonly string[] = isShop ? SHOP_CATEGORIES : EXAM_CATEGORIES;
+  const filters = ["all", ...allCategories];
+  const visibleProducts = useMemo(() => filter === "all" ? products.filter(({ product }) => allCategories.includes(product.category)) : products.filter(({ product }) => product.category === filter), [products, filter, isShop]);
   const imageByCategory: Record<string, string> = { case_study: "/assets/aft-strategy-feature.jpg", objective_test: "/assets/aft-management-feature.jpg", marking: "/assets/aft-certificate-feature.jpg", resource: "/assets/aft-operations-feature.jpg" };
   const loading = isStaff ? staffCatalogue.isLoading : mocks.isLoading || productsQuery.isLoading;
 
@@ -39,9 +43,9 @@ export default function Catalogue({ kind = "mock-exams" }: { kind?: "mock-exams"
       <section className="mx-auto max-w-6xl">
         <div className="grid gap-8 rounded-[2rem] border border-white/10 bg-gradient-to-br from-[#18093c] to-[#120730] p-7 sm:p-10 lg:grid-cols-[1.2fr_.8fr] lg:items-end">
           <div>
-            <p className="eyebrow">Accountants for Tomorrow · CIMA-informed practice · Exam store</p>
-            <h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-6xl">Choose the practice product for your next milestone.</h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-[#c4b5fd] sm:text-lg">Buy realistic case-study simulations, original AFT objective-test practice, or instructor marking. Every purchased exam product includes 30 days of access by default, subject to the access period set by an administrator.</p>
+            <p className="eyebrow">Accountants for Tomorrow · CIMA-informed practice · {isShop ? "Aft store" : "Exam store"}</p>
+            <h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-6xl">{isShop ? "The full AFT practice store, all in one place." : "Choose the practice product for your next milestone."}</h1>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-[#c4b5fd] sm:text-lg">{isShop ? "Browse every case-study simulation, objective test, instructor marking add-on, and study resource. Every purchased product includes account-linked access for the period set by the administrator." : "Buy realistic case-study simulations, original AFT objective-test practice, or instructor marking. Every purchased exam product includes 30 days of access by default, subject to the access period set by an administrator."}</p>
           </div>
           <div className="rounded-2xl border border-[#00e5ff]/30 bg-[#0c0524]/70 p-5">
             <div className="flex items-center gap-3 text-[#00e5ff]"><ShieldCheck className="h-5 w-5" /><span className="text-sm font-bold">Secure, time-limited access</span></div>
@@ -50,7 +54,7 @@ export default function Catalogue({ kind = "mock-exams" }: { kind?: "mock-exams"
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
-          <div><p className="eyebrow">Available products</p><h2 className="mt-2 text-2xl font-bold text-white">Mock exams, objective tests & marking</h2></div>
+          <div><p className="eyebrow">Available products</p><h2 className="mt-2 text-2xl font-bold text-white">{isShop ? "All products" : "Mock exams, objective tests & marking"}</h2></div>
           <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#120730] px-3 py-2 text-sm text-[#c4b5fd]"><Filter className="h-4 w-4 text-[#00ff88]" /><span className="sr-only">Filter store products</span><select value={filter} onChange={(event) => setFilter(event.target.value)} className="bg-transparent text-sm font-semibold capitalize text-white outline-none">{filters.map((item) => <option key={item} value={item}>{item === "all" ? "All products" : item.replace("_", " ")}</option>)}</select></label>
         </div>
 
