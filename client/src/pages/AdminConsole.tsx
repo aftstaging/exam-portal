@@ -513,11 +513,11 @@ function EntitlementsTab() {
 }
 
 function ContentTab() {
-  const [section, setSection] = useState<"Products" | "Exams" | "Sections" | "Question bank" | "Resources">("Products");
+  const [section, setSection] = useState<"Products" | "Exams" | "Sections" | "Question bank" | "Resources" | "Catalogue">("Products");
   const productsQuery = trpc.admin.products.useQuery(undefined, { retry: false });
   const contentQuery = trpc.admin.contentOverview.useQuery(undefined, { retry: false });
-  const contentKind = section === "Exams" ? "mock_exams" : section === "Sections" ? "sections" : section === "Question bank" ? "objective_questions" : "resources";
-  const contentItemsQuery = trpc.admin.contentItems.useQuery({ kind: contentKind }, { retry: false, enabled: section === "Exams" || section === "Sections" || section === "Question bank" || section === "Resources" });
+  const contentKind = section === "Exams" || section === "Catalogue" ? "mock_exams" : section === "Sections" ? "sections" : section === "Question bank" ? "objective_questions" : "resources";
+  const contentItemsQuery = trpc.admin.contentItems.useQuery({ kind: contentKind }, { retry: false, enabled: section === "Exams" || section === "Catalogue" || section === "Sections" || section === "Question bank" || section === "Resources" });
   const utils = trpc.useUtils();
   const contentStatus = trpc.admin.updateContentStatus.useMutation({
     onSuccess: () => { toast.success("Content status updated"); utils.admin.contentItems.invalidate(); utils.admin.contentOverview.invalidate(); },
@@ -554,7 +554,9 @@ function ContentTab() {
     onError: (error) => toast.error(error.message),
   });
 
-  const nav = ["Products", "Exams", "Sections", "Question bank", "Resources"];
+  const nav = ["Products", "Exams", "Sections", "Question bank", "Resources", "Catalogue"];
+  const EXAMS_PER_PAGE = 10;
+  const [examPage, setExamPage] = useState(0);
 
   return (
     <>
@@ -562,7 +564,7 @@ function ContentTab() {
         {nav.map((item) => (
           <button
             key={item}
-            onClick={() => setSection(item as typeof section)}
+            onClick={() => { setSection(item as typeof section); setExamPage(0); }}
             className={`rounded-lg px-4 py-2 text-sm font-semibold ${section === item ? "bg-[#102b36] text-[#00ff88]" : "text-white/70 hover:bg-[#18093c]/60 hover:text-white"}`}
           >
             {item}
@@ -590,20 +592,42 @@ function ContentTab() {
               }}
             />
           )}
+        </>
+      )}
+
+      {section === "Catalogue" && (
+        <>
           <Card className="mt-6">
             <CardContent className="pt-6">
-              {items.length ? items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
-                  <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs capitalize text-white/45">{item.detail}</div></div>
-                  <div className="flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="h-7 border-[#00e5ff] px-2 text-[11px] text-[#00e5ff]" onClick={() => setPreviewId(item.id)}><Eye className="mr-1 h-3 w-3" /> Preview</Button>
-                    <Button size="sm" variant="outline" className="h-7 border-white/10 px-2 text-[11px] text-white/60" onClick={() => generatePdf.mutate({ mockExamId: item.id })}><FileText className="mr-1 h-3 w-3" /> PDF</Button>
-                    <Button size="sm" variant="outline" className="h-7 border-[#f4c44e]/50 px-2 text-[11px] text-[#f4c44e]" onClick={() => setEditingExamId(item.id)}><Pencil className="mr-1 h-3 w-3" /> Edit</Button>
-                    <Button size="sm" variant="outline" className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]" onClick={() => setDeletingExam({ id: item.id, title: item.title })}><Trash2 className="mr-1 h-3 w-3" /> Delete</Button>
-                    <StatusAction status={item.status} onPublish={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "archived" })} />
-                  </div>
-                </div>
-              )) : <p className="py-8 text-center text-sm text-white/45">No exams yet.</p>}
+              {items.length ? (() => {
+                const totalPages = Math.ceil(items.length / EXAMS_PER_PAGE);
+                const page = Math.min(examPage, totalPages - 1);
+                const pageStart = page * EXAMS_PER_PAGE;
+                const pageItems = items.slice(pageStart, pageStart + EXAMS_PER_PAGE);
+                return (
+                  <>
+                    {pageItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
+                        <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs capitalize text-white/45">{item.detail}</div></div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" className="h-7 border-[#00e5ff] px-2 text-[11px] text-[#00e5ff]" onClick={() => setPreviewId(item.id)}><Eye className="mr-1 h-3 w-3" /> Preview</Button>
+                          <Button size="sm" variant="outline" className="h-7 border-white/10 px-2 text-[11px] text-white/60" onClick={() => generatePdf.mutate({ mockExamId: item.id })}><FileText className="mr-1 h-3 w-3" /> PDF</Button>
+                          <Button size="sm" variant="outline" className="h-7 border-[#f4c44e]/50 px-2 text-[11px] text-[#f4c44e]" onClick={() => { setEditingExamId(item.id); setSection("Exams"); }}><Pencil className="mr-1 h-3 w-3" /> Edit</Button>
+                          <Button size="sm" variant="outline" className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]" onClick={() => setDeletingExam({ id: item.id, title: item.title })}><Trash2 className="mr-1 h-3 w-3" /> Delete</Button>
+                          <StatusAction status={item.status} onPublish={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "archived" })} />
+                        </div>
+                      </div>
+                    ))}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-3 pt-4">
+                        <Button size="sm" variant="outline" className="border-white/15 text-white/70" disabled={page === 0} onClick={() => setExamPage(page - 1)}>Previous</Button>
+                        <span className="text-xs text-white/45">Page {page + 1} of {totalPages}</span>
+                        <Button size="sm" variant="outline" className="border-white/15 text-white/70" disabled={page >= totalPages - 1} onClick={() => setExamPage(page + 1)}>Next</Button>
+                      </div>
+                    )}
+                  </>
+                );
+              })() : <p className="py-8 text-center text-sm text-white/45">No exams yet.</p>}
             </CardContent>
           </Card>
           {previewId !== null && (
