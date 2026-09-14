@@ -1328,6 +1328,16 @@ export async function listAdminCoupons() {
   return rows.map(({ coupon, creator, creatorEmail }) => ({ ...coupon, createdByName: creator ?? null, createdByEmail: creatorEmail ?? null }));
 }
 
+function couponExpiryFromInput(input?: string | null): Date | null {
+  if (!input) return null;
+  const parsed = new Date(input);
+  if (Number.isNaN(parsed.getTime())) throw new Error("Coupon expiry must be a valid date and time");
+  const atMidnight = parsed.getHours() === 0 && parsed.getMinutes() === 0 && parsed.getSeconds() === 0;
+  const expiry = atMidnight ? new Date(parsed.getTime() + 24 * 60 * 60 * 1000 - 1) : parsed;
+  if (expiry.getTime() + 60_000 < Date.now()) throw new Error("Coupon expiry must be in the future");
+  return expiry;
+}
+
 export async function createAdminCoupon(input: { userId: number; code: string; discountType: "percent" | "fixed"; value: number; maxUses?: number; expiresAt?: string | null }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const code = input.code.trim().toUpperCase().replace(/\s+/g, "-");
@@ -1342,6 +1352,7 @@ export async function createAdminCoupon(input: { userId: number; code: string; d
   const maxUses = Math.max(0, Math.round(input.maxUses ?? 0));
   const existing = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0];
   if (existing) throw new Error("A coupon with this code already exists");
+  const expiresAt = couponExpiryFromInput(input.expiresAt);
   const created = await db.insert(coupons).values({
     code,
     discountType: input.discountType,
@@ -1349,7 +1360,7 @@ export async function createAdminCoupon(input: { userId: number; code: string; d
     maxUses,
     usedCount: 0,
     status: "active",
-    expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+    expiresAt,
     createdBy: input.userId,
   }).$returningId();
   await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: created[0]?.id ?? 0, action: "created", metadata: JSON.stringify({ code, discountType: input.discountType, value, maxUses, expiresAt: input.expiresAt ?? null }) });
@@ -1393,7 +1404,7 @@ export async function updateAdminCoupon(input: { userId: number; couponId: numbe
     updates.value = value;
   }
   if (input.maxUses !== undefined) updates.maxUses = Math.max(0, Math.round(input.maxUses));
-  if (input.expiresAt !== undefined) updates.expiresAt = input.expiresAt ? new Date(input.expiresAt) : null;
+  if (input.expiresAt !== undefined) updates.expiresAt = couponExpiryFromInput(input.expiresAt);
   if (input.status !== undefined) updates.status = input.status;
 
   if (Object.keys(updates).length) {
@@ -1429,13 +1440,7 @@ export async function validateCoupon(input: { code: string; subtotalCents: numbe
   if (!code) throw new Error("Enter a coupon code");
   const coupon = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0];
   if (!coupon || coupon.status !== "active") throw new Error("This coupon code is not valid");
-  if (coupon.expiresAt) {
-    const expires = new Date(coupon.expiresAt);
-    const expiresMs = expires.getTime();
-    const atMidnight = expires.getHours() === 0 && expires.getMinutes() === 0 && expires.getSeconds() === 0;
-    const effectiveExpiry = atMidnight ? expiresMs + 24 * 60 * 60 * 1000 - 1 : expiresMs;
-    if (effectiveExpiry < Date.now()) throw new Error("This coupon has expired");
-  }
+  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) throw new Error("This coupon has expired");
   if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) throw new Error("This coupon has reached its usage limit");
   const discountCents = coupon.discountType === "percent"
     ? Math.round((subtotal * coupon.value) / 100)

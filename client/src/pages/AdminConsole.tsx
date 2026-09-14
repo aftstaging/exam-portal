@@ -1089,12 +1089,14 @@ function CouponsTab() {
     if (!code.trim()) { toast.error("Enter a coupon code"); return; }
     const numValue = Number(value);
     if (!Number.isFinite(numValue) || numValue <= 0) { toast.error("Enter a valid discount value"); return; }
+    let expiry: Date | null = null;
+    try { expiry = couponExpiryFromLocal(expiresAt); } catch (error) { toast.error(error instanceof Error ? error.message : "Invalid expiry"); return; }
     create.mutate({
       code: code.trim(),
       discountType,
       value: Math.round(numValue),
       maxUses: maxUses ? Math.max(0, Math.round(Number(maxUses))) : undefined,
-      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
+      expiresAt: expiry ? expiry.toISOString() : undefined,
     });
   };
 
@@ -1111,13 +1113,15 @@ function CouponsTab() {
     if (!editCode.trim()) { toast.error("Enter a coupon code"); return; }
     const numValue = Number(editValue);
     if (!Number.isFinite(numValue) || numValue <= 0) { toast.error("Enter a valid discount value"); return; }
+    let expiry: Date | null = null;
+    try { expiry = couponExpiryFromLocal(editExpiresAt); } catch (error) { toast.error(error instanceof Error ? error.message : "Invalid expiry"); return; }
     update.mutate({
       couponId: editingId!,
       code: editCode.trim(),
       discountType: editDiscountType,
       value: Math.round(numValue),
       maxUses: editMaxUses ? Math.max(0, Math.round(Number(editMaxUses))) : undefined,
-      expiresAt: editExpiresAt ? new Date(editExpiresAt).toISOString() : null,
+      expiresAt: expiry ? expiry.toISOString() : null,
     });
   };
 
@@ -1239,6 +1243,16 @@ function CouponsTab() {
 function toDatetimeLocal(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function couponExpiryFromLocal(value: string): Date | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) throw new Error("Coupon expiry must be a valid date and time");
+  const atMidnight = parsed.getHours() === 0 && parsed.getMinutes() === 0;
+  const expiry = atMidnight ? new Date(parsed.getTime() + 24 * 60 * 60 * 1000 - 1) : parsed;
+  if (expiry.getTime() + 60_000 < Date.now()) throw new Error("Coupon expiry must be in the future");
+  return expiry;
 }
 
 function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { title: string; examType: string; intro: string | null; totalDurationSeconds: number; status: string }; product: { title: string; description: string | null; priceCents: number; accessDays: number }; sections: { sectionNumber: number; title: string; introduction: string | null; scenario: string | null; question: string | null; durationSeconds: number }[]; questions: { topic: string; learningOutcome: string | null; questionType: string; prompt: string; optionsJson: string; answerJson: string; explanation: string | null; difficulty: string }[]; email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null } | null; loading: boolean; onClose: () => void }) {
