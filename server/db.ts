@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, not } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
@@ -1110,7 +1110,9 @@ export async function updateExamBundle(input: ExamBundleUpdateInput) {
     if (!file || "keepUrl" in file || !file.base64) return;
     const url = await uploadResource(kind, { fileName: file.fileName, mimeType: file.mimeType, base64: file.base64 }, resTitle);
     if (url) {
-      await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, kind)));
+      // Remove the previously stored resource rows for this kind, but keep the
+      // row we just inserted (matched by its fileUrl) so the attachment persists.
+      await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, kind), not(eq(resources.fileUrl, url))));
     }
   };
 

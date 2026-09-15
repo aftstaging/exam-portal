@@ -445,7 +445,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     setPrice(String(Math.round((product.priceCents ?? 0) / 100)));
     setAccessDays(String(product.accessDays ?? 30));
     setFeaturedImageUrl(product.featuredImageUrl ?? "");
-    const existingFile = (resource?: typeof resources[number]): ExistingFile | null => (resource ? { fileName: resource.title, keepUrl: resource.fileUrl ?? resource.title } : null);
+    const existingFile = (resource?: typeof resources[number]): ExistingFile | null => (resource?.fileUrl ? { fileName: resource.title, keepUrl: resource.fileUrl } : null);
     setPreModeratedPdf(existingFile(resources.find((r) => r.kind === "printable_pdf")));
     setPreSeen(existingFile(resources.find((r) => r.kind === "pre_seen")));
     setFormulae(existingFile(resources.find((r) => r.kind === "formulae")));
