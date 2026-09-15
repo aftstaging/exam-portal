@@ -124,10 +124,27 @@ warning and continues, so a partial import never blocks the rest.
   dashboard with owned products, progress, saved attempts, and **resume**
   actions.
 
-### 4.3 Case-study flow
+### 4.3 Case-study flow (multi-task)
 
-- A learner starts a case study, works through its **4 sections**, and can save
-  an attempt and resume it later.
+Since commit `5b86e57` the case-study shell (`ExamShell` in
+`client/src/pages/Home.tsx`) runs a **multi-task** flow — one task per
+published section:
+
+- **Instructions** list every task (from `caseStudySections`) with its own
+  title and time limit (default 45 minutes).
+- **Start Task 1** → a per-task **cool-down intro** (`cooldownSeconds`, default
+  30s) that auto-starts the task's clock.
+- Each **task screen** has its own `durationSeconds` countdown and a fresh
+  answer pad; answers are stored per section (`attempts.currentSection`) and
+  autosaved while typing.
+- **Next task** saves the current answer and moves to the next task's intro
+  with a fresh clock. **Review & submit** appears only on the final task.
+- If a task's clock **expires**, the answer is saved automatically and the user
+  is moved to the next task without it ending the exam; after the final task an
+  expiry submits the attempt automatically (`optOutOfMarking: true`).
+- If fewer than 4 sections exist the shell still renders 4 placeholder tasks
+  (recovery fallback `Math.max(examSections.length || 4, 1)`), with the tip
+  "the protected question paper is the source of truth" for section wording.
 - Each section's resource (question paper / solutions) is a **protected
   download**: the server issues a short-lived S3 signed URL through the
   `/storage/:key` proxy route (`server/_core/storageProxy.ts`) so the PDF is
@@ -178,6 +195,27 @@ Operational consequences:
 - See `PRESEEN-ATTACHMENT-FIX.md` for the full incident write-up and the
   one-time DB re-link SQL.
 
+### 4.7 Protected downloads — ZIP bundle and the larger PDF viewer
+
+Since commit `5b86e57`:
+
+- **ZIP download-all** (`server/zip.ts` + `getProtectedResourceZip` in
+  `server/db.ts`, exposed as `resources.downloadZip`): the "Protected
+  downloads" panel in `ProtectedResourceList` (`client/src/pages/Home.tsx`)
+  shows one row per resource **kind** (deduplicated, newest first) and a single
+  `Download all attachments (ZIP)` button. It verifies product entitlement,
+  SKIPS older duplicates per kind, streams each file's bytes from S3
+  (`storageGetBytes` in `server/storage.ts`), writes a self-contained ZIP
+  (CRC-32 + DEFLATE), uploads it back to S3 under `downloads/<productId>/`, and
+  returns a short-lived signed URL the browser downloads under the escaped
+  product name. A real ZIP tool is never required.
+- **Larger PDF reader** (`ResourceModal` + `ProtectedResourceView`): both the
+  exam utility rail and the exam shell now open attachments in a shared,
+  wider/taller popup (`max-w-6xl`, `max-h-94vh`). PDFs render at
+  `#toolbar=0&navpanes=0&zoom=page-width&view=FitH` inside a `h-[78vh]`
+  iframe, so the browser's page/thumbnail sidebar is hidden and the paper fills
+  the width for continuous reading; images display at `max-h-[78vh]`.
+
 ---
 
 ## 5. Deploying exams to a new EC2 instance — checklist
@@ -216,6 +254,8 @@ Sanity checks after the import:
 | `/storage/...` 502 | Signed URL generation failed | Check S3 access + bucket region |
 | Pre-seen shows "No attached document yet." | Pre-seen row is linked to a draft / duplicate product, or resource `status` is not `published` | Run the re-link SQL in `PRESEEN-ATTACHMENT-FIX.md` §2; then re-upload via the **published** exam's Edit |
 | Attachments "disappear" when re-editing an exam | Old `replaceResource()` bug on pre-fix builds | Deploy commit `02db57d` (`PDF-attachment-fix.md`), then re-upload the PDF once via Catalogue → Edit |
+| Exam shows the wrong number of tasks / sections | Published `caseStudySections` rows don't run 1–4 | Deploy commit `5b86e57` (multi-task `ExamShell`) and verify with the section-count queries in `RUNNING-SQL-TOOL.md`; add/remove section rows so `sectionNumber` runs 1–4 |
+| PDF opens as two panes / at page-thumbnail zoom | Old viewer with sidebar + single-page zoom | Deploy commit `5b86e57` (`#navpanes=0&zoom=page-width` in `ProtectedResourceView`) |
 
 ---
 
@@ -239,5 +279,5 @@ re-attaches PDFs.
 
 ---
 
-*Command reference: `pnpm check` (typecheck) and `pnpm test` (38 tests) are the
+*Command reference: `pnpm check` (typecheck) and `pnpm test` (40 tests) are the
 verification gates before pushing changes to the exam/import code.*
