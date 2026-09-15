@@ -137,7 +137,28 @@ SELECT r.id, r.title, r.kind, r.status, p.title AS productTitle, p.status AS pro
 FROM resources r
 INNER JOIN products p ON r.productId = p.id
 WHERE p.status = 'draft';
+
+-- Verify a case-study exam exposes exactly 4 sections (the new multi-task flow renders one task per section)
+SELECT m.id AS mockExamId, m.title, m.status AS examStatus,
+       s.sectionNumber, s.title AS sectionTitle,
+       s.durationSeconds, s.cooldownSeconds
+FROM mockExams m
+INNER JOIN caseStudySections s ON s.mockExamId = m.id
+WHERE m.status = 'published'
+ORDER BY m.id, s.sectionNumber;
+
+-- Count published sections per published mock exam (update the runbook tip: sections are published via their parent mock_exam status)
+SELECT m.id AS mockExamId, m.title, COUNT(s.id) AS exposedSectionCount,
+       MAX(s.sectionNumber) AS maxSectionNumber, MIN(s.sectionNumber) AS minSectionNumber,
+       SUM(s.durationSeconds) AS totalTaskSeconds
+FROM mockExams m
+LEFT JOIN caseStudySections s ON s.mockExamId = m.id
+WHERE m.status = 'published'
+GROUP BY m.id, m.title
+ORDER BY m.id;
 ```
+
+If a published exam exposes fewer (or more) than 4 sections, add/remove the section rows so `sectionNumber` runs 1–4; each task's own 45-minute clock comes from its section's `durationSeconds` (default 2700).
 
 ---
 
