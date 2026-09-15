@@ -608,7 +608,7 @@ function ContentTab() {
                   <>
                     {pageItems.map((item) => (
                       <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
-                        <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs capitalize text-white/45">{item.detail}</div></div>
+<div><div className="font-semibold text-white">{item.title}</div><div className="text-xs capitalize text-white/45">{item.detail}</div>{item.productTitle && <div className="text-[11px] text-white/35">Product: {item.productTitle} · <span className={`capitalize ${item.productStatus === "published" ? "text-[#00ff88]" : item.productStatus === "archived" ? "text-white/40" : "text-[#f4c44e]"}`}>{item.productStatus ?? "unknown"}</span></div>}</div>
                         <div className="flex items-center gap-2">
                           <Button size="sm" variant="outline" className="h-7 border-[#00e5ff] px-2 text-[11px] text-[#00e5ff]" onClick={() => setPreviewId(item.id)}><Eye className="mr-1 h-3 w-3" /> Preview</Button>
                           <Button size="sm" variant="outline" className="h-7 border-white/10 px-2 text-[11px] text-white/60" onClick={() => generatePdf.mutate({ mockExamId: item.id })}><FileText className="mr-1 h-3 w-3" /> PDF</Button>

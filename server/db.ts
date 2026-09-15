@@ -386,19 +386,31 @@ export async function getAdminContentOverview() {
 export async function listAdminContent(kind: "mock_exams" | "sections" | "resources" | "objective_questions") {
   const db = await getDb(); if (!db) return [];
   if (kind === "mock_exams") {
-    const rows = await db.select().from(mockExams).orderBy(desc(mockExams.createdAt));
-    return rows.map((row) => ({ id: row.id, title: row.title, status: row.status, detail: `${row.examType.replace("_", " ")} · ${row.totalDurationSeconds / 60} minutes` }));
+    const rows = await db
+      .select({ mockExam: mockExams, product: products })
+      .from(mockExams)
+      .leftJoin(products, eq(mockExams.productId, products.id))
+      .orderBy(desc(mockExams.createdAt));
+    return rows.map(({ mockExam, product }) => ({
+      id: mockExam.id,
+      title: mockExam.title,
+      status: mockExam.status,
+      productId: mockExam.productId,
+      productTitle: product?.title ?? null,
+      productStatus: product?.status ?? null,
+      detail: `${mockExam.examType.replace("_", " ")} · ${mockExam.totalDurationSeconds / 60} minutes`,
+    }));
   }
   if (kind === "sections") {
     const rows = await db.select().from(caseStudySections).orderBy(asc(caseStudySections.sectionNumber));
-    return rows.map((row) => ({ id: row.id, title: row.title, status: "published" as const, detail: `Section ${row.sectionNumber} · ${row.durationSeconds / 60} minutes` }));
+    return rows.map((row) => ({ id: row.id, title: row.title, status: "published" as const, productId: null, productTitle: null, productStatus: null, detail: `Section ${row.sectionNumber} · ${row.durationSeconds / 60} minutes` }));
   }
   if (kind === "resources") {
     const rows = await db.select().from(resources).orderBy(desc(resources.createdAt));
-    return rows.map((row) => ({ id: row.id, title: row.title, status: row.status, detail: row.kind.replace("_", " ") }));
+    return rows.map((row) => ({ id: row.id, title: row.title, status: row.status, productId: null, productTitle: null, productStatus: null, detail: row.kind.replace("_", " ") }));
   }
   const rows = await db.select().from(objectiveQuestions).orderBy(desc(objectiveQuestions.createdAt));
-  return rows.map((row) => ({ id: row.id, title: row.prompt.slice(0, 100), status: row.status === "retired" ? "archived" as const : row.status, detail: `${row.topic} · ${row.difficulty}` }));
+  return rows.map((row) => ({ id: row.id, title: row.prompt.slice(0, 100), status: row.status === "retired" ? "archived" as const : row.status, productId: null, productTitle: null, productStatus: null, detail: `${row.topic} · ${row.difficulty}` }));
 }
 
 export async function getAdminExamPreview(mockExamId: number) {

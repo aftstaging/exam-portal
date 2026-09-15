@@ -682,6 +682,12 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
           {isEditMode && detail.isError && (
             <div className="rounded-xl border border-[#ff8278]/40 bg-[#2b1010]/40 p-4 text-sm text-[#ff8278]">Could not load this exam. It may have been deleted.</div>
           )}
+          {isEditMode && detail.data && detail.data.product.status !== "published" && (
+            <div className="rounded-xl border border-[#f4c44e]/50 bg-[#2b2410]/60 p-4">
+              <p className="text-sm font-bold text-[#f4c44e]">This exam is not published — hidden from learners</p>
+              <p className="mt-1 text-xs leading-5 text-white/60">The linked product "<span className="text-[#f4c44e]">{detail.data.product.title}</span>" has status <span className="text-[#f4c44e]">{detail.data.product.status}</span>. Attachments you save here will only appear in the learner portal once the product and its resources are published. If a published version of this exam already exists in the catalogue, edit that version instead.</p>
+            </div>
+          )}
           {/* Exam details */}
           <section>
             <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Sparkles className="h-4 w-4" /> Exam details</div>
