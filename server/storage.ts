@@ -90,3 +90,11 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
     { expiresIn: SIGNED_URL_EXPIRES_SECONDS },
   );
 }
+
+export async function storageGetBytes(relKey: string): Promise<{ key: string; body: Buffer; contentType: string | undefined }> {
+  const { bucket } = getS3Config();
+  const key = normalizeKey(relKey);
+  const response = await getS3Client().send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  const body = response.Body ? await response.Body.transformToByteArray() : new Uint8Array(0);
+  return { key, body: Buffer.from(body), contentType: response.ContentType };
+}

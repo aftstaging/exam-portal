@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Download,
   FileText,
   Flag,
   GraduationCap,
@@ -41,6 +42,7 @@ import { startLogin } from "@/const";
 import { toast } from "sonner";
 import ObjectiveTestsPanel from "@/components/ObjectiveTestsPanel";
 import ProtectedResourceView from "@/components/ProtectedResourceView";
+import ResourceModal from "@/components/ResourceModal";
 import { trpc } from "@/lib/trpc";
 import { clearCartStorage } from "@/pages/Cart";
 import { getAttemptProgress, humanizeStatus } from "@shared/learning";
@@ -209,28 +211,57 @@ function ExamUtilityRail({ onResource }: { onResource?: (resource: string) => vo
       <button type="button" onClick={() => open("formulae")} className="exam-utility-button"><Layers3 className="h-4 w-4" /><span>Formulae + tables</span></button>
       <button type="button" onClick={() => open("calculator")} className="exam-utility-button"><Calculator className="h-4 w-4" /><span>Calculator</span></button>
     </aside>
-    {!onResource && localResource && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#120730]/70 p-4" onClick={() => setLocalResource(null)}><Card className="w-full max-w-xl border-[#00e5ff]/30 bg-[#120730]" onClick={(event) => event.stopPropagation()}><CardHeader className="flex-row items-center justify-between"><CardTitle className="text-white">{localResource === "pre-seen" ? "Pre-seen · AFT illustrative brief" : localResource === "formulae" ? "Formulae + tables" : "Calculator"}</CardTitle><Button size="icon" variant="ghost" onClick={() => setLocalResource(null)}><X className="h-4 w-4" /></Button></CardHeader><CardContent>{localResource === "calculator" ? <ExamCalculator /> : (() => { const kind = localResource === "pre-seen" ? "pre_seen" : "formulae"; const match = resourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream"); return match ? <ProtectedResourceView resource={match} /> : <p className="mt-4 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setLocalResource(null)}>Close</Button></CardContent></Card></div>}
+    {!onResource && localResource && <ResourceModal title={localResource === "pre-seen" ? "Pre-seen · AFT illustrative brief" : localResource === "formulae" ? "Formulae + tables" : "Calculator"} onClose={() => setLocalResource(null)}>{localResource === "calculator" ? <ExamCalculator /> : (() => { const kind = localResource === "pre-seen" ? "pre_seen" : "formulae"; const match = resourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream"); return match ? <ProtectedResourceView resource={match} /> : <p className="mt-4 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setLocalResource(null)}>Close</Button></ResourceModal>}
   </>;
 }
 
 function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: string) => void }) {
-  const [answer, setAnswer] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [savedSections, setSavedSections] = useState<Record<number, boolean>>({});
+  const [currentSection, setCurrentSection] = useState(1);
   const saveAnswer = trpc.exams.saveAnswer.useMutation();
   const submitAttempt = trpc.exams.submit.useMutation();
   const attemptId = typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("attempt") || window.sessionStorage.getItem("aft-attempt-id") || 0);
   const [countdown, setCountdown] = useState(screen === "intro" ? 30 : 0);
   const introTimerStarted = useRef(false);
   const transitioningToSubmission = useRef(false);
+  const timeUpHandled = useRef(false);
   const [sectionSeconds, setSectionSeconds] = useState(45 * 60);
   const [resource, setResource] = useState<string | null>(null);
   const attemptContextQuery = trpc.exams.attemptContext.useQuery({ attemptId }, { retry: false, enabled: Boolean(attemptId) });
+  const examMockExamId = attemptContextQuery.data?.mockExamId ?? 0;
   const examProductId = attemptContextQuery.data?.productId ?? 0;
   const examResourcesQuery = trpc.resources.list.useQuery({ productId: examProductId || 1 }, { retry: false, enabled: Boolean(examProductId) });
+  const caseStudySectionsQuery = trpc.catalogue.caseStudySections.useQuery({ mockExamId: examMockExamId || 1 }, { retry: false, enabled: Boolean(examMockExamId) });
+  const examSections = caseStudySectionsQuery.data ?? [];
+  const totalSections = Math.max(examSections.length || 4, 1);
+  const currentSectionMeta = examSections.find((item) => item.sectionNumber === currentSection);
+  const sectionTitle = currentSectionMeta?.title ?? `Task ${currentSection}`;
+  const sectionIntroduction = currentSectionMeta?.introduction ?? "Read the scenario carefully, review the permitted resources, and prepare to respond to the task in the answer pad.";
+  const sectionScenario = currentSectionMeta?.scenario ?? null;
+  const sectionQuestion = currentSectionMeta?.question ?? "Prepare your response in the answer pad below.";
+  const sectionCooldownSeconds = currentSectionMeta?.cooldownSeconds ?? 30;
+  const sectionDurationSeconds = currentSectionMeta?.durationSeconds ?? 45 * 60;
+  const answer = answers[currentSection] ?? "";
+  const saved = Boolean(savedSections[currentSection]);
   const isIntro = screen === "intro";
   const isQuestion = screen === "question";
   const attemptLocked = Boolean(attemptContextQuery.data?.status && attemptContextQuery.data.status !== "in_progress");
-  const section = screen === "instructions" ? "Exam timings and instructions" : screen === "intro" ? "Section 1 introduction" : "Question 1 of 4";
+  const section = screen === "instructions" ? "Exam timings and instructions" : screen === "intro" ? `${sectionTitle} — introduction` : sectionTitle;
+  const startQuestionSection = () => {
+    timeUpHandled.current = false;
+    setSectionSeconds(sectionDurationSeconds);
+    setScreen("question");
+  };
+  const advanceToNext = () => {
+    if (currentSection < totalSections) {
+      setCurrentSection((value) => value + 1);
+      setScreen("intro");
+    } else {
+      transitioningToSubmission.current = true;
+      setScreen("submission");
+    }
+  };
   useEffect(() => {
     if (attemptLocked && (isIntro || isQuestion)) {
       setScreen("debrief");
@@ -242,32 +273,48 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
     }
     if (!introTimerStarted.current) {
       introTimerStarted.current = true;
-      setCountdown(30);
+      setCountdown(sectionCooldownSeconds);
       return;
     }
     if (shouldAutoStartExam(countdown)) {
-      setScreen("question");
+      startQuestionSection();
       return;
     }
     const timer = window.setInterval(() => setCountdown((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
-  }, [countdown, isIntro, setScreen]);
+  }, [countdown, isIntro, setScreen, currentSection, sectionCooldownSeconds]);
   useEffect(() => {
     if (!isQuestion || sectionSeconds <= 0) return;
     const timer = window.setInterval(() => setSectionSeconds((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(timer);
-  }, [isQuestion, sectionSeconds]);
+  }, [isQuestion, sectionSeconds, currentSection]);
   useEffect(() => {
     if (!isQuestion || attemptLocked || !attemptId || !answer.trim()) return;
-    const timer = window.setTimeout(() => saveAnswer.mutate({ attemptId, sectionId: 1, body: answer, wordCount: answer.trim().split(/\s+/).length }, { onSuccess: () => setSaved(true) }), 700);
+    const sectionId = currentSection;
+    const timer = window.setTimeout(() => saveAnswer.mutate({ attemptId, sectionId, body: answer, wordCount: answer.trim().split(/\s+/).length }, { onSuccess: () => setSavedSections((flags) => ({ ...flags, [sectionId]: true })) }), 700);
     return () => window.clearTimeout(timer);
-  }, [answer, attemptId, isQuestion]);
+  }, [answer, attemptId, isQuestion, currentSection]);
   useEffect(() => {
-    if (!isQuestion || sectionSeconds > 0 || attemptLocked || !attemptId) return;
-    transitioningToSubmission.current = true;
-    toast.warning("Time is up — your exam is being submitted with the answers saved so far.");
-    submitAttempt.mutate({ attemptId, optOutOfMarking: true }, { onSuccess: () => setScreen("debrief"), onError: (error) => { toast.error(error.message); setScreen("debrief"); } });
-  }, [isQuestion, sectionSeconds, attemptLocked, attemptId]);
+    if (!isQuestion || sectionSeconds > 0 || attemptLocked || !attemptId || timeUpHandled.current) return;
+    timeUpHandled.current = true;
+    const sectionId = currentSection;
+    const finishSectionOrSubmit = () => {
+      if (currentSection < totalSections) {
+        toast.warning(`Time is up for Task ${currentSection} — your answer was saved automatically. Moving to the next task.`);
+        setCurrentSection((value) => value + 1);
+        setScreen("intro");
+      } else {
+        transitioningToSubmission.current = true;
+        toast.warning("Time is up — your exam is being submitted with the answers saved so far.");
+        submitAttempt.mutate({ attemptId, optOutOfMarking: true }, { onSuccess: () => setScreen("debrief"), onError: (error) => { toast.error(error.message); setScreen("debrief"); } });
+      }
+    };
+    if (answer.trim()) {
+      saveAnswer.mutate({ attemptId, sectionId, body: answer, wordCount: answer.trim().split(/\s+/).length }, { onSuccess: () => { setSavedSections((flags) => ({ ...flags, [sectionId]: true })); finishSectionOrSubmit(); }, onError: () => finishSectionOrSubmit() });
+    } else {
+      finishSectionOrSubmit();
+    }
+  }, [isQuestion, sectionSeconds, attemptLocked, attemptId, answer, currentSection, totalSections]);
   useEffect(() => {
     if (!attemptId || attemptLocked) return;
     const submitBeacon = () => {
@@ -309,20 +356,21 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
             <CardHeader className="border-b border-white/10 px-8 py-7"><Badge className="w-fit bg-[#102b36] text-[#00ff88]">Interactive mode</Badge><CardTitle className="mt-3 text-3xl text-white">Exam timings and instructions</CardTitle><p className="max-w-2xl text-[#c4b5fd]">Work through each section under timed conditions in a single sitting. Your answers are autosaved as you type. Ending the session or leaving the page automatically submits the exam with the answers saved so far — it cannot be resumed later.</p></CardHeader>
             <CardContent className="px-8 py-7">
               <div className="grid gap-3 md:grid-cols-2">
-                {["Section 1", "Section 2", "Section 3", "Section 4"].map((item, index) => <div key={item} className="flex items-center justify-between rounded-xl border border-white/10 bg-[#18093c] p-4"><div><div className="font-bold text-white">{item}</div><div className="text-sm text-white/50">Case-study task set</div></div><Badge variant="outline" className="border-[#00ff88] text-[#00ff88]">45 minutes</Badge></div>)}
+                {Array.from({ length: totalSections }, (_, index) => index + 1).map((sectionNumber) => { const meta = examSections.find((item) => item.sectionNumber === sectionNumber); const taskTitle = meta?.title ?? `Task ${sectionNumber}`; const taskMinutes = Math.round((meta?.durationSeconds ?? 45 * 60) / 60); return <div key={sectionNumber} className="flex items-center justify-between rounded-xl border border-white/10 bg-[#18093c] p-4"><div><div className="font-bold text-white">{taskTitle}</div><div className="text-sm text-white/50">Case-study task set</div></div><Badge variant="outline" className="border-[#00ff88] text-[#00ff88]">{taskMinutes} minutes</Badge></div>; })}
               </div>
               <div className="mt-7 rounded-xl bg-[#102b36] p-5 text-sm leading-6 text-[#c4b5fd]"><div className="mb-2 flex items-center gap-2 font-bold text-white"><ShieldCheck className="h-5 w-5 text-[#00e5ff]" /> Before you begin</div>Keep the Pre-seen and permitted reference materials available. Your answers are autosaved continuously. If you leave the page or end the session, the exam is submitted automatically with the answers saved so far — there is no pause or resume.</div>
-              <div className="mt-7 flex flex-wrap justify-end gap-3"><Button variant="outline" className="border-[#00e5ff] text-white" onClick={() => setScreen("mode")}>Back</Button><Button className="aft-button" onClick={() => setScreen("intro")}>Start Section 1 <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+              <div className="mt-7 flex flex-wrap justify-end gap-3"><Button variant="outline" className="border-[#00e5ff] text-white" onClick={() => setScreen("mode")}>Back</Button><Button className="aft-button" onClick={() => { setCurrentSection(1); setScreen("intro"); }}>Start Task 1 <ArrowRight className="ml-2 h-4 w-4" /></Button></div>
             </CardContent>
           </Card>
         )}
         {isIntro && (
           <Card className="exam-card mx-auto max-w-5xl">
             <CardContent className="p-9">
-              <div className="flex flex-wrap items-start justify-between gap-5"><div><p className="eyebrow">Section 1</p><h1 className="mt-2 text-3xl font-bold text-white">Section 1 introduction</h1></div><div className="countdown-box"><TimerReset className="h-5 w-5" /> 00:{String(countdown).padStart(2, "0")}</div></div>
-              <Separator className="my-7" /><p className="max-w-3xl text-lg leading-8 text-[#c4b5fd]">It’s June 2026. SoPa is diversifying into a takeaway and home delivery service. Read the scenario carefully, review the permitted resources, and prepare to respond to the task in the answer pad.</p>
-              <div className="mt-7 rounded-xl border border-[#00e5ff] bg-[#102b36] p-5"><div className="font-bold text-[#00ff88]">30-second cool-down</div><p className="mt-1 text-sm text-[#c4b5fd]">Use this time to settle into the exam environment. The task will become available when the countdown completes.</p></div>
-              <div className="mt-7 flex justify-end"><Button className="aft-button" disabled={!canStartExamBeforeCooldown(countdown)} onClick={() => setScreen("question")}>{countdown > 0 ? `Start exam now · ${String(countdown).padStart(2, "0")}s auto-start` : "Start exam"}<ArrowRight className="ml-2 h-4 w-4" /></Button></div>
+              <div className="flex flex-wrap items-start justify-between gap-5"><div><p className="eyebrow">Task {currentSection} of {totalSections}</p><h1 className="mt-2 text-3xl font-bold text-white">{sectionTitle}</h1></div><div className="countdown-box"><TimerReset className="h-5 w-5" /> 00:{String(countdown).padStart(2, "0")}</div></div>
+              <Separator className="my-7" /><p className="max-w-3xl text-lg leading-8 text-[#c4b5fd]">{sectionIntroduction}</p>
+              {sectionScenario && <div className="mt-5 rounded-xl border border-[#00e5ff]/30 bg-[#18093c] p-5"><div className="text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Scenario</div><p className="mt-2 text-sm leading-6 text-[#c4b5fd]">{sectionScenario}</p></div>}
+              <div className="mt-7 rounded-xl border border-[#00e5ff] bg-[#102b36] p-5"><div className="font-bold text-[#00ff88]">{sectionCooldownSeconds}-second cool-down</div><p className="mt-1 text-sm text-[#c4b5fd]">Use this time to settle into the exam environment. The task will become available when the countdown completes.</p></div>
+              <div className="mt-7 flex justify-end"><Button className="aft-button" disabled={!canStartExamBeforeCooldown(countdown)} onClick={startQuestionSection}>{countdown > 0 ? `Start exam now · ${String(countdown).padStart(2, "0")}s auto-start` : "Start exam"}<ArrowRight className="ml-2 h-4 w-4" /></Button></div>
             </CardContent>
           </Card>
         )}
@@ -331,14 +379,15 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
         )}
         {isQuestion && (
           <Card className="exam-card mx-auto max-w-5xl question-workspace-card"><CardContent className="p-7 md:p-9">
-            <div className="flex items-start justify-between gap-5"><div><p className="eyebrow">Section 1 · Question 1</p><h1 className="mt-3 text-3xl font-bold text-white">Assess the proposed delivery service</h1></div><Badge className="shrink-0 bg-[#102b36] text-[#00ff88]">{formatExamTime(sectionSeconds)} remaining</Badge></div>
-            <p className="mt-5 max-w-4xl text-base leading-8 text-[#c4b5fd]">Prepare a response to the email from Jack Griggs, Head of Finance. Explain the key financial and operational considerations for the new service and support your recommendations with appropriate analysis.</p>
+            <div className="flex items-start justify-between gap-5"><div><p className="eyebrow">Task {currentSection} of {totalSections}</p><h1 className="mt-3 text-3xl font-bold text-white">{sectionTitle}</h1></div><Badge className="shrink-0 bg-[#102b36] text-[#00ff88]">{formatExamTime(sectionSeconds)} remaining</Badge></div>
+            {(sectionQuestion || sectionScenario) && <p className="mt-5 max-w-4xl text-base leading-8 text-[#c4b5fd]">{sectionQuestion ?? sectionScenario}</p>}
+            {sectionScenario && sectionQuestion && <div className="mt-4 rounded-xl border border-[#00e5ff]/30 bg-[#18093c] p-5"><div className="text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Scenario</div><p className="mt-2 text-sm leading-6 text-[#c4b5fd]">{sectionScenario}</p></div>}
             <div className="mt-7 grid gap-3 sm:grid-cols-2"><Button variant="outline" className="justify-start border-[#00e5ff] text-[#00ff88]" onClick={() => setResource("email")}><FileText className="mr-2 h-4 w-4" /> Email attachment</Button><Button variant="outline" className="justify-start border-[#00e5ff] text-[#00ff88]" onClick={() => setResource("reference")}><BookOpen className="mr-2 h-4 w-4" /> Reference material</Button></div>
-            <div className="mt-7 border-t border-white/10 pt-6"><div className="mb-3 flex items-center justify-between gap-4"><div><p className="eyebrow">Answer</p><p className="mt-1 text-sm text-[#c4b5fd]">Type your response to Section 1 below.</p></div><span className="text-xs text-white/45">Autosave enabled</span></div><div className="editor-toolbar"><span>Paragraph</span><button type="button" onMouseDown={(event) => { event.preventDefault(); document.execCommand("bold"); }}><strong>B</strong></button><button type="button" onMouseDown={(event) => { event.preventDefault(); document.execCommand("italic"); }}><em>I</em></button><button type="button" onMouseDown={(event) => { event.preventDefault(); document.execCommand("underline"); }}><u>U</u></button><span>☷</span><span>☰</span><span>≡</span><span>↗</span></div><div contentEditable role="textbox" aria-label="Exam answer" suppressContentEditableWarning onInput={(event) => { setAnswer(event.currentTarget.textContent ?? ""); setSaved(false); }} className="min-h-[270px] rounded-t-none border border-t-0 border-white/10 bg-[#0c0524] p-4 text-base leading-7 text-white outline-none focus:ring-2 focus:ring-[#00e5ff]" data-placeholder="Type your response here..." /><div className="flex items-center justify-between border border-t-0 border-white/10 px-3 py-2 text-xs text-white/50"><span>Words: {answer.trim() ? answer.trim().split(/\s+/).length : 0}</span><span>{saved ? "Saved just now" : "Unsaved changes"}</span></div><div className="mt-5 flex justify-end gap-3"><Button variant="outline" className="border-[#00ff88] text-[#00ff88]" disabled={attemptLocked} onClick={() => { if (attemptLocked) { toast.error("This submitted attempt is locked and cannot be saved."); return; } if (!attemptId) { toast.error("Start an interactive attempt before saving."); return; } saveAnswer.mutate({ attemptId, sectionId: 1, body: answer, wordCount: answer.trim() ? answer.trim().split(/\s+/).length : 0 }, { onSuccess: () => { setSaved(true); toast.success("Answer saved"); }, onError: (error) => toast.error(error.message) }); }}><Save className="mr-2 h-4 w-4" /> Save</Button><Button className="aft-button" onClick={() => { transitioningToSubmission.current = true; setScreen("submission"); }}>Next <ArrowRight className="ml-2 h-4 w-4" /></Button></div></div>
+            <div className="mt-7 border-t border-white/10 pt-6"><div className="mb-3 flex items-center justify-between gap-4"><div><p className="eyebrow">Answer</p><p className="mt-1 text-sm text-[#c4b5fd]">Type your response to Task {currentSection} below.</p></div><span className="text-xs text-white/45">Autosave enabled</span></div><div className="editor-toolbar"><span>Paragraph</span><button type="button" onMouseDown={(event) => { event.preventDefault(); document.execCommand("bold"); }}><strong>B</strong></button><button type="button" onMouseDown={(event) => { event.preventDefault(); document.execCommand("italic"); }}><em>I</em></button><button type="button" onMouseDown={(event) => { event.preventDefault(); document.execCommand("underline"); }}><u>U</u></button><span>☷</span><span>☰</span><span>≡</span><span>↗</span></div><div contentEditable role="textbox" aria-label="Exam answer" suppressContentEditableWarning onInput={(event) => { setAnswers((current) => ({ ...current, [currentSection]: event.currentTarget.textContent ?? "" })); setSavedSections((current) => ({ ...current, [currentSection]: false })); }} className="min-h-[270px] rounded-t-none border border-t-0 border-white/10 bg-[#0c0524] p-4 text-base leading-7 text-white outline-none focus:ring-2 focus:ring-[#00e5ff]" data-placeholder="Type your response here..." /><div className="flex items-center justify-between border border-t-0 border-white/10 px-3 py-2 text-xs text-white/50"><span>Words: {answer.trim() ? answer.trim().split(/\s+/).length : 0}</span><span>{saved ? "Saved just now" : "Unsaved changes"}</span></div><div className="mt-5 flex justify-end gap-3"><Button variant="outline" className="border-[#00ff88] text-[#00ff88]" disabled={attemptLocked} onClick={() => { if (attemptLocked) { toast.error("This submitted attempt is locked and cannot be saved."); return; } if (!attemptId) { toast.error("Start an interactive attempt before saving."); return; } saveAnswer.mutate({ attemptId, sectionId: currentSection, body: answer, wordCount: answer.trim() ? answer.trim().split(/\s+/).length : 0 }, { onSuccess: () => { setSavedSections((flags) => ({ ...flags, [currentSection]: true })); toast.success("Answer saved"); }, onError: (error) => toast.error(error.message) }); }}><Save className="mr-2 h-4 w-4" /> Save</Button><Button className="aft-button" onClick={() => { if (attemptLocked) { toast.error("This submitted attempt is locked and cannot be continued."); return; } if (!attemptId) { toast.error("Start an interactive attempt before continuing."); return; } saveAnswer.mutate({ attemptId, sectionId: currentSection, body: answer, wordCount: answer.trim() ? answer.trim().split(/\s+/).length : 0 }, { onSuccess: () => { setSavedSections((flags) => ({ ...flags, [currentSection]: true })); advanceToNext(); }, onError: () => advanceToNext() }); }}>{currentSection < totalSections ? `Next task` : `Review & submit`} <ArrowRight className="ml-2 h-4 w-4" /></Button></div></div>
           </CardContent></Card>
         )}
       </main>
-      {resource && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#120730]/50 p-4" onClick={() => setResource(null)}><Card className="w-full max-w-xl" onClick={(event) => event.stopPropagation()}><CardHeader className="flex-row items-center justify-between"><CardTitle className="text-white">{resource === "pre-seen" ? "Pre-seen material" : resource === "formulae" ? "Formulae + tables" : resource === "calculator" ? "Calculator" : resource === "email" ? "Email attachment" : "Reference material"}</CardTitle><Button size="icon" variant="ghost" onClick={() => setResource(null)}><X className="h-4 w-4" /></Button></CardHeader><CardContent>{resource === "calculator" ? <ExamCalculator /> : (() => { const kind = resource === "pre-seen" ? "pre_seen" : resource === "formulae" ? "formulae" : resource === "reference" ? "reference" : resource === "email" ? "email" : null; const match = kind ? examResourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream") : undefined; return match ? <ProtectedResourceView resource={match} /> : <p className="mt-5 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="ml-3 mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setResource(null)}>Close resource</Button></CardContent></Card></div>}
+      {resource && <ResourceModal title={resource === "pre-seen" ? "Pre-seen material" : resource === "formulae" ? "Formulae + tables" : resource === "calculator" ? "Calculator" : resource === "email" ? "Email attachment" : "Reference material"} onClose={() => setResource(null)}>{resource === "calculator" ? <ExamCalculator /> : (() => { const kind = resource === "pre-seen" ? "pre_seen" : resource === "formulae" ? "formulae" : resource === "reference" ? "reference" : resource === "email" ? "email" : null; const match = kind ? examResourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream") : undefined; return match ? <ProtectedResourceView resource={match} /> : <p className="mt-5 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="ml-3 mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setResource(null)}>Close resource</Button></ResourceModal>}
     </div>
   );
 }
@@ -412,18 +461,31 @@ function RubricForm({ pending, onSubmit }: { pending: boolean; onSubmit: (feedba
 function ProtectedResourceList({ productId }: { productId: number }) {
   const resourcesQuery = trpc.resources.list.useQuery({ productId }, { retry: false });
   const utils = trpc.useUtils();
-  const downloadResource = async (resourceId: number) => {
+  const [zipLoading, setZipLoading] = useState(false);
+  const resources = resourcesQuery.data ?? [];
+  const uniqueResources = resources.filter((resource, index, array) => array.findIndex((item) => item.kind === resource.kind) === index);
+  const downloadZip = async () => {
+    setZipLoading(true);
     try {
-      const result = await utils.resources.download.fetch({ resourceId });
-      if (result.url) window.location.assign(result.url);
+      const result = await utils.resources.downloadZip.fetch({ productId });
+      if (result.url) {
+        const anchor = document.createElement("a");
+        anchor.href = result.url;
+        anchor.download = result.fileName;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Resource unavailable");
+      toast.error(error instanceof Error ? error.message : "Attachments unavailable");
+    } finally {
+      setZipLoading(false);
     }
   };
   if (resourcesQuery.isLoading) return <div className="mt-5 h-10 animate-pulse rounded-xl bg-[#18093c]" />;
   if (resourcesQuery.isError) return <p className="mt-5 text-xs text-[#ff8278]">Resources are not available for this entitlement.</p>;
-  if (!resourcesQuery.data?.length) return <p className="mt-5 text-xs text-white/45">No protected resources published yet.</p>;
-  return <div className="mt-5 space-y-2 border-t border-white/10 pt-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-[#00ff88]">Protected downloads</p>{resourcesQuery.data.map((resource) => <div key={resource.id} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#18093c]/60 p-3"><span className="text-xs leading-5 text-[#c4b5fd]">{resource.title}</span>{resource.hasFile ? <Button size="sm" variant="outline" className="w-full border-[#00e5ff] text-[#00e5ff]" onClick={() => void downloadResource(resource.id)}>Download</Button> : <span className="text-[11px] text-white/40">Preparing</span>}</div>)}</div>;
+  if (!resources.length) return <p className="mt-5 text-xs text-white/45">No protected resources published yet.</p>;
+  return <div className="mt-5 space-y-2 border-t border-white/10 pt-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-[#00ff88]">Protected downloads</p><Button size="sm" variant="outline" className="w-full border-[#00e5ff] text-[#00e5ff]" disabled={zipLoading} onClick={() => void downloadZip()}><Download className="mr-2 h-4 w-4" />{zipLoading ? "Preparing ZIP…" : `Download all attachments (ZIP) · ${uniqueResources.length}`}</Button><div className="space-y-1 pt-1">{uniqueResources.map((resource) => <div key={resource.kind} className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-[#18093c]/60 px-3 py-2"><span className="text-xs leading-5 text-[#c4b5fd]">{resource.title}</span>{resource.hasFile ? <span className="shrink-0 text-[11px] text-[#00ff88]">Included</span> : <span className="shrink-0 text-[11px] text-white/40">Preparing</span>}</div>)}</div></div>;
 }
 
 function ModeSelection({ setScreen }: { setScreen: (next: string) => void }) { const startAttempt = trpc.exams.startAttempt.useMutation(); const mockExamsQuery = trpc.catalogue.mockExams.useQuery(undefined, { retry: false }); const mockExamId = typeof window === "undefined" ? 1 : Number(new URLSearchParams(window.location.search).get("mockExamId") || 1); const queryProductId = typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("productId") || 0); const selectedMockExam = mockExamsQuery.data?.find((item) => item.mockExam.id === mockExamId)?.mockExam; const examTitle = selectedMockExam?.title ?? "Selected mock exam"; const durationMinutes = Math.round((selectedMockExam?.totalDurationSeconds ?? 10800) / 60); const productId = queryProductId || selectedMockExam?.productId || 0; const sectionsQuery = trpc.catalogue.caseStudySections.useQuery({ mockExamId }, { retry: false, enabled: Boolean(selectedMockExam) }); const resourcesQuery = trpc.resources.list.useQuery({ productId }, { retry: false, enabled: Boolean(productId) }); const resourceUtils = trpc.useUtils(); const printableResource = resourcesQuery.data?.find((item) => item.kind === "printable_pdf" && item.hasFile); const printableMutation = trpc.exams.printable.useMutation(); const [mode, setMode] = useState("interactive"); const modes = [{ id: "interactive", title: "Interactive", text: "Complete the mock exam in one sitting. Ending or leaving submits it automatically with the answers saved so far.", icon: MonitorPlay }, { id: "printable", title: "Printable", text: "Download the protected question paper PDF.", icon: FileText }, { id: "solutions", title: "Online mock with solutions", text: "Unlock AFT-created illustrative solutions after you complete the mock.", icon: Check }, { id: "feedback", title: "Marking feedback instructions", text: "Open the protected answers and marking guide.", icon: PenLine }]; return <div className="min-h-screen bg-[#0c0524]"><PublicHeader onLogin={() => startLogin("login")} /><ExamUtilityRail /><main className="container py-12"><div className="mx-auto max-w-4xl"><p className="eyebrow">Home / CIMA / Case study / {examTitle}</p><h1 className="mt-3 text-4xl font-bold text-white">Select your exam mode</h1><p className="mt-3 text-[#c4b5fd]">Choose how you would like to access {examTitle}. The interactive attempt is timed for {durationMinutes} minutes.</p><div className="mt-6 rounded-2xl border border-white/10 bg-[#120730] p-5"><div className="text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">Imported exam structure · {sectionsQuery.data?.length ?? 0} published sections</div>{sectionsQuery.isLoading ? <div className="mt-3 h-16 animate-pulse rounded-xl bg-[#18093c]" /> : sectionsQuery.isError ? <p className="mt-3 text-xs text-[#ff8278]">Section metadata is temporarily unavailable. The protected question paper remains the source of truth.</p> : sectionsQuery.data?.length ? <div className="mt-3 grid gap-2 sm:grid-cols-2">{sectionsQuery.data.map((section) => <div key={section.id} className="rounded-xl border border-white/10 bg-[#18093c]/60 p-3"><div className="text-sm font-bold text-white">Section {section.sectionNumber} · {section.title}</div><div className="mt-1 text-xs text-[#c4b5fd]">{Math.round(section.durationSeconds / 60)} minutes · {section.introduction ?? "See protected question paper"}</div></div>)}</div> : <p className="mt-3 text-xs text-white/45">No published section metadata is available yet.</p>}</div><div className="mt-8 grid gap-4 md:grid-cols-2">{modes.map(({ id, title, text, icon: Icon }) => <button key={id} onClick={() => setMode(id)} className={`mode-card text-left ${mode === id ? "mode-card-selected" : ""}`}><div className="flex items-center justify-between gap-4"><div className={`mode-icon ${mode === id ? "mode-icon-selected" : ""}`}><Icon className="h-6 w-6" /></div><ChevronRight className="h-5 w-5 text-[#00ff88]" /></div><h2 className="mt-5 font-bold text-white">{title}</h2><p className="mt-1 text-sm leading-6 text-[#c4b5fd]">{text}</p></button>)}</div>{mode === "printable" && <div className={`mt-6 rounded-xl border p-4 text-sm ${printableResource ? "border-[#00ff88]/40 bg-[#102b36] text-[#c4b5fd]" : "border-[#00e5ff]/30 bg-[#18093c] text-[#c4b5fd]"}`}><div className="font-bold text-white">{resourcesQuery.isLoading ? "Checking printable resource…" : printableResource ? "Printable exam ready" : "Printable exam not published yet"}</div><p className="mt-1">{printableResource ? "The question paper PDF will open here." : "The question paper PDF is generated automatically and opened when you continue."}</p></div>}<div className="mt-8 flex gap-3"><Button variant="outline" className="border-[#00e5ff] text-white" onClick={() => setScreen("debrief")}>Back</Button><Button className="aft-button" onClick={async () => { if (mode === "solutions") { setScreen("solutions"); return; } if (mode !== "interactive") { const kind = mode === "printable" ? "printable_pdf" : mode === "feedback" ? "feedback" : "reference"; const resource = resourcesQuery.data?.find((item) => item.kind === kind && item.hasFile); if (resource) { try { const result = await resourceUtils.resources.download.fetch({ resourceId: resource.id }); if (result.url) window.location.assign(result.url); } catch (error) { toast.error(error instanceof Error ? error.message : "Resource unavailable"); } } else if (mode === "printable") { try { const result = await printableMutation.mutateAsync({ mockExamId }); if (result.url) window.location.assign(result.url); else toast.error("Printable PDF could not be generated"); } catch (error) { toast.error(error instanceof Error ? error.message : "Printable PDF could not be generated"); } } else { toast.info("This mode is available once the corresponding protected file has been published."); } return; } startAttempt.mutate({ mockExamId, mode: "interactive" }, { onSuccess: (attempt) => { if (attempt?.id && typeof window !== "undefined") { window.sessionStorage.setItem("aft-attempt-id", String(attempt.id)); const nextParams = new URLSearchParams(window.location.search); nextParams.set("attempt", String(attempt.id)); window.history.replaceState({}, "", `${window.location.pathname}?${nextParams.toString()}`); } setScreen("instructions"); }, onError: (error) => toast.error(error.message || "Sign in to start an interactive attempt") }); }}>Continue <ArrowRight className="ml-2 h-4 w-4" /></Button></div></div></main></div>; }

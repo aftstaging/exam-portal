@@ -2,8 +2,9 @@ import { and, asc, count, desc, eq, inArray, not } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
-import { storageGetSignedUrl, storagePut } from "./storage";
+import { storageGetBytes, storageGetSignedUrl, storagePut } from "./storage";
 import { generateBrandedPrintablePdf } from "./pdf";
+import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
 import {
@@ -143,7 +144,7 @@ export async function listPublishedMockExams() {
 
 export async function listPublishedCaseStudySections(mockExamId: number) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: caseStudySections.id, mockExamId: caseStudySections.mockExamId, sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, introduction: caseStudySections.introduction, durationSeconds: caseStudySections.durationSeconds, cooldownSeconds: caseStudySections.cooldownSeconds }).from(caseStudySections).innerJoin(mockExams, eq(caseStudySections.mockExamId, mockExams.id)).where(and(eq(caseStudySections.mockExamId, mockExamId), eq(mockExams.status, "published"))).orderBy(asc(caseStudySections.sectionNumber));
+  return db.select({ id: caseStudySections.id, mockExamId: caseStudySections.mockExamId, sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question, durationSeconds: caseStudySections.durationSeconds, cooldownSeconds: caseStudySections.cooldownSeconds }).from(caseStudySections).innerJoin(mockExams, eq(caseStudySections.mockExamId, mockExams.id)).where(and(eq(caseStudySections.mockExamId, mockExamId), eq(mockExams.status, "published"))).orderBy(asc(caseStudySections.sectionNumber));
 }
 
 export async function listPublishedObjectiveQuestions(mockExamId?: number) {
@@ -325,6 +326,38 @@ export async function getProtectedResourceDownload(userId: number, resourceId: n
   const key = row[0].resource.fileKey;
   if (!key) throw new Error("This resource is not available for download yet");
   return { id: row[0].resource.id, title: row[0].resource.title, kind: row[0].resource.kind, url: await storageGetSignedUrl(key) };
+}
+
+export async function getProtectedResourceZip(userId: number, productId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const product = await db.select({ id: products.id, title: products.title, priceCents: products.priceCents }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!product[0]) throw new Error("Product not found");
+  if ((product[0].priceCents ?? 0) > 0) {
+    const access = await db.select().from(entitlements).where(and(eq(entitlements.userId, userId), eq(entitlements.productId, productId), eq(entitlements.status, "active"))).limit(1);
+    if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
+  }
+  const rows = await db.select().from(resources).where(and(eq(resources.productId, productId), eq(resources.status, "published"))).orderBy(desc(resources.createdAt));
+  const files: { name: string; data: Buffer }[] = [];
+  const seenKinds = new Set<string>();
+  for (const row of rows) {
+    if (!row.fileKey) continue;
+    if (seenKinds.has(row.kind)) continue;
+    seenKinds.add(row.kind);
+    const { body } = await storageGetBytes(row.fileKey);
+    const title = sanitizeZipName(resourceZipName(row) ?? "attachment");
+    const ext = (row.fileKey.split(".").pop() || "").toLowerCase();
+    files.push({ name: `${title}${ext ? `.${ext}` : ""}`, data: body });
+  }
+  if (!files.length) throw new Error("No downloadable attachments are available for this product");
+  const zip = buildZipBuffer(files);
+  const key = `downloads/${productId}/${Date.now()}-attachments.zip`;
+  const uploaded = await storagePut(key, zip, "application/zip");
+  return { fileName: `${sanitizeZipName(product[0].title) || "product"}-attachments.zip`, url: await storageGetSignedUrl(uploaded.key), count: files.length };
+}
+
+function resourceZipName(row: { kind: string; title?: string | null }): string | null {
+  const title = (row.title || "").replace(/\s*·\s*/g, " - ").trim();
+  return title || row.title || null;
 }
 
 export async function listUserNotifications(userId: number) {
