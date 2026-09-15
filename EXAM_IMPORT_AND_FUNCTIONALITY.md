@@ -145,6 +145,39 @@ warning and continues, so a partial import never blocks the rest.
 - Admins manage products, pricing, resources and content from the admin
   console. Admins can also attach or replace resource files there.
 
+### 4.6 Resource attachments (pre-seen, formulae, reference, PDFs)
+
+Exams can carry protected attachments — a **pre-seen** brief, **formulae +
+tables**, **reference material**, a **pre-moderated / printable paper**, an
+**email brief**, and **feedback** — attached by admins either at creation or
+when editing from the Catalogue (ExamStudio → *Case study resources*).
+
+How attachment resolution works:
+
+- Every resource row belongs to a **product** (`resources.productId`), and is
+  uploaded to S3 under `admin-resources/<productId>/`.
+- Editing an exam always saves resources against **the product the exam belongs
+  to** (`updateExamBundle` in `server/db.ts`).
+- The learner portal only ever returns resources for the **published** product
+  the learner is viewing (`listProtectedResources`), and only rows with
+  `status = 'published'` (`server/db.ts:313`).
+
+Operational consequences:
+
+- A **draft** exam/product is hidden from learners, so anything attached to it
+  (including a pre-seen PDF) is invisible until that product is published.
+- **Do not create a second product with the same title** for the same exam and
+  upload there — learners still load the published product and will report
+  "No attached document yet." (That modal title — "Pre-seen · AFT illustrative
+  brief" — is hardcoded in `client/src/pages/Home.tsx` and does **not**
+  identify which exam is open.)
+- Since commit `569082c` the ExamStudio editor warns when the exam being edited
+  is **not published** (hidden from learners), and the admin **Catalogue** now
+  shows each exam's linked product title + status so duplicate titles are
+  obvious before clicking Edit/Publish.
+- See `PRESEEN-ATTACHMENT-FIX.md` for the full incident write-up and the
+  one-time DB re-link SQL.
+
 ---
 
 ## 5. Deploying exams to a new EC2 instance — checklist
@@ -181,6 +214,8 @@ Sanity checks after the import:
 | Objective tests missing | `import-objective-tests.sql` not run | Re-run `seed-exams.ts` |
 | Script error on S3 put | S3 env missing / no write permission | Set `AWS_REGION`/`S3_BUCKET` and credentials or the IAM S3 role |
 | `/storage/...` 502 | Signed URL generation failed | Check S3 access + bucket region |
+| Pre-seen shows "No attached document yet." | Pre-seen row is linked to a draft / duplicate product, or resource `status` is not `published` | Run the re-link SQL in `PRESEEN-ATTACHMENT-FIX.md` §2; then re-upload via the **published** exam's Edit |
+| Attachments "disappear" when re-editing an exam | Old `replaceResource()` bug on pre-fix builds | Deploy commit `02db57d` (`PDF-attachment-fix.md`), then re-upload the PDF once via Catalogue → Edit |
 
 ---
 
@@ -195,6 +230,12 @@ Because the imports are idempotent, the routine to ship updated exam content is:
 
 No destructive migration is involved — re-running simply refreshes rows and
 re-attaches PDFs.
+
+> Gotcha: resources follow the exam's **product**, not the exam title. If the
+> same exam title exists twice (e.g. a published product and a draft
+> duplicate), attachments land on whichever product you edited — the other copy
+> will not show them. Prefer a single product per exam, and edit the published
+> copy.
 
 ---
 
