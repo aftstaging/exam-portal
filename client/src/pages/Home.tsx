@@ -183,6 +183,18 @@ function ExamCalculator() {
   </div>;
 }
 
+function CalculatorModal({ onClose }: { onClose: () => void }) {
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#120730]/80 p-4" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="w-full max-w-sm rounded-xl border border-[#00e5ff]/30 bg-[#120730] p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-white">Calculator</h2>
+        <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close calculator"><X className="h-5 w-5" /></Button>
+      </div>
+      <ExamCalculator />
+    </div>
+  </div>;
+}
+
 function ExamUtilityRail({ onResource }: { onResource?: (resource: string) => void }) {
   const [localResource, setLocalResource] = useState<string | null>(null);
   const [utilityVisible, setUtilityVisible] = useState(true);
@@ -210,7 +222,8 @@ function ExamUtilityRail({ onResource }: { onResource?: (resource: string) => vo
       <button type="button" onClick={() => open("formulae")} className="exam-utility-button"><Layers3 className="h-4 w-4" /><span>Formulae + tables</span></button>
       <button type="button" onClick={() => open("calculator")} className="exam-utility-button"><Calculator className="h-4 w-4" /><span>Calculator</span></button>
     </aside>
-    {!onResource && localResource && <ResourceModal title={localResource === "pre-seen" ? "Pre-seen · AFT illustrative brief" : localResource === "formulae" ? "Formulae + tables" : "Calculator"} onClose={() => setLocalResource(null)}>{localResource === "calculator" ? <ExamCalculator /> : (() => { const kind = localResource === "pre-seen" ? "pre_seen" : "formulae"; const match = resourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream"); return match ? <ProtectedResourceView resource={match} /> : <p className="mt-4 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setLocalResource(null)}>Close</Button></ResourceModal>}
+    {!onResource && localResource === "calculator" && <CalculatorModal onClose={() => setLocalResource(null)} />}
+    {!onResource && localResource && localResource !== "calculator" && <ResourceModal title={localResource === "pre-seen" ? "Pre-seen · AFT illustrative brief" : "Formulae + tables"} onClose={() => setLocalResource(null)}>{(() => { const kind = localResource === "pre-seen" ? "pre_seen" : "formulae"; const match = resourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream"); return match ? <ProtectedResourceView resource={match} /> : <p className="mt-4 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setLocalResource(null)}>Close</Button></ResourceModal>}
   </>;
 }
 
@@ -386,7 +399,8 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
           </CardContent></Card>
         )}
       </main>
-      {resource && <ResourceModal title={resource === "pre-seen" ? "Pre-seen material" : resource === "formulae" ? "Formulae + tables" : resource === "calculator" ? "Calculator" : resource === "email" ? "Email attachment" : "Reference material"} onClose={() => setResource(null)}>{resource === "calculator" ? <ExamCalculator /> : (() => { const kind = resource === "pre-seen" ? "pre_seen" : resource === "formulae" ? "formulae" : resource === "reference" ? "reference" : resource === "email" ? "email" : null; const match = kind ? examResourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream") : undefined; return match ? <ProtectedResourceView resource={match} /> : <p className="mt-5 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="ml-3 mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setResource(null)}>Close resource</Button></ResourceModal>}
+      {resource === "calculator" && <CalculatorModal onClose={() => setResource(null)} />}
+      {resource && resource !== "calculator" && <ResourceModal title={resource === "pre-seen" ? "Pre-seen material" : resource === "formulae" ? "Formulae + tables" : resource === "email" ? "Email attachment" : "Reference material"} onClose={() => setResource(null)}>{(() => { const kind = resource === "pre-seen" ? "pre_seen" : resource === "formulae" ? "formulae" : resource === "reference" ? "reference" : resource === "email" ? "email" : null; const match = kind ? examResourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream") : undefined; return match ? <ProtectedResourceView resource={match} /> : <p className="mt-5 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="ml-3 mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setResource(null)}>Close resource</Button></ResourceModal>}
     </div>
   );
 }
