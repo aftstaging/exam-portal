@@ -209,12 +209,25 @@ Since commit `5b86e57`:
   (CRC-32 + DEFLATE), uploads it back to S3 under `downloads/<productId>/`, and
   returns a short-lived signed URL the browser downloads under the escaped
   product name. A real ZIP tool is never required.
+- **PDF compression** (`server/pdfCompress.ts`): every PDF written to storage
+  through `storagePut` (`server/storage.ts`) is run through **Ghostscript**
+  (`gs -dPDFSETTINGS=/ebook`) and the compressed copy is stored, so the in-app
+  viewer downloads much less data and opens faster. If `gs` is not installed or
+  fails, the original bytes are kept unchanged (the upload never breaks).
+  To compress PDFs that were stored *before* this change, deploy then run
+  `pnpm exec tsx server/scripts/compress-resources.ts` once on EC2 (requires
+  `sudo apt install ghostscript`).
 - **Larger PDF reader** (`ResourceModal` + `ProtectedResourceView`): both the
-  exam utility rail and the exam shell now open attachments in a shared,
-  wider/taller popup (`max-w-6xl`, `max-h-94vh`). PDFs render at
-  `#toolbar=0&navpanes=0&zoom=page-width&view=FitH` inside a `h-[78vh]`
+  exam utility rail and the exam shell open attachments in a shared popup
+  (`max-w-5xl`, `max-h-[88vh]`). PDFs render at
+  `#toolbar=0&navpanes=0&zoom=page-width&view=FitH` inside a `h-[70vh]`
   iframe, so the browser's page/thumbnail sidebar is hidden and the paper fills
-  the width for continuous reading; images display at `max-h-[78vh]`.
+  the width for continuous reading; images display at `max-h-[70vh]`.
+- **One-click Download** (`ProtectedResourceList` in
+  `client/src/pages/Home.tsx`): the "Protected downloads" panel is a single
+  clean **Download** button (it still produces a ZIP bundle of the product's
+  published attachments, deduplicated per kind, but the UI no longer labels
+  ZIP / contents / Included).
 
 ---
 
@@ -227,9 +240,11 @@ cd /opt/aft-learning-portal
 git pull                      # get the latest catalogue SQL + source-pdfs
 pnpm install --frozen-lockfile=false
 pnpm exec drizzle-kit migrate # schema only (does NOT import exams)
+sudo apt install -y ghostscript  # needed for the one-time PDF re-compression
 pnpm build
 # ensure DATABASE_URL and S3 vars are in .env, then:
 pnpm exec tsx server/scripts/seed-exams.ts   # load exams + attach PDFs
+pnpm exec tsx server/scripts/compress-resources.ts  # shrink already-stored PDFs
 sudo systemctl restart aft-portal
 ```
 
@@ -256,6 +271,7 @@ Sanity checks after the import:
 | Attachments "disappear" when re-editing an exam | Old `replaceResource()` bug on pre-fix builds | Deploy commit `02db57d` (`PDF-attachment-fix.md`), then re-upload the PDF once via Catalogue → Edit |
 | Exam shows the wrong number of tasks / sections | Published `caseStudySections` rows don't run 1–4 | Deploy commit `5b86e57` (multi-task `ExamShell`) and verify with the section-count queries in `RUNNING-SQL-TOOL.md`; add/remove section rows so `sectionNumber` runs 1–4 |
 | PDF opens as two panes / at page-thumbnail zoom | Old viewer with sidebar + single-page zoom | Deploy commit `5b86e57` (`#navpanes=0&zoom=page-width` in `ProtectedResourceView`) |
+| PDFs open slowly in the viewer | Stored PDFs are uncompressed, or `gs` is missing | Deploy the compression change, `sudo apt install ghostscript`, then run `seed-exams.ts` and `compress-resources.ts` (§5) |
 
 ---
 

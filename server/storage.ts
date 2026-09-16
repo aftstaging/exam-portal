@@ -6,6 +6,7 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
+import { compressPdfSource } from "./pdfCompress";
 import { ENV } from "./_core/env";
 
 const SIGNED_URL_EXPIRES_SECONDS = 900; // 15 minutes
@@ -64,11 +65,16 @@ export async function storagePut(
   const body =
     typeof data === "string" ? Buffer.from(data, "utf-8") : Buffer.from(data as Buffer);
 
+  const storedBody: Buffer =
+    contentType === "application/pdf" || key.toLowerCase().endsWith(".pdf")
+      ? await compressPdfSource(body)
+      : body;
+
   await getS3Client().send(
     new PutObjectCommand({
       Bucket: bucket,
       Key: key,
-      Body: body,
+      Body: storedBody,
       ContentType: contentType,
     }),
   );

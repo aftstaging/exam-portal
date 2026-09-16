@@ -24,11 +24,11 @@ export default function ProtectedResourceView({ resource }: { resource: Protecte
 
   if (resource.hasFile && url && mime === "application/pdf") {
     const viewerUrl = `${url}#toolbar=0&navpanes=0&zoom=page-width&view=FitH`;
-    return <iframe src={viewerUrl} title={resource.title} className="mt-5 h-[78vh] w-full rounded-lg border border-white/10 bg-white" />;
+    return <iframe src={viewerUrl} title={resource.title} className="mt-5 h-[70vh] w-full rounded-lg border border-white/10 bg-white" />;
   }
 
   if (resource.hasFile && url && mime?.startsWith("image/")) {
-    return <img src={url} alt={resource.title} className="mt-5 max-h-[78vh] w-full rounded-lg border border-white/10 object-contain" />;
+    return <img src={url} alt={resource.title} className="mt-5 max-h-[70vh] w-full rounded-lg border border-white/10 object-contain" />;
   }
 
   if (resource.hasFile && url) {
