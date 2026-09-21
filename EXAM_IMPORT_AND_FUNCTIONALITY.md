@@ -258,8 +258,10 @@ pre-moderated question paper — no manual data entry or SQL required:
   the server strips the data-URL prefix via `stripDataUrl` in
   `server/pdfImport.ts`.
 - Parsing quirks handled by the parser (see `server/pdfImport.ts`):
-  - Kaplan-style running headers are stripped (`MOCK EXAM B`, `KAPLAN
-    PUBLISHING`, …) so they never corrupt section content.
+  - Running headers / footers are stripped from an **additive data list**
+    (`RUNNING_HEADER_PATTERNS`) so they never corrupt section content —
+    adding a new publisher's token (`MOCK EXAM B`, `KAPLAN PUBLISHING`,
+    `© Astranti 2026`, …) is a one-line list change, not a parser edit.
   - Each case-study task maps to a section with a 45-minute
     `durationSeconds`, title `Task N — Unseen case material` (Cartn) or
     `Task N` (Mock B), and the full task-page text as its introduction.
@@ -267,6 +269,13 @@ pre-moderated question paper — no manual data entry or SQL required:
     continuation pages, then re-serialised into PDF attachments. Page 1's
     cover title is re-extracted raw (`extractCoverText`) because the running
     header already swallowed "Mock Exam 3"-style text.
+  - A **pre-seen / advance-information** section (pages before Task 1 headed
+    "Pre-seen material", "Advance information", etc.) is detected and carved
+    into a protected `-pre-seen.pdf` attached to the exam's Pre-seen slot;
+    papers without one leave the slot empty so the admin can attach it
+    manually. A note reports the carved page range.
+  - Pages that match no known section are **skipped but reported** as compact
+    page ranges (e.g. `Pages 2–4, 7`) so nothing quietly disappears.
 - **Learner-shell preview**: the **Preview** button now renders
   `ExamPreviewDraft` inside the same `.exam-shell` (titlebar with title +
   duration, a sessionbar of section chips, `exam-card` content) so admins see
@@ -341,5 +350,5 @@ re-attaches PDFs.
 
 ---
 
-*Command reference: `pnpm check` (typecheck) and `pnpm test` (47 tests) are the
+*Command reference: `pnpm check` (typecheck) and `pnpm test` (52 tests) are the
 verification gates before pushing changes to the exam/import code.*

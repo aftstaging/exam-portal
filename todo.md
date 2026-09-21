@@ -256,3 +256,6 @@
 
 - [x] Fix Windows PowerShell `spawn EINVAL` in `scripts/dev-launcher.mjs` so `npm run dev` starts and opens the browser cross-platform.
 - [x] Add regression coverage/documentation for Windows, macOS, Linux, and headless launcher behavior, then package a corrected ZIP.
+
+- [x] Close the declared PDF-import parser gaps: make running-header stripping a data-driven `RUNNING_HEADER_PATTERNS` list (additive per publisher, exported with unit tests), detect and carve pre-seen/advance-information pages into the Pre-seen attachment instead of always returning `null`, and report skipped unclassified pages as compact ranges (e.g. `Pages 2–4, 7`).
+- [x] Add parser coverage for heading stripping, pre-seen carving, unclassified-range reporting, and a `preSeen === null` regression on the existing Cartn fixture; keep `pnpm check` and all 52 Vitest tests green.

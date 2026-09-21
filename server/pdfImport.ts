@@ -58,20 +58,54 @@ function collapseWhitespace(value: string): string {
 }
 
 /**
- * Removes the running headers / footers that Kaplan (and Astranti) stamp on every
- * page. These tokens otherwise leak into the first line of every page and would
- * confuse heading detection. Page footer numbers are left in place — harmless.
+ * Collapses a list of page numbers into compact ranges, e.g. `[2, 3, 4, 7]` =>
+ * `"2–4, 7"`. Used to keep the "skipped pages" note readable on long papers.
  */
-function stripRunningHeaders(text: string): string {
+export function formatPageRanges(pages: number[]): string {
+  const sorted = Array.from(new Set(pages)).sort((a, b) => a - b);
+  const ranges: string[] = [];
+  let start = sorted[0];
+  let previous = sorted[0];
+  for (let index = 1; index <= sorted.length; index += 1) {
+    const current = sorted[index];
+    if (current === previous + 1) {
+      previous = current;
+      continue;
+    }
+    ranges.push(start === previous ? `${start}` : `${start}–${previous}`);
+    start = current;
+    previous = current;
+  }
+  return ranges.join(", ");
+}
+
+/**
+ * Recognisable running headers / footers that mock-exam publishers stamp on every
+ * page (Kaplan, Astranti, CIMA brand lines). These tokens otherwise leak into the
+ * first line of every page and would confuse heading detection. The list is data —
+ * adding a new publisher's token here is all that is needed, the parser logic never
+ * changes. Page footer numbers are left in place — harmless.
+ */
+export const RUNNING_HEADER_PATTERNS: RegExp[] = [
+  /\bMO\s+CK\s+B\b/gi,
+  /\bMOCK\s+EXAM\s+[A-Z0-9]+\b/gi,
+  /\bCIMA\s+MANAGE\s+MENT\s+LEVEL\s+CASE\s+ST\s+UDY\b/gi, // letterspaced Kaplan running header
+  /\bCIMA\s+MANAGEMENT\s+LEVEL\s+CASE\s+STUDY\b/gi, // plain form
+  /\b(?:CIMA|ACCA)\s+STRATEGIC[-\s]*PROFESSIONAL\b/gi,
+  /\bKAPLAN\s+(?:PUBLISHING|FINANCIAL|GROUP)\b/gi,
+  /\bBPP\s+(?:LEARNING|UNIVERSITY)\b/gi,
+  /\bASTRANTI\b/gi,
+  /©\s*Astranti\s+\d{4}/gi,
+  /\bManagement\s+Case\s+Study\s+Mock\s+Exam\s+\d+\b/gi,
+];
+
+/**
+ * Removes the running headers / footers listed in `RUNNING_HEADER_PATTERNS` from a
+ * page of pdfjs output. Exported for unit coverage.
+ */
+export function stripRunningHeaders(text: string): string {
   let value = text;
-  value = value.replace(/\bMO\s+CK\s+B\b/gi, " ");
-  value = value.replace(/\bMOCK\s+EXAM\s+[A-Z0-9]+\b/gi, " ");
-  value = value.replace(/\bCIMA\s+MANAGE\s+MENT\s+LEVEL\s+CASE\s+ST\s+UDY\b/gi, " ");
-  value = value.replace(/\bCIMA\s+MANAGEMENT\s+LEVEL\s+CASE\s+STUDY\b/gi, " ");
-  value = value.replace(/\bKAPLAN PUBLISHING\b/gi, " ");
-  value = value.replace(/\bKAPLAN FINANCIAL\b/gi, " ");
-  value = value.replace(/\bManagement\s+Case\s+Study\s+Mock\s+Exam\s+\d+\b/gi, " ");
-  value = value.replace(/©\s*Astranti\s+\d{4}/gi, " ");
+  for (const pattern of RUNNING_HEADER_PATTERNS) value = value.replace(pattern, " ");
   return collapseWhitespace(value);
 }
 
@@ -231,6 +265,22 @@ function looksLikeReference(pageText: string): boolean {
   );
 }
 
+/**
+ * Pre-seen / advance-information pages are the case brief the candidate studies
+ * before the exam. When the uploaded paper contains such a section it is carved
+ * into a protected `pre_seen` attachment; otherwise the slot stays empty and is
+ * filled manually in the studio.
+ */
+function looksLikePreSeen(pageText: string): boolean {
+  return (
+    /\bpre-?seen\b/i.test(pageText) ||
+    /\badvance\s+information\b/i.test(pageText) ||
+    /\bmaterial\s+you\s+(?:have\s+)?received\b/i.test(pageText) ||
+    /\bbackground\s+(?:information|material)\s+(?:about|on|for)\b/i.test(pageText) ||
+    /\bthis\s+is\s+the\s+pre-seen\b/i.test(pageText)
+  );
+}
+
 function looksLikeFormulae(pageText: string): boolean {
   return (
     /\bFORMULAE\s+AND\s+[T]ABLES\b/i.test(pageText) ||
@@ -360,6 +410,7 @@ export async function parseExamPdf(input: { fileName: string; base64: string }):
 
   // ---- case-study parsing ------------------------------------------------
   const sections: PdfTaskSection[] = [];
+  const preSeenPages: number[] = [];
   const referencePages: number[] = [];
   const formulaePages: number[] = [];
   const unclassifiedPages: number[] = [];
@@ -400,6 +451,10 @@ export async function parseExamPdf(input: { fileName: string; base64: string }):
       });
       continue;
     }
+    if (looksLikePreSeen(page.text)) {
+      preSeenPages.push(page.pageNumber);
+      continue;
+    }
     if (looksLikeFormulae(page.text)) {
       formulaePages.push(page.pageNumber);
       continue;
@@ -412,8 +467,12 @@ export async function parseExamPdf(input: { fileName: string; base64: string }):
   }
 
   sections.sort((a, b) => a.sectionNumber - b.sectionNumber);
-  if (unclassifiedPages.length) {
-    notes.push(`Pages ${unclassifiedPages.join(", ")} were not recognised as tasks, reference material or formulae, and were skipped. Check the source paper if this looks wrong.`);
+  const unclassifiedText = formatPageRanges(unclassifiedPages);
+  if (unclassifiedText) {
+    notes.push(`Pages ${unclassifiedText} were not recognised as tasks, pre-seen, reference material or formulae, and were skipped. Check the source paper if this looks wrong.`);
+  }
+  if (preSeenPages.length) {
+    notes.push("A pre-seen / advance-information section was detected and carved into the Pre-seen attachment. Check the page range before saving.");
   }
   if (!sections.length) {
     notes.push("No case-study tasks were found — add the sections (tasks) below or use a different source PDF.");
@@ -425,13 +484,14 @@ export async function parseExamPdf(input: { fileName: string; base64: string }):
 
   if (!title) notes.push("Could not determine an exam title from the cover page — set it below.");
   if (!firstEmailHeader && !firstEmailBody) notes.push("No email brief was found in the paper — compose the email attachment manually.");
-  if (!referencePages.length && !formulaePages.length) notes.push("No reference material or formulae pages were detected — attach them manually if the paper includes any.");
+  if (!preSeenPages.length && !referencePages.length && !formulaePages.length) notes.push("No pre-seen, reference material or formulae pages were detected — attach them manually if the paper includes any.");
 
   const baseName = (input.fileName.replace(/\.[a-z0-9]+$/i, "") || "exam")
     .replace(/[^a-zA-Z0-9._-]/g, "-")
     .replace(/-+/g, "-");
 
-  const [reference, formulae] = await Promise.all([
+  const [preSeen, reference, formulae] = await Promise.all([
+    carvePdf(carveSource, preSeenPages, baseName, "-pre-seen"),
     carvePdf(carveSource, referencePages, baseName, "-reference"),
     carvePdf(carveSource, formulaePages, baseName, "-formulae-tables"),
   ]);
@@ -449,7 +509,7 @@ export async function parseExamPdf(input: { fileName: string; base64: string }):
     emailSubject: firstEmailHeader?.subject,
     emailText: firstEmailBody || undefined,
     preModeratedPdf: { fileName: input.fileName, mimeType: "application/pdf", base64: input.base64 },
-    preSeen: null,
+    preSeen,
     formulae,
     reference,
     caseStudySections: sections.length ? sections : undefined,
