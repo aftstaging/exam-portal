@@ -1025,36 +1025,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             </div>
           </section>
 
-          {/* Pre-moderated PDF / document (source of truth) */}
-          <section>
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><FileText className="h-4 w-4" /> Pre-moderated exam paper (PDF or document, optional)</div>
-            <div className="rounded-xl border border-[#00e5ff]/30 bg-[#102b36]/40 p-4">
-              <div className="flex items-start gap-3">
-                <FileText className="mt-0.5 h-5 w-5 shrink-0 text-[#00ff88]" />
-                <div className="text-sm leading-6 text-[#c4b5fd]">
-                  <p className="font-semibold text-white">Upload an already-formatting exam paper as a PDF or a Word/OpenDocument file.</p>
-                  <p className="mt-1">If you provide a file, it is stored as the protected printable question paper and used as the source of truth for the exam.</p>
-                  <div className="mt-2 rounded-lg border border-white/10 bg-[#0c0524]/60 p-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-white/70">How to format your paper</p>
-                    <ul className="mt-1 list-inside list-disc space-y-1 text-xs leading-5 text-[#c4b5fd]">
-                      <li>Use a single PDF or document, landscape or portrait, clearly named.</li>
-                      <li>Start with the exam title, exam type, and total time on the first page.</li>
-                      <li>For case studies, add the pre-seen scenario and each section's task in order.</li>
-                      <li>For objective tests, add each question, its options, and any required formulae tables.</li>
-                      <li>Keep file size under 20 MB.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3">
-                <AttachSlot label="Pre-moderated paper" icon={<FileText className="h-4 w-4 text-[#00e5ff]" />} hint={isCaseStudy ? "Optional PDF of the exam paper." : "Attach the exam as a PDF or document."} accept={isCaseStudy ? ".pdf" : ".pdf,.doc,.docx,.odt,.txt"} value={preModeratedPdf} onChange={setPreModeratedPdf} note={isCaseStudy ? "PDF only, up to 20 MB." : "PDF or document, up to 20 MB."} />
-              </div>
-              {isCaseStudy && !preModeratedPdf && (
-                <p className="mt-2 flex items-center gap-2 rounded-lg bg-[#102b36] px-3 py-2 text-xs text-[#00ff88]"><Sparkles className="h-4 w-4" /> No PDF provided — we'll auto-generate a branded AFT printable PDF for this case-study exam.</p>
-              )}
-            </div>
-          </section>
-
           {/* Conditional body: case-study → email attachment; objective test → question builder */}
           {isCaseStudy ? (
             <>
