@@ -60,11 +60,12 @@ with the upload UI.
 | File | Change |
 |---|---|
 | `server/_core/polyfills.ts` | **New.** Defines `Promise.withResolvers` when the runtime is missing it. On Node 22+ it does nothing (the native version is kept). |
-| `server/pdfImport.ts` | Imports the polyfill first, before `pdfjs-dist`, so the API exists whenever a PDF is parsed. |
+| `server/pdfImport.ts` | Imports the polyfill first, before `pdfjs-dist`, so the API exists whenever a PDF is parsed. Also makes solutions-document detection trust the **filename** before page content, so a question paper named `…_Mock_Exam.pdf` whose cover mentions "suggested answers" is imported as exam content (not mistaken for a marking guide). |
 | `client/src/components/ExamStudio.tsx` | Removed the redundant standalone "Pre-moderated exam paper" section (the top "Import from PDF" section already stores the question paper). |
 
 - Fix commit: `48286c7` — "Polyfill Promise.withResolvers so PDF import works on Node < 22"
 - Related commit: `30e4f13` — "Remove redundant pre-moderated exam paper section from ExamStudio"
+- Related commit: fixes the "looks like a suggested-solutions document" false positive for `…_Mock_Exam.pdf` files
 - Branch: `main`
 - No database schema change and no `.env` change.
 

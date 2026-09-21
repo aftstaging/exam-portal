@@ -170,8 +170,14 @@ function encodeEmailBody(text: string): string {
 }
 
 function detectSolutionsDocument(fileName: string, pages: PageText[]): boolean {
-  const base = fileName.replace(/\.[a-z0-9]+$/i, "").toLowerCase();
-  if (/\b(solutions?|answers?|marking[-_ ]?guide|suggested[-_ ]?answers?|debrief)\b/.test(base)) return true;
+  // Normalise separators so \b word boundaries work ("mock_exam" → "mock exam").
+  const base = fileName.replace(/\.[a-z0-9]+$/i, "").toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  // The filename is the most reliable signal, so trust it before scanning the
+  // pages. A question paper's cover often says that suggested answers or a
+  // marking guide are provided separately — that must not reclassify the whole
+  // paper as a solutions document.
+  if (/\b(solutions?|answers?|marking guide|suggested answers?|debrief)\b/.test(base)) return true;
+  if (/\b(?:questions?|papers?)\b/.test(base) || /\bmock exam\b/.test(base)) return false;
   const sample = pages.slice(0, Math.min(2, pages.length)).map((page) => page.text.toLowerCase()).join(" ");
   return /\b(suggested solutions|marking guide|suggested answers|answers and marking|do not refer to these answers|perfect answer)\b/.test(sample);
 }

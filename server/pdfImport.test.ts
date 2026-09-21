@@ -117,6 +117,16 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
     }
   });
 
+  it("does not treat a mock-exam question paper as a solutions document when its cover mentions suggested answers", async () => {
+    const base64 = await buildPdf([
+      ["CIMA Management Case Study", "Mock Exam 7", "A set of suggested answers is available separately."],
+      ["Management Case Study Mock Exam 7", "Task 1 - Unseen case material [45 minutes]", "You received the following email:", "From: Elizabeth Maenda", "To: Financial Manager", "Subject: Costing", "Hi,", "Please evaluate the costing options for Cartn."],
+    ]);
+    const draft = await staffCaller().exams.createFromPdf(syntheticArgs("accountants_for_tomorrow_lumencare_mock_exam.pdf", base64));
+    expect(draft.isSolutionsDocument).toBe(false);
+    expect(draft.caseStudySections ?? []).toHaveLength(1);
+  });
+
   it("carves a detected pre-seen section into the Pre-seen attachment", async () => {
     const base64 = await buildPdf([
       ["CIMA Management Case Study", "Mock Exam 5", "Cartn", "Unseen [3 hours]"],
