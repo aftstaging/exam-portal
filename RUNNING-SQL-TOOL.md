@@ -156,7 +156,26 @@ LEFT JOIN caseStudySections s ON s.mockExamId = m.id
 WHERE m.status = 'published'
 GROUP BY m.id, m.title
 ORDER BY m.id;
+
+-- Exams built from the PDF-import flow (ExamStudio → "Import from PDF") are always saved
+-- as drafts — verify by listing draft products with their linked mock exams and case-study tasks:
+SELECT p.id AS productId, p.title, p.status, p.priceCents, p.accessDays,
+       m.id AS mockExamId, m.examType, m.totalDurationSeconds,
+       COUNT(s.id) AS sectionCount
+FROM products p
+INNER JOIN mockExams m ON m.productId = p.id
+LEFT JOIN caseStudySections s ON s.mockExamId = m.id
+WHERE p.status = 'draft'
+GROUP BY p.id, p.title, p.status, p.priceCents, p.accessDays, m.id, m.examType, m.totalDurationSeconds
+ORDER BY p.id;
+
+-- The result should report 'draft' products (never auto-published). Publish one only by
+-- explicitly flipping its product status, then the mock_exams/resources statuses too.
 ```
+
+> Note: `exams.createFromPdf` (the route behind the question-paper import) is
+> parse-only — it never writes to the database. Only the exam's own **Save as
+> draft** button creates the rows, through `database/admin.createExamBundle`.
 
 If a published exam exposes fewer (or more) than 4 sections, add/remove the section rows so `sectionNumber` runs 1–4; each task's own 45-minute clock comes from its section's `durationSeconds` (default 2700).
 

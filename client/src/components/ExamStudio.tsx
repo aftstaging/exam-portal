@@ -3,6 +3,7 @@ import {
   Bold,
   BookOpen,
   Calculator,
+  Clock3,
   CreditCard,
   FileText,
   GraduationCap,
@@ -12,16 +13,20 @@ import {
   List,
   ListChecks,
   ListOrdered,
+  Loader2,
   Mail,
   MapPin,
+  Menu,
   Package,
   Plus,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
   TimerReset,
   Trash2,
   Underline,
   UploadCloud,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,6 +92,71 @@ function readFile(file: File): Promise<BundleFile | null> {
     reader.onerror = () => resolve(null);
     reader.readAsDataURL(file);
   });
+}
+
+type ImportedPdfDraft = {
+  fileName: string;
+  isSolutionsDocument: boolean;
+  title?: string;
+  examType: "case_study" | "objective_test";
+  intro?: string;
+  description?: string;
+  priceCents: number;
+  accessDays: number;
+  totalDurationSeconds: number;
+  emailFrom?: string;
+  emailTo?: string;
+  emailSubject?: string;
+  emailText?: string;
+  preModeratedPdf?: BundleFile | null;
+  preSeen?: BundleFile | null;
+  formulae?: BundleFile | null;
+  reference?: BundleFile | null;
+  feedbackFile?: BundleFile | null;
+  caseStudySections?: { sectionNumber: number; title: string; introduction?: string; scenario?: string; question?: string; durationSeconds: number }[];
+  objectiveQuestions?: { topic: string; prompt: string; options: string[]; correct: number; questionType: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input"; explanation?: string; rationale?: string[] }[];
+  notes: string[];
+};
+
+function PdfImportSlot({ label, icon, hint, busy, attached, onAttach, onRemove }: {
+  label: string;
+  icon: React.ReactNode;
+  hint: string;
+  busy?: boolean;
+  attached?: string | null;
+  onAttach: (file: File) => void;
+  onRemove?: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="rounded-xl border border-[#00e5ff]/40 bg-[#18093c]/60 p-4">
+      <div className="flex items-center gap-2 font-bold text-white">{icon} <span>{label}</span></div>
+      <p className="mt-1 text-xs leading-5 text-[#c4b5fd]">{hint}</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" variant="outline" className="h-9 border-[#00e5ff] px-3 text-xs text-[#00e5ff]" disabled={Boolean(busy)} onClick={() => fileRef.current?.click()}>
+          {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="mr-1 h-3.5 w-3.5" />} {busy ? "Reading PDF…" : "Choose PDF"}
+        </Button>
+        <input ref={fileRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (!file) return;
+          onAttach(file);
+        }} />
+        {attached && (
+          <>
+            <span className="inline-flex max-w-full items-center gap-1 truncate rounded-lg bg-[#102b36] px-2 py-1 text-xs text-[#00ff88]">
+              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{attached}</span>
+            </span>
+            {onRemove && (
+              <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-[#ff8278]" onClick={onRemove}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 const emailStyle = "border-white/10 bg-[#0c0524] text-white";
@@ -286,94 +356,141 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
 }) {
   const sortedSections = [...sections].filter((section) => section.title.trim());
   const sortedQuestions = questions.filter((question) => question.prompt.trim());
+  const minutes = Math.max(1, Number(duration) || 45);
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#120730]/85 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="mx-auto my-8 w-full max-w-4xl rounded-2xl border border-white/10 bg-[#0c0524] p-6 sm:p-8" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
-          <div>
-            <p className="eyebrow">Exam preview · {examType === "case_study" ? "Case study" : "Objective test"}</p>
-            <h2 className="mt-2 text-3xl font-black text-white">{title || "Untitled exam"}</h2>
-            <p className="mt-1 text-sm text-white/45">Preview shows your draft exactly as learners will see it once published.</p>
+    <div className="exam-shell fixed inset-0 z-50 overflow-y-auto bg-[#0c0524]" onClick={onClose}>
+      <div className="min-h-full bg-[#0c0524]" onClick={(event) => event.stopPropagation()}>
+        <div className="exam-topbar">
+          <div className="exam-brand-tools">
+            <span className="text-xs font-bold uppercase tracking-[.18em] text-[#00e5ff]">AFT · Learner-shell preview</span>
           </div>
-          <Button variant="outline" className="border-[#00ff88] text-[#00ff88]" onClick={onClose}>Close preview</Button>
+          <button type="button" className="exam-top-action" onClick={onClose}><X className="h-4 w-4" /> Close preview</button>
         </div>
 
-        <div className="mt-6 space-y-8">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Exam type</div><div className="mt-1 font-bold text-white capitalize">{examType.replace("_", " ")}</div></div>
-            <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Duration</div><div className="mt-1 font-bold text-white">{duration} minutes</div></div>
-            <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Price</div><div className="mt-1 font-bold text-white">R{(Number(price || 0)).toFixed(0)}</div></div>
-            <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Access</div><div className="mt-1 font-bold text-white">{accessDays} days</div></div>
+        <div className="exam-titlebar">
+          <div className="flex items-center gap-3"><Menu className="h-5 w-5" /><span className="max-w-xl truncate">{title || "Untitled exam"}</span></div>
+          <div className="flex items-center gap-2 font-semibold"><Clock3 className="h-5 w-5" /> {minutes} minutes</div>
+        </div>
+
+        <div className="exam-sessionbar">
+          <div className="text-xs font-semibold uppercase tracking-[.14em] text-white/45">Section chips</div>
+          <div className="flex items-center gap-2 text-sm font-semibold text-white">
+            {isCaseStudy ? (
+              <>
+                {sortedSections.length === 0 && <span className="text-white/45">No sections configured yet</span>}
+                {sortedSections.map((section, index) => <span key={index} className="rounded-full border border-[#00e5ff]/40 bg-[#18093c] px-3 py-1 text-xs text-[#00e5ff]">{section.title.split("—")[0]?.trim() || `Task ${index + 1}`}</span>)}
+                {sortedSections.length > 0 && <span className="rounded-full border border-[#00ff88] bg-[#102b36] px-3 py-1 text-xs text-[#00ff88]">Done</span>}
+              </>
+            ) : (
+              <span className="rounded-full border border-[#f4c44e]/50 bg-[#2b2410] px-3 py-1 text-xs text-[#f4c44e]">Objective test · {sortedQuestions.length} question{sortedQuestions.length === 1 ? "" : "s"}</span>
+            )}
           </div>
+        </div>
 
-          {intro && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Introduction</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{intro}</p></section>}
-          {description && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Store description</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{description}</p></section>}
+        <main className="container exam-container py-7">
+          <div className="mx-auto max-w-5xl">
+            <div className="mb-5 flex justify-end"><Badge className="rounded-full bg-[#102b36] px-3 py-1 text-[#00ff88]">Read-only draft preview</Badge></div>
 
-          {isCaseStudy && (emailFrom || emailTo || emailSubject || emailText) && (
-            <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Email attachment</h3>
-              <div className="overflow-hidden rounded-xl border border-white/10">
-                <div className="grid gap-px bg-white/10 sm:grid-cols-2">
-                  <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">From:</span> {emailFrom || "—"}</div>
-                  <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {emailTo || "—"}</div>
+            <Card className="exam-card">
+              <CardHeader className="border-b border-white/10 px-8 py-7">
+                <Badge className="w-fit bg-[#102b36] text-[#00e5ff]">{examType === "case_study" ? "Case study" : "Objective test"} · draft</Badge>
+                <CardTitle className="mt-3 text-3xl text-white">{title || "Untitled exam"}</CardTitle>
+                <p className="max-w-2xl text-[#c4b5fd]">This is how the exam presents to learners once published. {intro ? intro : "No introduction has been configured yet."}</p>
+              </CardHeader>
+              <CardContent className="px-8 py-7">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Exam type</div><div className="mt-1 font-bold text-white capitalize">{examType.replace("_", " ")}</div></div>
+                  <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Duration</div><div className="mt-1 font-bold text-white">{duration} minutes</div></div>
+                  <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Price</div><div className="mt-1 font-bold text-white">R{(Number(price || 0)).toFixed(0)}</div></div>
+                  <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Access</div><div className="mt-1 font-bold text-white">{accessDays} days</div></div>
                 </div>
-                <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {emailSubject || "—"}</div>
-                <div className="border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: emailText }} />
-              </div>
-            </section>
-          )}
 
-          {isCaseStudy && sortedSections.length > 0 && (
-            <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Sections / tasks ({sortedSections.length})</h3>
-              <div className="space-y-3">
-                {sortedSections.map((section, index) => (
-                  <div key={index} className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4">
-                    <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">{section.title || `Task ${index + 1}`}</span><Badge className="bg-[#102b36] text-[#00ff88]">{section.duration || "45"} min</Badge></div>
-                    {section.introduction && <p className="mt-3 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Introduction: </span>{section.introduction}</p>}
-                    {section.scenario && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Scenario: </span>{section.scenario}</p>}
-                    {section.question && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Question: </span>{section.question}</p>}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+                {description && <p className="mt-7 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Store description: </span>{description}</p>}
 
-          {!isCaseStudy && sortedQuestions.length > 0 && (
-            <section>
-              <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Questions ({sortedQuestions.length})</h3>
-              <div className="space-y-3">
-                {sortedQuestions.map((question, index) => {
-                  const qtype = question.questionType;
-                  const needsOptions = qtype !== "numerical" && qtype !== "text_input";
-                  const options = question.options.split("\n").map((line) => line.trim()).filter(Boolean);
-                  return (
-                    <div key={index} className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4">
-                      <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">Q{index + 1} · {question.topic || "General"}</span><Badge className="bg-[#102b36] text-[#00e5ff]">{qtype.replace("_", " ")}</Badge></div>
-                      <p className="mt-3 text-sm leading-6 text-[#c4b5fd]">{question.prompt}</p>
-                      {needsOptions && options.length > 0 && (
-                        <ul className="mt-3 space-y-1">{options.map((option, optionIndex) => <li key={optionIndex} className="rounded-lg bg-[#0c0524] px-3 py-2 text-sm text-[#c4b5fd]">{String.fromCharCode(65 + optionIndex)}. {option}</li>)}</ul>
-                      )}
-                      <p className="mt-3 text-xs text-[#00ff88]">Correct: {question.correct}</p>
-                      {question.explanation && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Explanation: </span>{question.explanation}</p>}
+                {isCaseStudy && (emailFrom || emailTo || emailSubject || emailText) && (
+                  <div className="mt-7 overflow-hidden rounded-xl border border-white/10">
+                    <div className="bg-[#102b36] px-4 py-2 text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Email attachment</div>
+                    <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+                      <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">From:</span> {emailFrom || "—"}</div>
+                      <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {emailTo || "—"}</div>
                     </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                    <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {emailSubject || "—"}</div>
+                    <div className="border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: emailText }} />
+                  </div>
+                )}
 
-          {isCaseStudy && feedbackText && (
-            <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Feedback / solutions</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{feedbackText}</p></section>
-          )}
+                {isCaseStudy && sortedSections.length > 0 && (
+                  <div className="mt-7 space-y-6">
+                    <p className="eyebrow">Timed sections · {sortedSections.length} task{sortedSections.length === 1 ? "" : "s"}</p>
+                    {sortedSections.map((section, index) => (
+                      <Card key={index} className="exam-card">
+                        <CardContent className="p-7">
+                          <div className="flex flex-wrap items-start justify-between gap-5">
+                            <div><p className="eyebrow">Task {index + 1} of {sortedSections.length}</p><h1 className="mt-2 text-2xl font-bold text-white">{section.title || `Task ${index + 1}`}</h1></div>
+                            <Badge className="shrink-0 bg-[#102b36] text-[#00ff88]">{section.duration || "45"} minutes</Badge>
+                          </div>
+                          {(section.introduction || section.question || section.scenario) && (
+                            <p className="mt-5 text-base leading-8 text-[#c4b5fd]">{section.introduction || section.question || section.scenario}</p>
+                          )}
+                          {section.scenario && (section.introduction || section.question) && (
+                            <div className="mt-4 rounded-xl border border-[#00e5ff]/30 bg-[#18093c] p-5">
+                              <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Scenario</div>
+                              <p className="mt-2 text-sm leading-6 text-[#c4b5fd] whitespace-pre-wrap">{section.scenario}</p>
+                            </div>
+                          )}
+                          {section.question && section.scenario && (
+                            <div className="mt-4 rounded-xl border border-[#00ff88]/40 bg-[#102b36] p-5">
+                              <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">Task</div>
+                              <p className="mt-2 text-sm leading-6 text-[#c4b5fd] whitespace-pre-wrap">{section.question}</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
 
-          {!isCaseStudy && sortedQuestions.length === 0 && <p className="text-sm text-white/45">No questions added yet.</p>}
-          {isCaseStudy && sortedSections.length === 0 && <p className="text-sm text-white/45">No sections added yet.</p>}
-        </div>
+                {!isCaseStudy && sortedQuestions.length > 0 && (
+                  <div className="mt-7 space-y-4">
+                    <p className="eyebrow">Objective questions · {sortedQuestions.length}</p>
+                    {sortedQuestions.map((question, index) => {
+                      const qtype = question.questionType;
+                      const needsOptions = qtype !== "numerical" && qtype !== "text_input";
+                      const options = question.options.split("\n").map((line) => line.trim()).filter(Boolean);
+                      return (
+                        <Card key={index} className="exam-card">
+                          <CardContent className="p-6">
+                            <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">Q{index + 1} · {question.topic || "General"}</span><Badge className="bg-[#102b36] text-[#00e5ff]">{qtype.replace("_", " ")}</Badge></div>
+                            <p className="mt-3 text-base leading-7 text-[#c4b5fd]">{question.prompt}</p>
+                            {needsOptions && options.length > 0 && (
+                              <ul className="mt-3 space-y-1">{options.map((option, optionIndex) => <li key={optionIndex} className="rounded-lg bg-[#0c0524] px-3 py-2 text-sm text-[#c4b5fd]">{String.fromCharCode(65 + optionIndex)}. {option}</li>)}</ul>
+                            )}
+                            <p className="mt-3 text-xs text-[#00ff88]">Correct: {question.correct}</p>
+                            {question.explanation && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Explanation: </span>{question.explanation}</p>}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
 
-        <div className="mt-8 flex justify-end border-t border-white/10 pt-5">
-          <Button className="aft-button" onClick={onClose}>Close preview</Button>
-        </div>
+                {isCaseStudy && feedbackText && (
+                  <div className="mt-7 rounded-xl border border-white/10 bg-[#18093c]/50 p-5">
+                    <p className="eyebrow">Feedback / suggested solutions</p>
+                    <p className="mt-2 whitespace-pre-wrap leading-7 text-[#c4b5fd]">{feedbackText}</p>
+                  </div>
+                )}
+
+                {isCaseStudy && sortedSections.length === 0 && <p className="mt-7 text-sm text-white/45">No sections added yet.</p>}
+                {!isCaseStudy && sortedQuestions.length === 0 && <p className="mt-7 text-sm text-white/45">No questions added yet.</p>}
+
+                <div className="mt-8 flex justify-end border-t border-white/10 pt-5">
+                  <Button className="aft-button" onClick={onClose}>Close preview</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
       </div>
     </div>
   );
@@ -406,6 +523,8 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
   const [feedbackTouched, setFeedbackTouched] = useState(false);
   const [createdId, setCreatedId] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [parseNotes, setParseNotes] = useState<string[]>([]);
+  const [parsedFileName, setParsedFileName] = useState<string | null>(null);
 
   const createBundle = trpc.admin.createExamBundle.useMutation({
     onSuccess: (result) => {
@@ -423,6 +542,105 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     },
     onError: (error) => toast.error(error.message),
   });
+
+  const applyImportedDraft = (draft: ImportedPdfDraft) => {
+    if (draft.isSolutionsDocument) {
+      if (draft.feedbackFile) {
+        setFeedbackFile(draft.feedbackFile);
+        setFeedbackTouched(true);
+      }
+      setParsedFileName(draft.fileName);
+      return;
+    }
+    setTitle(draft.title ?? title);
+    setExamType(draft.examType);
+    setDuration(String(Math.max(1, Math.round(draft.totalDurationSeconds / 60))));
+    setIntro(draft.intro ?? "");
+    setDescription(draft.description ?? "");
+    setPrice(String(Math.round((draft.priceCents ?? 0) / 100)));
+    setAccessDays(String(draft.accessDays ?? 30));
+    setPreModeratedPdf(draft.preModeratedPdf ?? null);
+    setPreSeen(draft.preSeen ?? null);
+    setFormulae(draft.formulae ?? null);
+    setReference(draft.reference ?? null);
+    setEmailFrom(draft.emailFrom ?? "");
+    setEmailTo(draft.emailTo ?? "");
+    setEmailSubject(draft.emailSubject ?? "");
+    setEmailText(draft.emailText ?? "");
+    if (draft.examType === "objective_test") {
+      setQuestions((draft.objectiveQuestions?.length
+        ? draft.objectiveQuestions.map((q) => ({
+            topic: q.topic ?? "General",
+            prompt: q.prompt ?? "",
+            questionType: q.questionType ?? "single_choice",
+            options: (q.options ?? []).join("\n"),
+            correct: String(q.correct ?? 0),
+            explanation: q.explanation ?? "",
+            rationale: (q.rationale ?? []).join("\n"),
+            attachment: null,
+          }))
+        : [emptyQuestion()]));
+    } else {
+      setSections((draft.caseStudySections?.length
+        ? draft.caseStudySections.map((s) => ({
+            title: s.title || `Task ${s.sectionNumber}`,
+            duration: String(Math.max(1, Math.round((s.durationSeconds ?? 2700) / 60))),
+            introduction: s.introduction ?? "",
+            scenario: s.scenario ?? "",
+            question: s.question ?? "",
+          }))
+        : [emptySection(1)]));
+      setFeedbackFile(draft.feedbackFile ?? null);
+      setFeedbackTouched(Boolean(draft.feedbackFile));
+    }
+    setParsedFileName(draft.fileName);
+  };
+
+  const importFromPdf = trpc.exams.createFromPdf.useMutation({
+    onSuccess: (draft) => {
+      setParseNotes(draft.notes ?? []);
+      applyImportedDraft(draft);
+      if (draft.isSolutionsDocument) {
+        toast.success("Suggested answers PDF attached to the exam feedback slot");
+      } else {
+        toast.success("Exam built from the PDF — review the extracted fields below and save as a draft");
+      }
+    },
+    onError: (error) => {
+      setParseNotes([]);
+      toast.error(error.message);
+    },
+  });
+
+  const handleQuestionPaper = async (file: File) => {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setParseNotes([]);
+      toast.error("The question paper must be a PDF file");
+      return;
+    }
+    const data = await readFile(file);
+    if (!data) {
+      setParseNotes([]);
+      toast.error("Could not read the selected PDF");
+      return;
+    }
+    importFromPdf.mutate({ fileName: data.fileName, mimeType: data.mimeType, base64: data.base64 });
+  };
+
+  const handleSolutionsPdf = async (file: File) => {
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("The solutions file must be a PDF");
+      return;
+    }
+    const data = await readFile(file);
+    if (!data) {
+      toast.error("Could not read the selected PDF");
+      return;
+    }
+    setFeedbackFile(data);
+    setFeedbackTouched(true);
+    toast.success("Suggested answers PDF attached to the exam feedback slot");
+  };
 
   const detail = trpc.admin.examBundleDetail.useQuery(
     { mockExamId: editExamId as number },
@@ -549,6 +767,8 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     setFeedbackText("");
     setFeedbackFile(null);
     setCreatedId(null);
+    setParseNotes([]);
+    setParsedFileName(null);
   };
 
   const parsePurposeQuestion = (question: QuestionDraft) => {
@@ -688,6 +908,50 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
               <p className="mt-1 text-xs leading-5 text-white/60">The linked product "<span className="text-[#f4c44e]">{detail.data.product.title}</span>" has status <span className="text-[#f4c44e]">{detail.data.product.status}</span>. Attachments you save here will only appear in the learner portal once the product and its resources are published. If a published version of this exam already exists in the catalogue, edit that version instead.</p>
             </div>
           )}
+
+          {/* Import from PDF */}
+          <section>
+            <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00e5ff]"><UploadCloud className="h-4 w-4" /> Import from PDF</div>
+            <div className="rounded-2xl border border-[#00e5ff]/30 bg-[#102b36]/40 p-4 sm:p-5">
+              <p className="text-sm leading-6 text-[#c4b5fd]">Knock out <strong className="text-white">both steps</strong> by uploading your pre-moderated exam paper as a PDF: the structured draft below is extracted automatically and this whole form is filled in for you. Review, tweak, then save as a draft.</p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <PdfImportSlot
+                  label="Question paper (PDF)"
+                  icon={<FileText className="h-4 w-4 text-[#00e5ff]" />}
+                  hint="Builds the whole exam from this file — title, exam type, timing, case-study tasks / objective questions, email, and permitted resources."
+                  busy={importFromPdf.isPending}
+                  attached={parsedFileName}
+                  onAttach={(file) => void handleQuestionPaper(file)}
+                  onRemove={() => { setParsedFileName(null); setParseNotes([]); }}
+                />
+                <PdfImportSlot
+                  label="Suggested answers / solutions (PDF, optional)"
+                  icon={<GraduationCap className="h-4 w-4 text-[#00ff88]" />}
+                  hint="Attach the marking guide, suggested answers or solutions PDF to the exam feedback slot — shown to learners after submission."
+                  attached={feedbackFile?.fileName ?? null}
+                  onAttach={(file) => void handleSolutionsPdf(file)}
+                  onRemove={() => { setFeedbackFile(null); setFeedbackTouched(true); }}
+                />
+              </div>
+              {importFromPdf.isPending && (
+                <p className="mt-3 flex items-center gap-2 text-sm text-[#00e5ff]"><Loader2 className="h-4 w-4 animate-spin" /> Reading the PDF and extracting the exam structure…</p>
+              )}
+              {parsedFileName && !importFromPdf.isPending && (
+                <div className="mt-3 rounded-xl border border-[#00ff88]/40 bg-[#102b36] px-4 py-3">
+                  <p className="flex items-center gap-2 text-sm font-bold text-[#00ff88]"><ShieldCheck className="h-4 w-4" /> {"Draft extracted from"} {parsedFileName} — review the fields below before saving. Nothing is published automatically; saving always creates a draft.</p>
+                  {parseNotes.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {parseNotes.map((note, index) => <li key={index} className="flex items-start gap-2 text-xs leading-5 text-[#f4c44e]"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {note}</li>)}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {importFromPdf.isError && (
+                <p className="mt-3 rounded-xl border border-[#ff8278]/40 bg-[#2b1010]/40 px-4 py-3 text-sm text-[#ff8278]">{importFromPdf.error?.message ?? "Could not import this PDF."}</p>
+              )}
+            </div>
+          </section>
+
           {/* Exam details */}
           <section>
             <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Sparkles className="h-4 w-4" /> Exam details</div>

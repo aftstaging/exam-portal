@@ -229,6 +229,52 @@ Since commit `5b86e57`:
   published attachments, deduplicated per kind, but the UI no longer labels
   ZIP / contents / Included).
 
+### 4.8 Import a whole exam from a PDF (ExamStudio)
+
+The **Create / Edit exam** screen (ExamStudio,
+`client/src/components/ExamStudio.tsx`) can build an exam straight from a
+pre-moderated question paper — no manual data entry or SQL required:
+
+- A new **Import from PDF** panel has two slots:
+  - **Question paper (PDF)** — uploaded to `exams.createFromPdf`
+    (`server/routers.ts`, a `staffProcedure` mutation backed by
+    `server/pdfImport.ts`). The server reads the file with pdfjs-dist and
+    returns a structured `PdfExamDraft` that the client applies to the whole
+    form (`applyImportedDraft`): title, exam type, total duration, section
+    tasks, objective questions, the email brief, and the carved
+    **reference** and **formulae + tables** PDFs (both are re-serialised from
+    the original file). It never writes to the database — the admin then saves
+    the populated form through the normal bundle flow (always a **draft**,
+    never auto-published).
+  - **Suggested answers / solutions / marking guide (PDF, optional)** — simply
+    attached to the exam's **feedback** resource using the existing
+    `setFeedbackFile` flow.
+- Automatically-detected **suggested-solutions documents** (e.g.
+  `cartn-mock-*-solutions.pdf`, `cima-mock-b-answers-marking-guide.pdf`) are
+  never parsed for exam content; they are attached as the exam's feedback
+  document with an explanatory note shown in the panel.
+- Files are sent as a base64 data-URL (`mimeType` checked to be
+  `application/pdf`, size limit 28 MB → matches the Express 50 MB body limit);
+  the server strips the data-URL prefix via `stripDataUrl` in
+  `server/pdfImport.ts`.
+- Parsing quirks handled by the parser (see `server/pdfImport.ts`):
+  - Kaplan-style running headers are stripped (`MOCK EXAM B`, `KAPLAN
+    PUBLISHING`, …) so they never corrupt section content.
+  - Each case-study task maps to a section with a 45-minute
+    `durationSeconds`, title `Task N — Unseen case material` (Cartn) or
+    `Task N` (Mock B), and the full task-page text as its introduction.
+  - Reference/formulae pages are located by running header + dropping
+    continuation pages, then re-serialised into PDF attachments. Page 1's
+    cover title is re-extracted raw (`extractCoverText`) because the running
+    header already swallowed "Mock Exam 3"-style text.
+- **Learner-shell preview**: the **Preview** button now renders
+  `ExamPreviewDraft` inside the same `.exam-shell` (titlebar with title +
+  duration, a sessionbar of section chips, `exam-card` content) so admins see
+  exactly how learners will experience the exam before saving.
+- Coverage is enforced by `server/pdfImport.test.ts` (7 contract tests that
+  load the six `source-pdfs/` files through the real
+  `exams.createFromPdf` tRPC route with a staff caller).
+
 ---
 
 ## 5. Deploying exams to a new EC2 instance — checklist
@@ -295,5 +341,5 @@ re-attaches PDFs.
 
 ---
 
-*Command reference: `pnpm check` (typecheck) and `pnpm test` (40 tests) are the
+*Command reference: `pnpm check` (typecheck) and `pnpm test` (47 tests) are the
 verification gates before pushing changes to the exam/import code.*

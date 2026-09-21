@@ -6,7 +6,7 @@ The portal is a Node.js application using an ESM/TypeScript server entry point a
 
 ## API boundary
 
-The application uses tRPC 11 under `/api/trpc`. Procedures are defined in `server/routers.ts`, validated with Zod, and executed through the request context created in `server/_core/context.ts`. Public procedures expose catalogue data and auth state. Protected procedures require a signed local session and use `ctx.user`; administrator procedures additionally check `ctx.user.role === "admin"` before allowing product, marking, or content operations.
+The application uses tRPC 11 under `/api/trpc`. Procedures are defined in `server/routers.ts`, validated with Zod, and executed through the request context created in `server/_core/context.ts`. Public procedures expose catalogue data and auth state. Protected procedures require a signed local session and use `ctx.user`; administrator procedures additionally check `ctx.user.role === "admin"` before allowing product, marking, or content operations. Staff procedures (admins and instructors) power the creation flows. The exam-import procedure `exams.createFromPdf` reads a base64-encoded PDF with `pdfjs-dist` (via `server/pdfImport.ts`) and returns a structured, parse-only draft — section tasks, objective questions, the email brief, and re-serialised reference/formulae attachments — with no database write; the client then saves through the existing `admin.createExamBundle` flow, always as a draft.
 
 ## Data layer
 

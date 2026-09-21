@@ -15,6 +15,7 @@ import { hashPassword, verifyPassword } from "./_core/password";
 import { sdk } from "./_core/sdk";
 import { ONE_YEAR_MS } from "@shared/const";
 import { type User } from "../drizzle/schema";
+import { parseExamPdf } from "./pdfImport";
 import { staffProcedure } from "./_core/trpc";
 
 function toSafeUser(user: User) {
@@ -82,6 +83,16 @@ export const appRouter = router({
     saveAnswer: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), sectionId: z.number().int().positive(), body: z.string().max(100000), wordCount: z.number().int().min(0).max(100000) })).mutation(({ ctx, input }) => saveAnswerDraft({ ...input, userId: ctx.user.id })),
     submit: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), optOutOfMarking: z.boolean() })).mutation(({ ctx, input }) => createLockedSubmission({ ...input, userId: ctx.user.id })),
     printable: protectedProcedure.input(z.object({ mockExamId: z.number().int().positive() })).mutation(({ ctx, input }) => getPrintableExamPdf(ctx.user.id, input.mockExamId)),
+    createFromPdf: staffProcedure.input(z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().min(1).max(28000000) })).mutation(async ({ input }) => {
+      if (input.mimeType && !/^application\/pdf$/i.test(input.mimeType)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only PDF files are supported for import." });
+      }
+      try {
+        return await parseExamPdf({ fileName: input.fileName, base64: input.base64 });
+      } catch (error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? `Could not read this PDF: ${error.message}` : "Could not read this PDF." });
+      }
+    }),
   }),
   payments: router({
     createCheckout: protectedProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(({ ctx, input }) => createCheckoutSession({ userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, productId: input.productId, origin: `${ctx.req.protocol}://${ctx.req.get("host")}` })),
