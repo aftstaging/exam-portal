@@ -312,7 +312,33 @@ export async function listProtectedResources(userId: number, productId: number) 
     if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
   }
   const rows = await db.select().from(resources).where(and(eq(resources.productId, productId), eq(resources.status, "published"))).orderBy(desc(resources.createdAt));
-  return rows.map(({ fileKey, fileUrl, ...resource }) => ({ ...resource, hasFile: Boolean(fileKey || fileUrl), mimeType: inferResourceMimeType(fileKey) }));
+  return rows.map(({ fileKey, fileUrl, ...resource }) => {
+    const mimeType = inferResourceMimeType(fileKey);
+    let email: { from: string; to: string; subject: string; html: string; mimeType: string } | null = null;
+    if (resource.kind === "email" && fileUrl && fileUrl.trimStart().startsWith("{")) {
+      const parsed = parseStoredEmail(fileUrl);
+      if (parsed) email = parsed;
+    }
+    return { ...resource, hasFile: Boolean(fileKey || email), mimeType: email ? email.mimeType : mimeType, email };
+  });
+}
+
+export function parseStoredEmail(fileUrl: string) {
+  try {
+    const value = JSON.parse(fileUrl);
+    if (value && typeof value === "object" && (value.from || value.to || value.subject || value.html)) {
+      return {
+        from: typeof value.from === "string" ? value.from : "",
+        to: typeof value.to === "string" ? value.to : "",
+        subject: typeof value.subject === "string" ? value.subject : "",
+        html: typeof value.html === "string" ? value.html : "",
+        mimeType: "text/html",
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getProtectedResourceDownload(userId: number, resourceId: number) {

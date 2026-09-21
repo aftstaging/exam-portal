@@ -329,8 +329,9 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
   }, [isQuestion, sectionSeconds, attemptLocked, attemptId, answer, currentSection, totalSections]);
   useEffect(() => {
     if (!attemptId || attemptLocked) return;
-    const submitBeacon = () => {
+    const submitBeacon = (event: Event) => {
       if (transitioningToSubmission.current || !attemptId) return;
+      if (event.type === "pagehide" && (event as PageTransitionEvent).persisted) return;
       try {
         navigator.sendBeacon(`/api/auto-submit?attempt=${attemptId}`);
       } catch {
@@ -342,7 +343,6 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
     return () => {
       window.removeEventListener("beforeunload", submitBeacon);
       window.removeEventListener("pagehide", submitBeacon);
-      submitBeacon();
     };
   }, [attemptId, attemptLocked]);
   const endSession = () => {
@@ -400,7 +400,7 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
         )}
       </main>
       {resource === "calculator" && <CalculatorModal onClose={() => setResource(null)} />}
-      {resource && resource !== "calculator" && <ResourceModal title={resource === "pre-seen" ? "Pre-seen material" : resource === "formulae" ? "Formulae + tables" : resource === "email" ? "Email attachment" : "Reference material"} onClose={() => setResource(null)}>{(() => { const kind = resource === "pre-seen" ? "pre_seen" : resource === "formulae" ? "formulae" : resource === "reference" ? "reference" : resource === "email" ? "email" : null; const match = kind ? examResourcesQuery.data?.find((item) => item.kind === kind && item.hasFile && item.mimeType !== "application/octet-stream") : undefined; return match ? <ProtectedResourceView resource={match} /> : <p className="mt-5 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="ml-3 mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setResource(null)}>Close resource</Button></ResourceModal>}
+      {resource && resource !== "calculator" && <ResourceModal title={resource === "pre-seen" ? "Pre-seen material" : resource === "formulae" ? "Formulae + tables" : resource === "email" ? "Email attachment" : "Reference material"} onClose={() => setResource(null)}>{(() => { const kind = resource === "pre-seen" ? "pre_seen" : resource === "formulae" ? "formulae" : resource === "reference" ? "reference" : resource === "email" ? "email" : null; const match = kind ? examResourcesQuery.data?.find((item) => item.kind === kind && ((item.hasFile && item.mimeType !== "application/octet-stream") || Boolean(item.email))) : undefined; return match ? <ProtectedResourceView resource={match} /> : <p className="mt-5 text-sm text-white/45">No attached document yet.</p>; })()}<Button variant="outline" className="ml-3 mt-5 border-[#00e5ff] text-[#00e5ff]" onClick={() => setResource(null)}>Close resource</Button></ResourceModal>}
     </div>
   );
 }
