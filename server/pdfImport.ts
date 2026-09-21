@@ -1,3 +1,4 @@
+import "./_core/polyfills";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { PDFDocument } from "pdf-lib";
 
