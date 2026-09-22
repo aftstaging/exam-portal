@@ -42,6 +42,12 @@ export function parseObjectiveQuestion(item: ObjectiveQuestionRecord): ParsedObj
   const questionType = ["single_choice", "multiple_choice", "dropdown", "numerical", "text_input"].includes(rawType)
     ? rawType as ParsedObjectiveQuestion["questionType"]
     : "single_choice";
+  if (questionType === "multiple_choice") {
+    const asArray = Array.isArray(correct)
+      ? correct.map(Number)
+      : String(correct).split(/[,;\s]+/).map((part) => Number(part)).filter((value) => Number.isFinite(value));
+    correct = asArray;
+  }
   return {
     prompt: item.prompt,
     options,

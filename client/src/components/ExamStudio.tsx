@@ -36,6 +36,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { StructuredText } from "@/components/StructuredText";
 
 type BundleFile = { fileName: string; mimeType: string; base64: string };
 type ExistingFile = { fileName: string; keepUrl: string };
@@ -286,6 +287,51 @@ function QuestionEditor({ question, index, onChange, onRemove }: { question: Que
   );
 }
 
+function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, ## heading, ● bullet (start a line with - or ●), 1. numbered." }: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  label: string;
+  className?: string;
+  hint?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  const applyFormat = (prefix: string, suffix = "") => {
+    const el = ref.current;
+    if (!el) return;
+    const { selectionStart, selectionEnd, value: current } = el;
+    const selected = current.slice(selectionStart, selectionEnd);
+    const wrapped = selected
+      ? `${prefix}${selected}${suffix}`
+      : `${prefix}${suffix ? "text" : "text"}${suffix}`;
+    const next = current.slice(0, selectionStart) + wrapped + current.slice(selectionEnd);
+    const cursor = selectionStart + prefix.length + (selected ? selected.length + suffix.length : (suffix ? suffix.length : 4));
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const toolButton = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0c0524] text-white/80 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]";
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-1">
+        <label className="mr-1 text-xs font-semibold text-[#c4b5fd]">{label}</label>
+        <button type="button" className={toolButton} title="Bold (**text**)" aria-label="Bold" onClick={() => applyFormat("**", "**")}><Bold className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} title="Italic (*text*)" aria-label="Italic" onClick={() => applyFormat("*", "*")}><Italic className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} title="Heading (## text)" aria-label="Heading" onClick={() => applyFormat("## ", "")}><Menu className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} title="Bullet list (● item)" aria-label="Bullet list" onClick={() => applyFormat("● ", "")}><List className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} title="Numbered list (1. item)" aria-label="Numbered list" onClick={() => applyFormat("1. ", "")}><ListOrdered className="h-4 w-4" /></button>
+        <span className="ml-auto text-[10px] italic leading-4 text-white/35">{hint}</span>
+      </div>
+      <textarea ref={ref} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={`mt-1 w-full rounded-lg border border-white/10 bg-[#0c0524] text-white ${className}`} />
+    </div>
+  );
+}
+
 type SectionDraft = {
   title: string;
   duration: string;
@@ -321,16 +367,13 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
         </div>
       </div>
       <div>
-        <label className="text-xs font-semibold text-[#c4b5fd]">Introduction / instructions</label>
-        <Textarea value={section.introduction} onChange={(event) => set({ introduction: event.target.value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="mt-1 min-h-16 border-white/10 bg-[#0c0524] text-white" aria-label={`Section introduction ${index + 1}`} />
+        <FormattingTextarea label="Introduction / instructions" value={section.introduction} onChange={(value) => set({ introduction: value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="min-h-16" />
       </div>
       <div>
-        <label className="text-xs font-semibold text-[#c4b5fd]">Scenario (optional)</label>
-        <Textarea value={section.scenario} onChange={(event) => set({ scenario: event.target.value })} placeholder="Case scenario / advance information specific to this task…" className="mt-1 min-h-16 border-white/10 bg-[#0c0524] text-white" aria-label={`Section scenario ${index + 1}`} />
+        <FormattingTextarea label="Scenario (optional)" value={section.scenario} onChange={(value) => set({ scenario: value })} placeholder="Case scenario / advance information specific to this task…" className="min-h-16" />
       </div>
       <div>
-        <label className="text-xs font-semibold text-[#c4b5fd]">Task / question</label>
-        <Textarea value={section.question} onChange={(event) => set({ question: event.target.value })} placeholder="The task candidates must answer…" className="mt-1 min-h-16 border-white/10 bg-[#0c0524] text-white" aria-label={`Section question ${index + 1}`} />
+        <FormattingTextarea label="Task / question" value={section.question} onChange={(value) => set({ question: value })} placeholder="The task candidates must answer…" className="min-h-16" />
       </div>
     </div>
   );
@@ -430,18 +473,18 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                             <Badge className="shrink-0 bg-[#102b36] text-[#00ff88]">{section.duration || "45"} minutes</Badge>
                           </div>
                           {(section.introduction || section.question || section.scenario) && (
-                            <p className="mt-5 text-base leading-8 text-[#c4b5fd]">{section.introduction || section.question || section.scenario}</p>
+                            <StructuredText className="mt-5 text-base leading-8 text-[#c4b5fd]" text={section.introduction || section.question || section.scenario} />
                           )}
                           {section.scenario && (section.introduction || section.question) && (
                             <div className="mt-4 rounded-xl border border-[#00e5ff]/30 bg-[#18093c] p-5">
                               <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Scenario</div>
-                              <p className="mt-2 text-sm leading-6 text-[#c4b5fd] whitespace-pre-wrap">{section.scenario}</p>
+                              <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.scenario} />
                             </div>
                           )}
                           {section.question && section.scenario && (
                             <div className="mt-4 rounded-xl border border-[#00ff88]/40 bg-[#102b36] p-5">
                               <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">Task</div>
-                              <p className="mt-2 text-sm leading-6 text-[#c4b5fd] whitespace-pre-wrap">{section.question}</p>
+                              <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.question} />
                             </div>
                           )}
                         </CardContent>
@@ -776,9 +819,10 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     const needsOptions = question.questionType !== "numerical" && question.questionType !== "text_input";
     const correctRaw = question.correct.trim();
     const qtype = question.questionType;
-    let correctValue = 0;
+    let correctValue: number | number[] = 0;
     if (qtype === "multiple_choice") {
-      correctValue = 0;
+      correctValue = correctRaw.split(/[,;\s]+/).map((part) => Number(part)).filter((value) => Number.isFinite(value));
+      correctValue = correctValue.length ? correctValue : [0];
     } else if (needsOptions) {
       correctValue = Math.max(0, Number(correctRaw.split(",")[0]) || 0);
     } else {
@@ -966,7 +1010,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
                 <Input type="number" min="1" value={duration} onChange={(event) => setDuration(event.target.value)} placeholder="Minutes" className="border-white/10 bg-[#0c0524] pl-9 text-white" aria-label="Time (minutes)" />
               </div>
             </div>
-            <Textarea value={intro} onChange={(event) => setIntro(event.target.value)} placeholder="Exam introduction / instructions" className="mt-3 min-h-20 border-white/10 bg-[#0c0524] text-white" />
+            <FormattingTextarea label="Exam introduction / instructions" value={intro} onChange={setIntro} placeholder="Exam introduction / instructions" className="mt-1 min-h-20" />
           </section>
 
           {/* Active module banner - switches when the exam type changes */}

@@ -29,4 +29,12 @@ describe("objective-test helpers", () => {
     expect(objectiveAnswerMatches([2, 0], multiple.correct)).toBe(true);
     expect(objectiveAnswerMatches("42", text.correct)).toBe(true);
   });
+
+  it("normalises legacy multiple-choice correct answers into an array so review never calls includes on a scalar", () => {
+    const legacyNumber = parseObjectiveQuestion({ prompt: "Select", optionsJson: '["A","B"]', answerJson: "1", questionType: "multiple_choice" });
+    const legacyString = parseObjectiveQuestion({ prompt: "Select", optionsJson: '["A","B"]', answerJson: '"1,0"', questionType: "multiple_choice" });
+    expect(Array.isArray(legacyNumber.correct)).toBe(true);
+    expect(legacyNumber.correct).toEqual([1]);
+    expect(legacyString.correct).toEqual([1, 0]);
+  });
 });

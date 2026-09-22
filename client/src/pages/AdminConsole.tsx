@@ -32,6 +32,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import ExamStudio from "@/components/ExamStudio";
+import { StructuredText } from "@/components/StructuredText";
 import { calculateRubricScore, RUBRIC_CRITERIA } from "@shared/rubric";
 
 const zar = (cents: number) => (cents / 100).toLocaleString("en-ZA", { style: "currency", currency: "ZAR" });
@@ -1451,7 +1452,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
               <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Access</div><div className="mt-1 font-bold text-white">{data.product.accessDays} days</div></div>
             </div>
 
-            {data.mockExam.intro && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Introduction</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{data.mockExam.intro}</p></section>}
+            {data.mockExam.intro && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Introduction</h3><StructuredText className="leading-7 text-[#c4b5fd]" text={data.mockExam.intro} /></section>}
             {data.product.description && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Store description</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{data.product.description}</p></section>}
 
             {isCaseStudy && data.email && (data.email.from || data.email.to || data.email.subject || data.email.html) && (
@@ -1475,9 +1476,9 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                   {data.sections.map((section) => (
                     <div key={section.sectionNumber} className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4">
                       <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">{section.title}</span><Badge className="bg-[#102b36] text-[#00ff88]">{section.durationSeconds / 60} min</Badge></div>
-                      {section.introduction && <p className="mt-3 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Introduction: </span>{section.introduction}</p>}
-                      {section.scenario && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Scenario: </span>{section.scenario}</p>}
-                      {section.question && <p className="mt-2 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Question: </span>{section.question}</p>}
+                      {section.introduction && <StructuredText className="mt-3 text-sm leading-6 text-[#c4b5fd]" text={`**Introduction:** ${section.introduction ?? ""}`} />}
+                      {section.scenario && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Scenario:** ${section.scenario ?? ""}`} />}
+                      {section.question && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Question:** ${section.question ?? ""}`} />}
                     </div>
                   ))}
                 </div>

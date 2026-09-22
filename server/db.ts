@@ -404,10 +404,10 @@ export async function createLockedSubmission(input: { userId: number; attemptId:
   const existingSubmission = await db.select().from(submissions).where(eq(submissions.attemptId, input.attemptId)).limit(1);
   if (existingSubmission[0]) throw new Error("Submission is already locked");
   if (!input.optOutOfMarking) {
-    const markingProduct = await db.select({ id: products.id }).from(products).where(and(eq(products.category, "marking"), eq(products.status, "published"))).limit(1);
+    const markingProduct = await db.select({ id: products.id }).from(products).where(eq(products.category, "marking")).limit(1);
     if (!markingProduct[0]) throw new Error("Instructor marking is not currently available");
-    const markingAccess = await db.select().from(entitlements).where(and(eq(entitlements.userId, input.userId), eq(entitlements.productId, markingProduct[0].id), eq(entitlements.status, "active"))).limit(1);
-    if (!hasActiveEntitlement(markingAccess[0])) throw new Error("Purchase the instructor marking add-on before sending this attempt for marking");
+    const markingAccess = await db.select({ entitlement: entitlements }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(and(eq(products.category, "marking"), eq(entitlements.userId, input.userId), eq(entitlements.status, "active"))).limit(1);
+    if (!hasActiveEntitlement(markingAccess[0]?.entitlement)) throw new Error("Purchase the instructor marking add-on before sending this attempt for marking");
   }
   const status = input.optOutOfMarking ? "submitted" : "awaiting_marking";
   await db.update(attempts).set({ status, optOutOfMarking: input.optOutOfMarking ? 1 : 0, submittedAt: new Date() }).where(eq(attempts.id, input.attemptId));
@@ -795,7 +795,7 @@ export type ExamBundleObjectiveQuestion = {
   prompt: string;
   questionType?: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input";
   options: string[];
-  correct: number;
+  correct: number | number[];
   explanation?: string;
   rationale?: string[];
   attachment?: ExamBundleFile;
@@ -901,7 +901,11 @@ export async function createExamBundle(input: ExamBundleInput) {
       const options = (question.options ?? []).map((option) => option?.trim()).filter(Boolean);
       const needsOptions = qtype !== "numerical" && qtype !== "text_input";
       if (needsOptions && options.length < 2) continue;
-      const correct = Math.min(Math.max(Math.round(question.correct) || 0, 0), Math.max(options.length - 1, 0));
+      let correct: number | number[] = Math.min(Math.max(Math.round(Number(question.correct)) || 0, 0), Math.max(options.length - 1, 0));
+      if (qtype === "multiple_choice") {
+        const raw = String(question.correct).split(/[,;\s]+/).map((part) => parseInt(part, 10)).filter((n) => Number.isFinite(n) && n >= 0 && n < options.length);
+        correct = raw.length ? raw : [correct];
+      }
       let attachmentUrl: string | null = null;
       let attachmentFileName: string | null = null;
       let attachmentMimeType: string | null = null;
@@ -1152,7 +1156,7 @@ export async function updateExamBundle(input: ExamBundleUpdateInput) {
       const options = (question.options ?? []).map((option) => option?.trim()).filter(Boolean);
       const needsOptions = qtype !== "numerical" && qtype !== "text_input";
       if (needsOptions && options.length < 2) continue;
-      let answerValue: number | number[] = Math.min(Math.max(Math.round(question.correct) || 0, 0), Math.max(options.length - 1, 0));
+      let answerValue: number | number[] = Math.min(Math.max(Math.round(Number(question.correct)) || 0, 0), Math.max(options.length - 1, 0));
       if (qtype === "multiple_choice") {
         const raw = String(question.correct).split(/[,;\s]+/).map((part) => parseInt(part, 10)).filter((n) => Number.isFinite(n) && n >= 0 && n < options.length);
         answerValue = raw.length ? raw : [answerValue];
