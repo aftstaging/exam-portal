@@ -583,28 +583,96 @@ export async function updateProductStatus(input: { productId: number; status: "d
   return { success: true };
 }
 
-export async function listMarkerQueue() {
+export async function listMarkerQueue(input: { userId: number; role: "user" | "instructor" | "admin" }) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ marking: markings, submission: submissions, attempt: attempts }).from(markings).innerJoin(submissions, eq(markings.attemptId, submissions.attemptId)).innerJoin(attempts, eq(markings.attemptId, attempts.id)).where(inArray(markings.status, ["unassigned", "assigned", "in_progress"])).orderBy(desc(markings.createdAt));
+  const scope = isAdminRole(input.role)
+    ? inArray(markings.status, ["unassigned", "assigned", "in_progress"])
+    : and(inArray(markings.status, ["assigned", "in_progress"]), eq(markings.markerId, input.userId));
+  const rows = await db.select({ marking: markings, submission: submissions, attempt: attempts, learner: users, exam: mockExams }).from(markings).innerJoin(submissions, eq(markings.attemptId, submissions.attemptId)).innerJoin(attempts, eq(markings.attemptId, attempts.id)).innerJoin(users, eq(attempts.userId, users.id)).innerJoin(mockExams, eq(attempts.mockExamId, mockExams.id)).where(scope).orderBy(desc(markings.createdAt));
+  if (!rows.length) return [];
+  const attemptIds = rows.map((row) => row.attempt.id);
+  const examIds = rows.reduce((ids: number[], row) => (ids.includes(row.attempt.mockExamId) ? ids : [...ids, row.attempt.mockExamId]), []);
+  const [answerRows, sectionRows] = await Promise.all([db.select().from(answers).where(inArray(answers.attemptId, attemptIds)), db.select().from(caseStudySections).where(inArray(caseStudySections.mockExamId, examIds))]);
+  return rows.map(({ marking, submission, attempt, learner, exam }) => ({
+    marking,
+    submission,
+    attempt: { ...attempt, optOutOfMarking: Boolean(attempt.optOutOfMarking) },
+    learner: { id: learner.id, name: learner.name, email: learner.email },
+    exam: { id: exam.id, title: exam.title, examType: exam.examType },
+    answers: answerRows.filter((answer) => answer.attemptId === attempt.id).sort((a, b) => a.sectionId - b.sectionId).map((answer) => ({
+      sectionId: answer.sectionId,
+      title: sectionRows.find((item) => item.mockExamId === exam.id && item.sectionNumber === answer.sectionId)?.title ?? `Task ${answer.sectionId}`,
+      body: answer.body,
+      wordCount: answer.wordCount,
+    })),
+  }));
 }
 
-export async function assignMarking(input: { markerId: number; markingId: number }) {
+export async function assignMarking(input: { markerId: number; markingId: number; role: "user" | "instructor" | "admin"; userId: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (!isAdminRole(input.role)) throw new Error("Only administrators can assign markings");
+  const row = (await db.select().from(markings).where(eq(markings.id, input.markingId)).limit(1))[0];
+  if (!row) throw new Error("Marking not found");
+  if (row.status === "submitted") throw new Error("Feedback has already been released");
+  const marker = (await db.select({ id: users.id, role: users.role }).from(users).where(eq(users.id, input.markerId)).limit(1))[0];
+  if (!marker || (marker.role !== "instructor" && !isAdminRole(marker.role))) throw new Error("Marker must be a staff account");
   await db.update(markings).set({ markerId: input.markerId, status: "assigned" }).where(eq(markings.id, input.markingId));
+  await db.insert(auditEvents).values({ userId: input.userId, entityType: "marking", entityId: input.markingId, action: "assigned", metadata: JSON.stringify({ markerId: input.markerId }) });
   return { success: true };
 }
 
-export async function releaseFeedback(input: { markingId: number; feedback: string; awardedPoints: number; totalPoints: number; rubricSnapshot?: string }) {
+export async function releaseFeedback(input: { markingId: number; feedback: string; awardedPoints: number; totalPoints: number; rubricSnapshot?: string; userId: number; role: "user" | "instructor" | "admin" }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const row = await db.select().from(markings).where(eq(markings.id, input.markingId)).limit(1);
   if (!row[0]) throw new Error("Marking not found");
   if (row[0].status === "submitted") throw new Error("Feedback has already been released");
+  const isMarker = row[0].markerId === input.userId;
+  if (!isMarker && !isAdminRole(input.role)) throw new Error("Only the assigned marker or an administrator can release feedback");
   await db.update(markings).set({ status: "submitted", feedback: input.feedback, rubricSnapshot: input.rubricSnapshot ?? null, awardedPoints: input.awardedPoints, totalPoints: input.totalPoints, markedAt: new Date() }).where(eq(markings.id, input.markingId));
   await db.insert(feedbackStates).values({ attemptId: row[0].attemptId, state: "available", summary: input.feedback, releasedAt: new Date() });
   await db.update(attempts).set({ status: "marked" }).where(eq(attempts.id, row[0].attemptId));
   const attemptOwner = await db.select().from(attempts).where(eq(attempts.id, row[0].attemptId)).limit(1);
   if (attemptOwner[0]) await db.insert(notifications).values({ userId: attemptOwner[0].userId, type: "marking", subject: "Your marking is available", body: "Your case-study feedback has been released and is ready to review." });
   return { success: true };
+}
+
+export async function listMarkerStats(input: { userId: number; role: "user" | "instructor" | "admin" }) {
+  const db = await getDb(); if (!db) return { totals: { awaiting: 0, marked: 0, released: 0, averageScorePct: null, passRate: null }, exams: [] };
+  const base = db.select({ marking: markings, exam: mockExams }).from(markings).innerJoin(attempts, eq(markings.attemptId, attempts.id)).innerJoin(mockExams, eq(attempts.mockExamId, mockExams.id));
+  const rows = isAdminRole(input.role) ? await base : await base.where(eq(markings.markerId, input.userId));
+  const byExam: Record<string, { mockExamId: number; title: string; examType: string; awaiting: number; marked: number; released: number; scores: number[]; passed: number }> = {};
+  for (const { marking, exam } of rows) {
+    const bucket = byExam[exam.id] ?? { mockExamId: exam.id, title: exam.title, examType: exam.examType, awaiting: 0, marked: 0, released: 0, scores: [], passed: 0 };
+    if (marking.status === "submitted") {
+      bucket.marked += 1;
+      bucket.released += 1;
+      if (marking.totalPoints > 0) {
+        const pct = (marking.awardedPoints / marking.totalPoints) * 100;
+        bucket.scores.push(pct);
+        if (pct >= 50) bucket.passed += 1;
+      }
+    } else {
+      bucket.awaiting += 1;
+    }
+    byExam[exam.id] = bucket;
+  }
+  const summarize = (scores: number[], passed: number) => ({ averageScorePct: scores.length ? Math.round((scores.reduce((sum, value) => sum + value, 0) / scores.length) * 10) / 10 : null, passRate: scores.length ? Math.round((passed / scores.length) * 100) : null });
+  let awaitingTotal = 0;
+  let markedTotal = 0;
+  let releasedTotal = 0;
+  const allScores: number[] = [];
+  let allPassed = 0;
+  const exams = Object.values(byExam).sort((a, b) => a.title.localeCompare(b.title)).map((bucket) => {
+    awaitingTotal += bucket.awaiting;
+    markedTotal += bucket.marked;
+    releasedTotal += bucket.released;
+    allScores.push(...bucket.scores);
+    allPassed += bucket.passed;
+    const { averageScorePct, passRate } = summarize(bucket.scores, bucket.passed);
+    return { mockExamId: bucket.mockExamId, title: bucket.title, examType: bucket.examType, awaiting: bucket.awaiting, marked: bucket.marked, released: bucket.released, averageScorePct, passRate };
+  });
+  const totalsOutcome = summarize(allScores, allPassed);
+  return { totals: { awaiting: awaitingTotal, marked: markedTotal, released: releasedTotal, averageScorePct: totalsOutcome.averageScorePct, passRate: totalsOutcome.passRate }, exams };
 }
 
 export async function updateProductAccessDays(input: { productId: number; accessDays: number; userId: number }) {

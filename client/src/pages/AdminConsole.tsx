@@ -1,8 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight,
+  BarChart3,
   BookOpen,
+  CheckCircle2,
+  Clock3,
   CreditCard,
   Eye,
   FileText,
@@ -29,6 +32,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import ExamStudio from "@/components/ExamStudio";
+import { calculateRubricScore, RUBRIC_CRITERIA } from "@shared/rubric";
 
 const zar = (cents: number) => (cents / 100).toLocaleString("en-ZA", { style: "currency", currency: "ZAR" });
 const shortDate = (value?: Date | string | null) => (value ? new Date(value).toLocaleDateString() : "—");
@@ -53,16 +57,16 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function StatusAction({ status, onPublish, onArchive }: { status: string; onPublish: () => void; onArchive: () => void }) {
+function StatusAction({ status, onPublish, onArchive, disabled = false }: { status: string; onPublish: () => void; onArchive: () => void; disabled?: boolean }) {
   if (status === "published") {
     return (
-      <Button size="sm" variant="outline" className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]" onClick={onArchive}>
+      <Button size="sm" variant="outline" className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]" onClick={onArchive} disabled={disabled} title={disabled ? "Only administrators can change publish status" : undefined}>
         Archive
       </Button>
     );
   }
   return (
-    <Button size="sm" variant="outline" className="h-7 border-[#00ff88] px-2 text-[11px] text-[#00ff88]" onClick={onPublish}>
+    <Button size="sm" variant="outline" className="h-7 border-[#00ff88] px-2 text-[11px] text-[#00ff88]" onClick={onPublish} disabled={disabled} title={disabled ? "Only administrators can change publish status" : undefined}>
       Publish
     </Button>
   );
@@ -513,6 +517,8 @@ function EntitlementsTab() {
 }
 
 function ContentTab() {
+  const { user } = useAuth();
+  const canPublish = user?.role === "admin";
   const [section, setSection] = useState<"Products" | "Exams" | "Sections" | "Question bank" | "Resources" | "Catalogue">("Products");
   const productsQuery = trpc.admin.products.useQuery(undefined, { retry: false });
   const contentQuery = trpc.admin.contentOverview.useQuery(undefined, { retry: false });
@@ -572,7 +578,7 @@ function ContentTab() {
         ))}
       </div>
 
-      {section === "Products" && <ProductsPanel publish={productStatus} />}
+      {section === "Products" && <ProductsPanel publish={productStatus} canPublish={canPublish} />}
 
       {section === "Exams" && (
         <>
@@ -613,8 +619,8 @@ function ContentTab() {
                           <Button size="sm" variant="outline" className="h-7 border-[#00e5ff] px-2 text-[11px] text-[#00e5ff]" onClick={() => setPreviewId(item.id)}><Eye className="mr-1 h-3 w-3" /> Preview</Button>
                           <Button size="sm" variant="outline" className="h-7 border-white/10 px-2 text-[11px] text-white/60" onClick={() => generatePdf.mutate({ mockExamId: item.id })}><FileText className="mr-1 h-3 w-3" /> PDF</Button>
                           <Button size="sm" variant="outline" className="h-7 border-[#f4c44e]/50 px-2 text-[11px] text-[#f4c44e]" onClick={() => { setEditingExamId(item.id); setSection("Exams"); }}><Pencil className="mr-1 h-3 w-3" /> Edit</Button>
-                          <Button size="sm" variant="outline" className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]" onClick={() => setDeletingExam({ id: item.id, title: item.title })}><Trash2 className="mr-1 h-3 w-3" /> Delete</Button>
-                          <StatusAction status={item.status} onPublish={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "archived" })} />
+                          {canPublish && <Button size="sm" variant="outline" className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]" onClick={() => setDeletingExam({ id: item.id, title: item.title })}><Trash2 className="mr-1 h-3 w-3" /> Delete</Button>}
+                          <StatusAction status={item.status} disabled={!canPublish} onPublish={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "mock_exams", id: item.id, status: "archived" })} />
                         </div>
                       </div>
                     ))}
@@ -675,7 +681,7 @@ function ContentTab() {
               {items.length ? items.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
                   <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs text-white/45">{item.detail}</div></div>
-                  <StatusAction status={item.status} onPublish={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "archived" })} />
+                  <StatusAction status={item.status} disabled={!canPublish} onPublish={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "archived" })} />
                 </div>
               )) : <p className="py-8 text-center text-sm text-white/45">No questions yet.</p>}
             </CardContent>
@@ -691,7 +697,7 @@ function ContentTab() {
               {items.length ? items.map((item) => (
                 <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
                   <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs capitalize text-white/45">{item.detail}</div></div>
-                  <StatusAction status={item.status} onPublish={() => contentStatus.mutate({ kind: "resources", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "resources", id: item.id, status: "archived" })} />
+                  <StatusAction status={item.status} disabled={!canPublish} onPublish={() => contentStatus.mutate({ kind: "resources", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "resources", id: item.id, status: "archived" })} />
                 </div>
               )) : <p className="py-8 text-center text-sm text-white/45">No resources uploaded yet.</p>}
             </CardContent>
@@ -702,7 +708,7 @@ function ContentTab() {
   );
 }
 
-function ProductsPanel({ publish }: { publish: { mutate: (input: { productId: number; status: "draft" | "published" | "archived" }) => void } }) {
+function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { productId: number; status: "draft" | "published" | "archived" }) => void }; canPublish: boolean }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<"case_study" | "objective_test" | "marking" | "resource">("objective_test");
   const [description, setDescription] = useState("");
@@ -766,7 +772,7 @@ function ProductsPanel({ publish }: { publish: { mutate: (input: { productId: nu
                     <Button size="sm" variant="outline" className="h-7 border-[#f4c44e] px-2 text-[11px] text-[#f4c44e]" onClick={() => setEditingId(editingId === product.id ? null : product.id)}>
                       <Pencil className="mr-1 h-3 w-3" /> Edit
                     </Button>
-                    <StatusAction status={product.status} onPublish={() => publish.mutate({ productId: product.id, status: "published" })} onArchive={() => publish.mutate({ productId: product.id, status: "archived" })} />
+                    <StatusAction status={product.status} disabled={!canPublish} onPublish={() => publish.mutate({ productId: product.id, status: "published" })} onArchive={() => publish.mutate({ productId: product.id, status: "archived" })} />
                   </div>
                 </div>
                 {product.featuredImageUrl && (
@@ -994,15 +1000,27 @@ function ResourceForm({ refresh, products }: { refresh: () => void; products: { 
   );
 }
 
+type QueueItem = {
+  marking: { id: number; attemptId: number; markerId: number | null; status: string; awardedPoints: number; totalPoints: number; feedback: string | null; rubricSnapshot: string | null };
+  submission: { id: number; status: string; submittedAt: Date | string };
+  attempt: { id: number; userId: number; mockExamId: number; status: string; optOutOfMarking: boolean };
+  learner: { id: number; name: string | null; email: string | null };
+  exam: { id: number; title: string; examType: string };
+  answers: { sectionId: number; title: string; body: string; wordCount: number }[];
+};
+
 function MarkingTab() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const utils = trpc.useUtils();
+  const [reviewingId, setReviewingId] = useState<number | null>(null);
   const queueQuery = trpc.marking.queue.useQuery(undefined, { retry: false });
   const assign = trpc.marking.assign.useMutation({
-    onSuccess: () => { toast.success("Marking assigned to you"); utils.marking.queue.invalidate(); },
+    onSuccess: () => { toast.success("Marking assigned to you"); utils.marking.queue.invalidate(); utils.marking.stats.invalidate(); },
     onError: (error) => toast.error(error.message),
   });
-  const queue = queueQuery.data ?? [];
+  const queue = (queueQuery.data ?? []) as QueueItem[];
+  const reviewing = queue.find((item) => item.marking.id === reviewingId) ?? null;
   return (
     <div className="mt-8">
       <Card>
@@ -1015,17 +1033,41 @@ function MarkingTab() {
             <div className="h-24 animate-pulse rounded-xl bg-[#18093c]" />
           ) : queue.length ? (
             <ul className="space-y-2">
-              {queue.map(({ marking }) => (
-                <li key={marking.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#18093c]/50 px-4 py-3">
-                  <div>
-                    <div className="font-semibold text-white">Marking #{marking.id} <StatusBadge status={marking.status} /></div>
-                    <div className="mt-1 text-xs text-white/45">Attempt #{marking.attemptId} · {marking.awardedPoints}/{marking.totalPoints} pts</div>
-                  </div>
-                  <Button size="sm" variant="outline" className="h-8 border-[#00ff88] px-3 text-xs text-[#00ff88]" disabled={assign.isPending || marking.status === "assigned" || marking.status === "in_progress"} onClick={() => user && assign.mutate({ markingId: marking.id, markerId: user.id })}>
-                    Assign to me
-                  </Button>
-                </li>
-              ))}
+              {queue.map(({ marking, learner, exam, attempt }) => {
+                const mine = marking.markerId === user?.id;
+                const reviewable = mine && (marking.status === "assigned" || marking.status === "in_progress");
+                return (
+                  <li key={marking.id} className="rounded-xl border border-white/10 bg-[#18093c]/50 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-white">Marking #{marking.id} <StatusBadge status={marking.status} /></div>
+                        <div className="mt-1 text-xs text-white/45">{exam.title} ({exam.examType}) · {learner.name ?? "Unnamed learner"} · {learner.email}</div>
+                        <div className="mt-0.5 text-[11px] text-white/35">Attempt #{marking.attemptId} · {marking.awardedPoints}/{marking.totalPoints} pts · {attempt.optOutOfMarking ? "opted out" : "queued"}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isAdmin && marking.status === "unassigned" && (
+                          <Button size="sm" variant="outline" className="h-8 border-[#00ff88] px-3 text-xs text-[#00ff88]" disabled={assign.isPending} onClick={() => user && assign.mutate({ markingId: marking.id, markerId: user.id })}>
+                            Assign to me
+                          </Button>
+                        )}
+                        {!isAdmin && marking.status === "unassigned" && <span className="text-xs text-white/35">Awaiting an administrator to assign</span>}
+                        {!mine && marking.markerId && <span className="text-xs text-white/35">Assigned to another marker</span>}
+                        {reviewable && (
+                          <Button size="sm" variant="outline" className="h-8 border-[#00e5ff] px-3 text-xs text-[#00e5ff]" onClick={() => setReviewingId(reviewingId === marking.id ? null : marking.id)}>
+                            {reviewingId === marking.id ? "Close" : "Review and mark"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    {reviewable && reviewing?.marking.id === marking.id && (
+                      <MarkingReleaseForm
+                        item={reviewing}
+                        onReleased={() => { setReviewingId(null); utils.marking.queue.invalidate(); utils.marking.stats.invalidate(); }}
+                      />
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="py-8 text-center text-sm text-white/45">No submissions awaiting marking.</p>
@@ -1033,6 +1075,135 @@ function MarkingTab() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function MarkingReleaseForm({ item, onReleased }: { item: QueueItem; onReleased: () => void }) {
+  const [scores, setScores] = useState<number[]>(RUBRIC_CRITERIA.map(() => 0));
+  const [feedback, setFeedback] = useState(item.marking.feedback ?? "");
+  const release = trpc.marking.release.useMutation({
+    onSuccess: () => { toast.success("Feedback released to the learner"); onReleased(); },
+    onError: (error) => toast.error(error.message),
+  });
+  const { awardedPoints, totalPoints } = calculateRubricScore(scores);
+  const submit = () => {
+    const rubricSnapshot = JSON.stringify({ criteria: [...RUBRIC_CRITERIA], scores });
+    release.mutate({ markingId: item.marking.id, feedback, awardedPoints, totalPoints, rubricSnapshot });
+  };
+  const pct = totalPoints > 0 ? Math.round((awardedPoints / totalPoints) * 100) : 0;
+  return (
+    <div className="mt-4 rounded-xl border border-[#00e5ff]/25 bg-[#0c0524]/60 p-4">
+      <p className="eyebrow">Marking feedback</p>
+      <h4 className="mt-1 font-bold text-white">{item.exam.title}</h4>
+      <p className="mt-0.5 text-xs text-white/45">{item.learner.name ?? "Unnamed learner"} · {item.learner.email} · Attempt #{item.attempt.id}</p>
+      <div className="mt-4 space-y-4">
+        {item.answers.length === 0 && <p className="text-sm text-white/45">No section answers recorded for this attempt.</p>}
+        {item.answers.map((answer) => (
+          <details key={answer.sectionId} className="group rounded-lg border border-white/10">
+            <summary className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 text-sm font-semibold text-white">
+              <span>Task {answer.sectionId} · {answer.title}</span>
+              <span className="text-xs text-white/45">{answer.wordCount} words</span>
+            </summary>
+            <pre className="whitespace-pre-wrap rounded-b-lg border-t border-white/10 px-4 py-3 text-sm leading-6 text-[#c4b5fd]">{answer.body || "—"}</pre>
+          </details>
+        ))}
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        {RUBRIC_CRITERIA.map((criterion, index) => (
+          <label key={criterion} className="rounded-xl border border-white/10 bg-[#120730] p-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/50">{criterion}</span>
+            <select
+              value={scores[index]}
+              onChange={(event) => setScores(scores.map((score, i) => (i === index ? Number(event.target.value) : score)))}
+              className="mt-2 h-10 w-full rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              aria-label={`${criterion} score out of 5`}
+            >
+              {[0, 1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} / 5</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Badge className="bg-[#00ff88]/15 text-[#00ff88]">{awardedPoints}/{totalPoints} · {pct}%</Badge>
+        <span className="text-xs text-white/45">{pct >= 50 ? "Pass" : "Refer / not met"} (50% threshold)</span>
+      </div>
+      <Textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Write the learner's feedback…" className="mt-4 min-h-28 border-white/10 bg-[#0c0524] text-white" aria-label="Feedback message" />
+      <div className="mt-4 flex items-center justify-between">
+        <span className="text-xs text-white/45">Releasing publishes this score and feedback to the learner immediately.</span>
+        <Button className="aft-button" disabled={release.isPending || !feedback.trim()} onClick={submit}>
+          {release.isPending ? "Releasing…" : "Release feedback"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PerformanceTab() {
+  const statsQuery = trpc.marking.stats.useQuery(undefined, { retry: false });
+  const stats = statsQuery.data as MarkerStats | null;
+  return (
+    <div className="mt-8">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard icon={<Clock3 className="h-5 w-5 text-[#f4c44e]" />} label="Awaiting marking" value={String(stats?.totals.awaiting ?? 0)} />
+        <StatCard icon={<CheckCircle2 className="h-5 w-5 text-[#00ff88]" />} label="Marked" value={String(stats?.totals.marked ?? 0)} />
+        <StatCard icon={<BarChart3 className="h-5 w-5 text-[#00e5ff]" />} label="Average score" value={stats?.totals.averageScorePct == null ? "—" : `${stats.totals.averageScorePct}%`} />
+        <StatCard icon={<GraduationCap className="h-5 w-5 text-[#c4b5fd]" />} label="Pass rate" value={stats?.totals.passRate == null ? "—" : `${stats.totals.passRate}%`} />
+      </div>
+      <Card className="mt-6">
+        <CardHeader><CardTitle className="text-white">Performance by exam</CardTitle></CardHeader>
+        <CardContent>
+          {statsQuery.isLoading ? (
+            <div className="h-24 animate-pulse rounded-xl bg-[#18093c]" />
+          ) : stats && stats.exams.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase tracking-wider text-white/45">
+                  <tr className="border-b border-white/10">
+                    <th className="pb-3 pr-4 font-semibold">Exam</th>
+                    <th className="pb-3 pr-4 font-semibold text-right">Awaiting</th>
+                    <th className="pb-3 pr-4 font-semibold text-right">Marked</th>
+                    <th className="pb-3 pr-4 font-semibold text-right">Avg score</th>
+                    <th className="pb-3 font-semibold text-right">Pass rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.exams.map((exam) => (
+                    <tr key={exam.mockExamId} className="border-b border-white/5 last:border-0">
+                      <td className="py-3 pr-4 font-semibold text-white">{exam.title}</td>
+                      <td className="py-3 pr-4 text-right text-white/70">{exam.awaiting}</td>
+                      <td className="py-3 pr-4 text-right text-white/70">{exam.marked}</td>
+                      <td className="py-3 pr-4 text-right text-white/70">{exam.averageScorePct == null ? "—" : `${exam.averageScorePct}%`}</td>
+                      <td className="py-3 text-right text-white/70">{exam.passRate == null ? "—" : `${exam.passRate}%`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-white/45">No marking activity yet.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+type MarkerStats = {
+  totals: { awaiting: number; marked: number; released: number; averageScorePct: number | null; passRate: number | null };
+  exams: { mockExamId: number; title: string; examType: string; awaiting: number; marked: number; released: number; averageScorePct: number | null; passRate: number | null }[];
+};
+
+function StatCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="flex items-center gap-4 p-5">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#18093c]/60">{icon}</div>
+        <div>
+          <div className="text-2xl font-black text-white">{value}</div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-white/45">{label}</div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1367,7 +1538,7 @@ export default function AdminConsole({ mode }: { mode: "admin" | "instructor" })
   }
 
   const isAdmin = user.role === "admin";
-  const tabs = isAdmin ? ["Overview", "Payments", "Coupons", "Users", "Entitlements", "Content", "Marking queue"] : ["Content", "Marking queue"];
+  const tabs = isAdmin ? ["Overview", "Payments", "Coupons", "Users", "Entitlements", "Content", "Marking queue", "Performance"] : ["Content", "Marking queue", "Performance"];
 
   return (
     <div className="min-h-screen bg-[#0c0524]">
@@ -1422,6 +1593,7 @@ export default function AdminConsole({ mode }: { mode: "admin" | "instructor" })
           {tab === "Entitlements" && <EntitlementsTab />}
           {tab === "Content" && <ContentTab />}
           {tab === "Marking queue" && <MarkingTab />}
+          {tab === "Performance" && <PerformanceTab />}
         </main>
       </div>
     </div>
