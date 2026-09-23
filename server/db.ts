@@ -235,6 +235,40 @@ export async function saveAnswerDraft(input: { userId: number; attemptId: number
   return { id: created[0]?.id, version: 1, savedAt: new Date() };
 }
 
+export async function listAttemptAnswers(userId: number, attemptId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const attempt = await db.select().from(attempts).where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId))).limit(1);
+  if (!attempt[0]) throw new Error("Attempt not found");
+  const [answerRows, sectionRows, exam] = await Promise.all([
+    db.select().from(answers).where(eq(answers.attemptId, attemptId)),
+    db.select().from(caseStudySections).where(eq(caseStudySections.mockExamId, attempt[0].mockExamId)),
+    db.select({ id: mockExams.id, title: mockExams.title }).from(mockExams).where(eq(mockExams.id, attempt[0].mockExamId)).limit(1),
+  ]);
+  const answerBySection = new Map(answerRows.map((row) => [row.sectionId, row]));
+  const authored = sectionRows.sort((a, b) => a.sectionNumber - b.sectionNumber);
+  const maxTask = Math.max(4, ...authored.map((section) => section.sectionNumber), ...answerRows.map((row) => row.sectionId));
+  return {
+    attempt: attempt[0],
+    mockExamId: attempt[0].mockExamId,
+    examTitle: exam[0]?.title ?? `Mock exam ${attempt[0].mockExamId}`,
+    sections: Array.from({ length: maxTask }, (_, index) => index + 1).map((sectionNumber) => {
+      const section = authored.find((row) => row.sectionNumber === sectionNumber);
+      const answer = answerBySection.get(sectionNumber);
+      return {
+        sectionNumber,
+        title: section?.title ?? `Task ${sectionNumber}`,
+        introduction: section?.introduction ?? null,
+        scenario: section?.scenario ?? null,
+        question: section?.question ?? "Prepare your response in the answer pad below.",
+        durationSeconds: section?.durationSeconds ?? 45 * 60,
+        answer: answer?.body ?? "",
+        wordCount: answer?.wordCount ?? 0,
+        savedAt: answer?.savedAt ?? null,
+      };
+    }),
+  };
+}
+
 export async function submitAttempt(input: { userId: number; attemptId: number; optOutOfMarking: boolean }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const attempt = await db.select().from(attempts).where(and(eq(attempts.id, input.attemptId), eq(attempts.userId, input.userId))).limit(1);
