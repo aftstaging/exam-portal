@@ -1477,7 +1477,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                     <div key={section.sectionNumber} className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4">
                       <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">{section.title}</span><Badge className="bg-[#102b36] text-[#00ff88]">{section.durationSeconds / 60} min</Badge></div>
                       {section.introduction && <StructuredText className="mt-3 text-sm leading-6 text-[#c4b5fd]" text={`**Introduction:** ${section.introduction ?? ""}`} />}
-                      {section.scenario && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Scenario:** ${section.scenario ?? ""}`} />}
+                      {section.scenario && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Extra notes:** ${section.scenario ?? ""}`} />}
                       {section.question && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Question:** ${section.question ?? ""}`} />}
                       {section.email && (section.email.from || section.email.to || section.email.subject || section.email.html) && (
                         <div className="mt-3 overflow-hidden rounded-xl border border-white/10">

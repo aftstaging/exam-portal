@@ -111,7 +111,7 @@ export async function generateBrandedPrintablePdf(exam: PrintableExam, sections:
     if (!section?.title) continue;
     sectionBanner(`SECTION ${section.sectionNumber} · ${section.title}`, `${Math.round((section.durationSeconds ?? 0) / 60)} min`);
     paragraph(section.introduction ?? "Refer to the protected question paper for the complete case-study task and instructions.", regular, 10, violet);
-    if (section.scenario?.trim()) { y -= 2; line("Scenario", bold, 10, mint); paragraph(section.scenario, regular, 10, violet); }
+    if (section.scenario?.trim()) { y -= 2; line("Extra notes", bold, 10, mint); paragraph(section.scenario, regular, 10, violet); }
     if (section.question?.trim()) { y -= 2; line("Task question", bold, 10, mint); paragraph(section.question, regular, 10, violet); }
     const sectionEmail = section.email && (section.email.from || section.email.to || section.email.subject || section.email.html) ? section.email : null;
     if (sectionEmail) {

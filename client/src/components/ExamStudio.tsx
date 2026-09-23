@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
   Bold,
   BookOpen,
   Calculator,
@@ -196,6 +200,11 @@ function RichTextEditor({ value, onChange, placeholder }: { value: string; onCha
         <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("italic")} title="Italic" aria-label="Italic"><Italic className="h-4 w-4" /></button>
         <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("underline")} title="Underline" aria-label="Underline"><Underline className="h-4 w-4" /></button>
         <span className="mx-1 h-5 w-px bg-white/10" />
+        <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("justifyLeft")} title="Align left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("justifyCenter")} title="Align centre" aria-label="Align centre"><AlignCenter className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("justifyRight")} title="Align right" aria-label="Align right"><AlignRight className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("justifyFull")} title="Justify" aria-label="Justify"><AlignJustify className="h-4 w-4" /></button>
+        <span className="mx-1 h-5 w-px bg-white/10" />
         <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("insertUnorderedList")} title="Bullet list" aria-label="Bullet list"><List className="h-4 w-4" /></button>
         <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("insertOrderedList")} title="Numbered list" aria-label="Numbered list"><ListOrdered className="h-4 w-4" /></button>
       </div>
@@ -207,7 +216,7 @@ function RichTextEditor({ value, onChange, placeholder }: { value: string; onCha
         data-placeholder={placeholder}
         className="email-editor min-h-40 cursor-text px-3 py-2 text-sm leading-6 text-white outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-white/30"
       />
-      <style>{`.email-editor ul{list-style:disc;padding-left:1.5rem;margin:0.25rem 0;} .email-editor ol{list-style:decimal;padding-left:1.5rem;margin:0.25rem 0;}`}</style>
+      <style>{`.email-editor ul{list-style:disc;padding-left:1.5rem;margin:0.25rem 0;} .email-editor ol{list-style:decimal;padding-left:1.5rem;margin:0.25rem 0;} .email-editor p{margin:0.25rem 0;} .email-editor div[align="center"],.email-editor [style*="text-align:center"]{text-align:center;} .email-editor [style*="text-align:right"]{text-align:right;} .email-editor [style*="text-align:justify"]{text-align:justify;}`}</style>
     </div>
   );
 }
@@ -336,8 +345,9 @@ type SectionDraft = {
   title: string;
   duration: string;
   introduction: string;
-  scenario: string;
+  extraNotes: string;
   question: string;
+  emailMode: "compose" | "file";
   emailFrom: string;
   emailTo: string;
   emailSubject: string;
@@ -350,8 +360,9 @@ const emptySection = (number: number): SectionDraft => ({
   title: `Task ${number}`,
   duration: "45",
   introduction: "",
-  scenario: "",
+  extraNotes: "",
   question: "",
+  emailMode: "compose",
   emailFrom: "",
   emailTo: "",
   emailSubject: "",
@@ -382,45 +393,59 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
         <FormattingTextarea label="Introduction / instructions" value={section.introduction} onChange={(value) => set({ introduction: value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="min-h-16" />
       </div>
       <div>
-        <FormattingTextarea label="Scenario (optional)" value={section.scenario} onChange={(value) => set({ scenario: value })} placeholder="Case scenario / advance information specific to this task…" className="min-h-16" />
+        <label className="text-xs font-semibold text-[#c4b5fd]">Extra notes (optional)</label>
+        <Input value={section.extraNotes} onChange={(event) => set({ extraNotes: event.target.value })} placeholder="Advance information / notes specific to this task…" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label={`Extra notes ${index + 1}`} />
       </div>
       <div>
         <FormattingTextarea label="Task / question" value={section.question} onChange={(value) => set({ question: value })} placeholder="The task candidates must answer…" className="min-h-16" />
       </div>
+      <div className="grid gap-3 lg:grid-cols-2">
       <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0c0524]/60">
         <div className="flex items-center justify-between border-b border-white/10 bg-[#102b36]/40 px-3 py-2">
           <span className="text-xs font-bold uppercase tracking-[.14em] text-[#00e5ff]">Task email attachment</span>
-          {(section.emailFrom || section.emailTo || section.emailSubject || section.emailText || section.emailImage) && (
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[#ff8278]" onClick={() => set({ emailFrom: "", emailTo: "", emailSubject: "", emailText: "", emailImage: null })}><Trash2 className="h-3.5 w-3.5" /> Clear</Button>
-          )}
-        </div>
-        <div className="grid gap-px bg-white/10 sm:grid-cols-2">
-          <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
-            <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">From</span>
-            <Input value={section.emailFrom} onChange={(event) => set({ emailFrom: event.target.value })} placeholder="sender@accountantstomorrow.co.za" className={emailStyle} aria-label={`Email from ${index + 1}`} />
-          </label>
-          <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
-            <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">To</span>
-            <Input value={section.emailTo} onChange={(event) => set({ emailTo: event.target.value })} placeholder="learner@example.com" className={emailStyle} aria-label={`Email to ${index + 1}`} />
-          </label>
-        </div>
-        <div className="border-t border-white/10">
-          <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
-            <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">Subject</span>
-            <Input value={section.emailSubject} onChange={(event) => set({ emailSubject: event.target.value })} placeholder="e.g. Advance information for this task" className="h-9 border-none bg-transparent px-0 text-white shadow-none" aria-label={`Email subject ${index + 1}`} />
-          </label>
-        </div>
-        <div className="border-t border-white/10">
-          <p className="bg-[#0c0524] px-3 pt-2 text-[11px] font-semibold text-[#c4b5fd]">Message</p>
-          <div className="bg-[#0c0524] p-2">
-            <RichTextEditor value={section.emailText} onChange={(value) => set({ emailText: value })} placeholder="Type or paste the email message for this task…" />
+          <div className="flex items-center gap-1">
+            <div className="flex rounded-lg border border-white/10 bg-[#0c0524] p-0.5">
+              <button type="button" className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${section.emailMode === "compose" ? "bg-[#102b36] text-[#00ff88]" : "text-white/50 hover:text-white"}`} onClick={() => set({ emailMode: "compose" })}>Compose</button>
+              <button type="button" className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${section.emailMode === "file" ? "bg-[#102b36] text-[#00ff88]" : "text-white/50 hover:text-white"}`} onClick={() => set({ emailMode: "file" })}>File (image / PDF)</button>
+            </div>
+            {(section.emailFrom || section.emailTo || section.emailSubject || section.emailText || section.emailImage) && (
+              <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[#ff8278]" onClick={() => set({ emailMode: "compose", emailFrom: "", emailTo: "", emailSubject: "", emailText: "", emailImage: null })}><Trash2 className="h-3.5 w-3.5" /> Clear</Button>
+            )}
           </div>
         </div>
-        <div className="border-t border-white/10 p-3">
-          <AttachSlot label="Email image" icon={<ImageUp className="h-4 w-4 text-[#00e5ff]" />} hint="A PNG or JPEG screenshot of the email for this task." accept="image/png,image/jpeg" value={section.emailImage} onChange={(file) => set({ emailImage: file })} note="PNG / JPEG only, up to 10 MB." />
-        </div>
+        {section.emailMode === "compose" ? (
+          <>
+            <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+              <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
+                <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">From</span>
+                <Input value={section.emailFrom} onChange={(event) => set({ emailFrom: event.target.value })} placeholder="sender@accountantstomorrow.co.za" className={emailStyle} aria-label={`Email from ${index + 1}`} />
+              </label>
+              <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
+                <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">To</span>
+                <Input value={section.emailTo} onChange={(event) => set({ emailTo: event.target.value })} placeholder="learner@example.com" className={emailStyle} aria-label={`Email to ${index + 1}`} />
+              </label>
+            </div>
+            <div className="border-t border-white/10">
+              <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
+                <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">Subject</span>
+                <Input value={section.emailSubject} onChange={(event) => set({ emailSubject: event.target.value })} placeholder="e.g. Advance information for this task" className="h-9 border-none bg-transparent px-0 text-white shadow-none" aria-label={`Email subject ${index + 1}`} />
+              </label>
+            </div>
+            <div className="border-t border-white/10">
+              <p className="bg-[#0c0524] px-3 pt-2 text-[11px] font-semibold text-[#c4b5fd]">Message</p>
+              <div className="bg-[#0c0524] p-2">
+                <RichTextEditor value={section.emailText} onChange={(value) => set({ emailText: value })} placeholder="Type or paste the email message for this task…" />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="p-3">
+            <AttachSlot label="Email attachment file" icon={<ImageUp className="h-4 w-4 text-[#00e5ff]" />} hint="Attach the email as an image or a PDF file for this task." accept=".pdf,application/pdf,image/png,image/jpeg,image/webp" value={section.emailImage} onChange={(file) => set({ emailImage: file })} note="PDF, PNG, JPEG or WebP, up to 10 MB." />
+          </div>
+        )}
       </div>
       <AttachSlot label="Reference material" icon={<MapPin className="h-4 w-4 text-[#00e5ff]" />} hint="Permitted reference documents specific to this task." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={section.reference} onChange={(file) => set({ reference: file })} note="Document, PDF, PNG or JPG." />
+      </div>
     </div>
   );
 }
@@ -502,16 +527,16 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                             <div><p className="eyebrow">Task {index + 1} of {sortedSections.length}</p><h1 className="mt-2 text-2xl font-bold text-white">{section.title || `Task ${index + 1}`}</h1></div>
                             <Badge className="shrink-0 bg-[#102b36] text-[#00ff88]">{section.duration || "45"} minutes</Badge>
                           </div>
-                          {(section.introduction || section.question || section.scenario) && (
-                            <StructuredText className="mt-5 text-base leading-8 text-[#c4b5fd]" text={section.introduction || section.question || section.scenario} />
+                          {(section.introduction || section.question || section.extraNotes) && (
+                            <StructuredText className="mt-5 text-base leading-8 text-[#c4b5fd]" text={section.introduction || section.question || section.extraNotes} />
                           )}
-                          {section.scenario && (section.introduction || section.question) && (
+                          {section.extraNotes && (section.introduction || section.question) && (
                             <div className="mt-4 rounded-xl border border-[#00e5ff]/30 bg-[#18093c] p-5">
-                              <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Scenario</div>
-                              <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.scenario} />
+                              <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Extra notes</div>
+                              <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.extraNotes} />
                             </div>
                           )}
-                          {section.question && section.scenario && (
+                          {section.question && section.extraNotes && (
                             <div className="mt-4 rounded-xl border border-[#00ff88]/40 bg-[#102b36] p-5">
                               <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">Task</div>
                               <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.question} />
@@ -665,8 +690,9 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             title: s.title || `Task ${s.sectionNumber}`,
             duration: String(Math.max(1, Math.round((s.durationSeconds ?? 2700) / 60))),
             introduction: s.introduction ?? "",
-            scenario: s.scenario ?? "",
+            extraNotes: s.scenario ?? "",
             question: s.question ?? "",
+            emailMode: s.emailImage && !s.emailText ? "file" : "compose",
             emailFrom: s.emailFrom ?? "",
             emailTo: s.emailTo ?? "",
             emailSubject: s.emailSubject ?? "",
@@ -780,8 +806,9 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             title: s.title,
             duration: String(Math.max(1, Math.round(s.durationSeconds / 60))),
             introduction: s.introduction ?? "",
-            scenario: s.scenario ?? "",
+            extraNotes: s.scenario ?? "",
             question: s.question ?? "",
+            emailMode: "compose",
             emailFrom: (s.email as { from?: string } | null | undefined)?.from ?? "",
             emailTo: (s.email as { to?: string } | null | undefined)?.to ?? "",
             emailSubject: (s.email as { subject?: string } | null | undefined)?.subject ?? "",
@@ -790,6 +817,9 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             reference: s.reference ? { fileName: s.reference.fileName, keepUrl: s.reference.keepUrl } : null,
           }))
         : [emptySection(1)];
+      draftSections.forEach((section) => {
+        section.emailMode = section.emailImage && !section.emailText ? "file" : "compose";
+      });
       if (email) {
         const target = draftSections[0];
         if (target) {
@@ -799,6 +829,9 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
           target.emailText = target.emailText || email.html || "";
         }
       }
+      draftSections.forEach((section) => {
+        section.emailMode = section.emailImage && !section.emailText ? "file" : "compose";
+      });
       setSections(draftSections);
       const fb = resources.find((r) => r.kind === "feedback");
       if (fb && fb.fileUrl && !fb.fileUrl.trim().startsWith("{")) {
@@ -902,7 +935,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
               sectionNumber: index + 1,
               title: section.title.trim() || `Task ${index + 1}`,
               introduction: section.introduction.trim() || undefined,
-              scenario: section.scenario.trim() || undefined,
+              scenario: section.extraNotes.trim() || undefined,
               question: section.question.trim() || undefined,
               durationSeconds: Math.max(60, Math.round(Number(section.duration || 45) * 60)),
               emailFrom: section.emailFrom.trim() || undefined,
@@ -1113,7 +1146,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
               <section>
                 <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> Sections / tasks & timing</div>
                 <p className="mb-3 text-xs leading-5 text-white/50">
-                  Add each case-study task in order. Each section has its own title, time limit, instructions, optional scenario, task wording, email attachment and reference material (like the example Cartn Mock Exams with four 45-minute tasks). Pre-seen and formulae + tables stay exam-wide below.
+                  Add each case-study task in order. Each section has its own title, time limit, instructions, optional extra notes, task wording, email attachment (composed manually or attached as an image / PDF) and reference material (like the example Cartn Mock Exams with four 45-minute tasks). Pre-seen and formulae + tables stay exam-wide below.
                 </p>
                 <div className="space-y-4">
                   {sections.map((section, index) => (

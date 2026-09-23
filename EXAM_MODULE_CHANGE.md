@@ -1,4 +1,4 @@
-# Exam Module Change — Per-Task Email & Reference Attachments
+# Exam Module Change — Per-Task Email & Reference Attachments + Task Editor Restructure
 
 **Date:** 23 September 2026
 **Repository:** https://github.com/aftstaging/exam-portal
@@ -40,20 +40,53 @@ exam-wide (universal).
   upload/keep/delete, audit events); per-task aggregation in `createExamBundle`,
   `updateExamBundle`, `getAdminExamBundleDetail`, `getAdminExamPreview`,
   `generatePrintablePdf`, and protected-resource download/zip endpoints.
-- **`server/pdf.ts`:** prints each task's email (from/to/subject/body) and its
-  attachment titles under the task section.
+- **`server/pdf.ts`:** prints each task's email (from/to/subject/body), its
+  attachment titles, and its "Extra notes" under the task section.
 - **`server/routers.ts`:** zod input for `createExamBundle` / `updateExamBundle`
   now accepts per-section `emailFrom/To/Subject/Text`, `emailImage`, `reference`
   (update also accepts `keepUrl` for unchanged files).
-- **`client/src/components/ExamStudio.tsx`:** per-task email editor (from/to/
-  subject/message + optional email image + clear button) and per-task reference
-  slot inside each section editor; preview modal shows per-task email and badges;
-  detail-load migrates a legacy exam-wide email into Task 1.
+- **`client/src/components/ExamStudio.tsx`:** restructured task/section editor.
+  Each task now has: title → duration → introduction/instructions → **Extra notes
+  (optional)** (single-line input, replacing the old multi-line "Scenario"
+  textarea) → **Task / question** → a side-by-side pair of **Task email
+  attachment** and **Reference material**. The email attachment supports two
+  modes: **Compose** (from / to / subject / rich-text message) or **File (image /
+  PDF)** (attached PNG / JPEG / WebP / PDF). The rich-text message editor gained
+  text alignment buttons (align left, centre, right, justify). Preview modal shows
+  per-task email + badges; detail-load migrates a legacy exam-wide email into
+  Task 1.
 - **`client/src/pages/Home.tsx`:** learner buttons are labelled
-  "Email attachment · Task N" / "Reference material · Task N" and resolve the
-  resource for the current task, falling back to exam-wide rows for older exams.
+  "Email attachment · Task N" / "Reference material · Task N", the per-task field
+  displays as "Extra notes", and resources resolve to the current task, falling
+  back to exam-wide rows for older exams.
 - **`client/src/pages/AdminConsole.tsx`:** admin preview renders each task's email
-  and badges for email image / reference file name.
+  and badges for email image / reference file name, and labels the notes field
+  "Extra notes".
+
+### Task editor layout (as authored in Exam Studio)
+
+```
+Task 1                                    [Remove]
+  Section title  |  Duration (minutes)
+  Introduction / instructions             (rich text / markdown)
+  Extra notes (optional)                  (single-line input)
+  Task / question                         (rich text / markdown)
+  ┌─────────────────────────────┬─────────────────────────────┐
+  │ Task email attachment       │ Reference material          │
+  │  [Compose | File (image/PDF)]│                             │
+  │  From / To / Subject        │  [Choose file]              │
+  │  Message (align/justify)    │                             │
+  └─────────────────────────────┴─────────────────────────────┘
+[Add section]
+```
+
+The email "Compose" / "File" toggle lets an author either type the email
+(composed brief) or attach a pre-built email as an image or PDF. Choose "Compose"
+and fill From / To / Subject / message; the toolbar includes **bold, italic,
+underline, align left, centre, right, justify, bullet list, numbered list**.
+Choose "File (image / PDF)" to upload the email brief as a `.pdf`, `.png`,
+`.jpeg` or `.webp` file instead. The "Clear" button removes the whole email
+attachment for that task.
 
 ### Backward compatibility
 
@@ -61,7 +94,10 @@ exam-wide (universal).
   learner viewer falls back to `sectionNumber = NULL` rows.
 - Re-saving an old exam in the studio migrates the universal email meta into
   Task 1 so authors can start per-task editing.
-- Universal rows are **never** deleted on re-save; the feature is purely additive.
+- A task with only an attached email file opens in "File (image / PDF)" mode when
+  edited; a task with a composed message opens in "Compose" mode. The old
+  `scenario` column is now labelled "Extra notes" everywhere — no data is lost,
+  no database column was renamed.
 
 ---
 
@@ -111,11 +147,15 @@ pnpm exec drizzle-kit generate
 Manual smoke test:
 
 1. Create a case-study exam in Exam Studio with 2+ tasks.
-2. Give Task 1 and Task 2 different email attachments and different reference documents.
-3. Save / publish, then open the exam as a learner.
-4. On Task 1 confirm the buttons read "Email attachment · Task 1" / "Reference material · Task 1" and show Task 1's content; on Task 2 confirm Task 2's content.
-5. As an admin, open the exam preview and confirm each task's email shows under its section with the email-image/reference badges.
-6. Download the printable exam PDF and confirm each task section includes its email and attachment list.
+2. For Task 1 compose an email in the **Task email attachment** box (From / To /
+   Subject / message with aligned text) and attach a reference document beside it.
+3. For Task 2 switch the email to **File (image / PDF)** and upload a PDF email
+   brief; give Task 2 a different reference document. Add "Extra notes" to at
+   least one task.
+4. Save / publish, then open the exam as a learner.
+5. On Task 1 confirm the buttons read "Email attachment · Task 1" / "Reference material · Task 1" and show Task 1's content; on Task 2 confirm Task 2's content (including the attached PDF email).
+6. As an admin, open the exam preview and confirm each task's email shows under its section with the email-file/reference badges and the extra notes label.
+7. Download the printable exam PDF and confirm each task section includes its email (or attachment titles) and its notes.
 
 ---
 
@@ -162,12 +202,15 @@ download the printable PDF).
 ## 5. How to author per-task attachments (after deploy)
 
 1. Open Exam Studio → Case study exam → create a section (task).
-2. Under the **Task email** editor set From / To / Subject and the message body.
-   Optionally attach one **email image**.
-3. Attach the per-task **reference** document in the section's reference slot.
-4. Leave a task's email/reference empty if that task should use none (or, for
+2. Fill the section title, duration, introduction/instructions and (optional)
+   **Extra notes**. Add the **Task / question** wording.
+3. In the **Task email attachment** box choose **Compose** and set From / To /
+   Subject and the message (use the align/justify buttons for layout), **or**
+   choose **File (image / PDF)** and upload the email brief as a PDF or image.
+4. Beside it, attach the per-task **Reference material** document.
+5. Leave a task's email/reference empty if that task should use none (or, for
    legacy exams, the migrated Task 1 email).
-5. Save/publish. Pre-seen and formulae remain configured at exam level.
+6. Save/publish. Pre-seen and formulae remain configured at exam level.
 
 ---
 
@@ -206,8 +249,8 @@ reverting those rows as well, which is outside normal scope.
 | `drizzle/0013_normal_roulette.sql` | Migration: `ALTER TABLE resources ADD sectionNumber int` |
 | `drizzle/meta/0013_snapshot.json`, `drizzle/meta/_journal.json` | Drizzle migration metadata |
 | `server/db.ts` | `writeSectionResources`, per-task aggregation in create/update/details/PDF/protected resources |
-| `server/pdf.ts` | Per-task email + attachment titles in the printable PDF |
+| `server/pdf.ts` | Per-task email + attachment titles + extra notes in the printable PDF |
 | `server/routers.ts` | Per-section email/reference input schemas (with `keepUrl`) |
-| `client/src/components/ExamStudio.tsx` | Per-task email/reference editors, preview, detail-load migration |
-| `client/src/pages/Home.tsx` | Per-task resolution + task-labelled resource buttons |
-| `client/src/pages/AdminConsole.tsx` | Per-task email in admin exam preview |
+| `client/src/components/ExamStudio.tsx` | Restructured task editor (Extra notes input, side-by-side email + reference, compose/file email toggle, align/justify toolbar), preview, detail-load migration |
+| `client/src/pages/Home.tsx` | Per-task resolution + task-labelled resource buttons + "Extra notes" display |
+| `client/src/pages/AdminConsole.tsx` | Per-task email in admin exam preview + "Extra notes" label |
