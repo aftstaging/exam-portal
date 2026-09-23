@@ -17,4 +17,6 @@ export const ENV = {
   payfastLiveMerchantKey: process.env.PAYFAST_LIVE_MERCHANT_KEY ?? "",
   payfastLivePassphrase: process.env.PAYFAST_LIVE_PASSPHRASE ?? "",
   payfastMode: (process.env.PAYFAST_MODE as "sandbox" | "live") || "sandbox",
+
+  qaDemoAccessEnabled: () => process.env.AFT_QA_DEMO_ACCESS === "true",
 };

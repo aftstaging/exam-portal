@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ShieldCheck } from "lucide-react";
 import {
   closeLoginDialog,
   getLoginDialogState,
@@ -45,6 +46,15 @@ export function LoginDialog() {
     onError: handleError,
   });
   const registerMutation = trpc.auth.register.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+      handleClose();
+      await redirectAdminAfterLogin();
+    },
+    onError: handleError,
+  });
+  const qaDemoStatus = trpc.auth.qaDemoStatus.useQuery();
+  const qaDemoMutation = trpc.auth.qaDemoLogin.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
       handleClose();
@@ -188,6 +198,26 @@ export function LoginDialog() {
             </form>
           </TabsContent>
         </Tabs>
+
+        {qaDemoStatus.data?.enabled ? (
+          <div className="mt-6 rounded-xl border border-[#00ff88]/40 bg-[#102b36]/50 p-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-[#00ff88]" />
+              <span className="text-sm font-bold text-[#00ff88]">Temporary QA access</span>
+            </div>
+            <p className="mt-1 text-xs leading-5 text-white/60">
+              Sign in as the isolated AFT demo learner for controlled testing. This account is a
+              non-admin learner and cannot alter real entitlements.
+            </p>
+            <Button
+              className="aft-button mt-3"
+              disabled={qaDemoMutation.isPending}
+              onClick={() => qaDemoMutation.mutate()}
+            >
+              {qaDemoMutation.isPending ? "Starting QA session…" : "Enter as demo learner"}
+            </Button>
+          </div>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

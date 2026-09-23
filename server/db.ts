@@ -7,6 +7,7 @@ import { generateBrandedPrintablePdf } from "./pdf";
 import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
+import { DEMO_LEARNER_EMAIL, DEMO_LEARNER_NAME, DEMO_LEARNER_OPEN_ID } from "@shared/const";
 import {
   answers,
   attempts,
@@ -104,9 +105,9 @@ export async function updateUserLastSignedIn(userId: number) {
 
 export async function provisionDemoLearner(adminUserId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const openId = "aft-demo-learner-60d";
-  const email = "demo@accountantsfortomorrow.co.za";
-  await upsertUser({ openId, name: "AFT Demo Learner", email, loginMethod: "demo", role: "user", lastSignedIn: new Date() });
+  const openId = DEMO_LEARNER_OPEN_ID;
+  const email = DEMO_LEARNER_EMAIL;
+  await upsertUser({ openId, name: DEMO_LEARNER_NAME, email, loginMethod: "demo", role: "user", lastSignedIn: new Date() });
   const demoUser = await getUserByOpenId(openId);
   if (!demoUser) throw new Error("Demo learner could not be created");
   const catalogue = await db.select().from(products).where(eq(products.status, "published"));
@@ -125,6 +126,14 @@ export async function provisionDemoLearner(adminUserId: number) {
   }
   await db.insert(auditEvents).values({ userId: adminUserId, entityType: "demo_learner", entityId: demoUser.id, action: "provisioned", metadata: JSON.stringify({ openId, productCount: eligible.length, expiresAt: expiresAt.toISOString() }) });
   return { id: demoUser.id, openId, email, name: demoUser.name, productCount: eligible.length, expiresAt };
+}
+
+export async function getDemoLearnerForQaAccess() {
+  if (!ENV.qaDemoAccessEnabled()) throw new Error("QA demo access is disabled");
+  const demoUser = await getUserByOpenId(DEMO_LEARNER_OPEN_ID);
+  if (!demoUser) throw new Error("Demo learner has not been provisioned yet");
+  if (demoUser.role !== "user") throw new Error("Demo learner must remain a non-admin user");
+  return demoUser;
 }
 
 export async function listPublishedProducts() {

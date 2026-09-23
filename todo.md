@@ -204,11 +204,11 @@
 - [x] Route Objective test products away from `/case-study/mode` into the objective-test course/customization journey.
 - [x] Remove Case Study section metadata and mode cards from Objective test access while preserving Case Study routes.
 - [x] Add regression coverage for objective deep links and Case Study route separation.
-- [ ] Create an isolated, clearly labelled demo learner account with all current Case Study and Objective test products attached.
-- [ ] Set the demo account entitlements to expire after 60 days and show the expiry in the learner account.
-- [ ] Add safe provisioning tests and validate the demo account without affecting real learners.
+- [x] Create an isolated, clearly labelled demo learner account with all current Case Study and Objective test products attached.
+- [x] Set the demo account entitlements to expire after 60 days and show the expiry in the learner account.
+- [x] Add safe provisioning tests and validate the demo account without affecting real learners.
 - [x] Change current exam products to paid and show Start exam instead of Add to cart for genuinely free products.
-- [ ] Provision the isolated demo learner with all current Case Study and Objective test products for 60 days and verify the entitlement set.
+- [x] Provision the isolated demo learner with all current Case Study and Objective test products for 60 days and verify the entitlement set.
 - [x] Hide correctness, score, percentage, explanations, and result controls until Objective test submission is complete.
 - [x] Remove the in-exam Scratch pad panel and expand the question/answer workspace.
 - [x] Add End Assessment, Flag, Navigation, Back, and Next controls to the Objective test pad.
@@ -228,9 +228,9 @@
 - [x] Rework the Objective test workspace to match the supplied reference image at the question, timer, answer-choice, flag, navigation, and end-assessment layout level while preserving AFT branding and active-attempt behavior.
 - [x] Capture desktop/mobile QA and regression-test the revised Objective workspace without exposing correctness feedback during an active attempt.
 
-- [ ] Add a temporary, clearly labelled QA/demo learner access mode that bypasses only learner login for controlled testing while preserving admin authorization, PayFast verification, protected-resource safeguards, and production user security.
-- [ ] Add tests proving QA/demo access is isolated, non-admin, and cannot grant or alter real learner entitlements.
-- [ ] Verify the temporary QA learner journey and document how to disable or roll back the mode.
+- [x] Add a temporary, clearly labelled QA/demo learner access mode that bypasses only learner login for controlled testing while preserving admin authorization, PayFast verification, protected-resource safeguards, and production user security.
+- [x] Add tests proving QA/demo access is isolated, non-admin, and cannot grant or alter real learner entitlements.
+- [x] Verify the temporary QA learner journey and document how to disable or roll back the mode.
 
 - [x] Minimize and center the product-specific Objective test panel at productId 30003 while preserving its CIMA-style hierarchy and controls.
 - [x] Adapt the product-specific Objective panel colors to the established AFT dark-violet, cyan, mint, lavender, and white-CTA palette.

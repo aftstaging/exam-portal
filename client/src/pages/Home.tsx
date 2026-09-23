@@ -250,12 +250,15 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
   const totalSections = Math.max(4, examSections.length);
   const resolveTaskResource = (kind: "email" | "reference" | "pre_seen" | "formulae") => {
     const universal = kind === "formulae" || kind === "pre_seen";
-    const rows = examResourcesQuery.data?.filter((item) => item.kind === kind && (universal || item.sectionNumber === currentSection || item.sectionNumber == null)) ?? [];
+    const rows = examResourcesQuery.data?.filter((item) => item.kind === kind && (universal || item.sectionNumber === currentSection)) ?? [];
     const present = (item: typeof rows[number]) => (kind === "email" ? Boolean(item.email || item.hasFile) : Boolean(item.hasFile));
-    return rows.find((item) => item.sectionNumber === currentSection && present(item))
-      ?? rows.find((item) => item.kind === "email" && item.sectionNumber === currentSection && item.email)
-      ?? rows.find((item) => item.sectionNumber == null && present(item))
-      ?? (universal ? rows.find((item) => present(item)) : undefined);
+    if (kind === "email") {
+      return rows.find((item) => item.email) ?? rows.find((item) => present(item));
+    }
+    if (universal) {
+      return rows.find((item) => item.sectionNumber == null && present(item)) ?? rows.find((item) => present(item));
+    }
+    return rows.find((item) => present(item));
   };
   const currentSectionMeta = examSections.find((item) => item.sectionNumber === currentSection);
   const sectionTitle = currentSectionMeta?.title ?? `Task ${currentSection}`;

@@ -55,3 +55,14 @@ The published route `/objective-tests?mockExamId=30003&productId=30003` was repl
 ## Windows local launcher fix
 
 The downloaded project reported `Error: spawn EINVAL` in PowerShell because the launcher attempted to spawn Windows command invocations in a way that is fragile on Node 24. The launcher now starts the server through `ComSpec` with `npm.cmd run dev:server` and opens URLs through `explorer.exe`, which delegates to the configured default browser. `npm run dev` was exercised in headless mode with `AFT_OPEN_BROWSER=false` and `PORT=3199`; the server started successfully. Launcher syntax, TypeScript, all 38 Vitest tests, and the production build pass.
+
+## Temporary QA/demo learner access mode
+
+A clearly labelled QA learner access path is now available for controlled testing without circulating real learner passwords:
+
+- **Enable:** set `AFT_QA_DEMO_ACCESS=true` in the server environment and restart. The sign-in dialog then shows a `Temporary QA access` panel with an `Enter as demo learner` action. The demo learner must have been provisioned first by an administrator via the admin console `Provision 60-day demo account` action (`admin.provisionDemoLearner`, gated to admins).
+- **What it does:** `auth.qaDemoStatus` exposes whether the mode is on; `auth.qaDemoLogin` starts a session for the isolated demo learner (`demo@accountantsfortomorrow.co.za`, openId `aft-demo-learner-60d`) without a password.
+- **Safety:** the demo account is always a non-admin `user` role, so admin procedures still reject it. The login procedure issues a normal signed session cookie and does not call any entitlement-granting or pricing code, so it cannot grant or alter real learner entitlements. PayFast ITN verification and protected-resource entitlement checks are untouched.
+- **Disabled by default:** with the flag absent or not strictly `true`, `qaDemoLogin` fails with `QA demo access is disabled` and the dialog hides the QA panel.
+- **Rollback:** remove `AFT_QA_DEMO_ACCESS` from the environment and restart; no database migration is required. The demo learner and its 60-day entitlements remain but cease to be reachable through the QA panel.
+- **Coverage:** `server/qa-demo-access.test.ts` verifies status reporting, the fails-closed disabled path, and the isolated demo openId constant; `server/qa-demo-session.test.ts` proves the session cookie is issued for the demo learner and that login cannot call entitlement-granting procedures.

@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getProtectedResourceZip, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listAttemptAnswers, listMarkerQueue, listMarkerStats, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, getPrintableExamPdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, updateAdminCoupon, deleteAdminCoupon, validateCoupon, checkoutWithCoupon, getAdminExamPreview, getAdminExamBundleDetail, updateExamBundle, deleteExamBundle, listAdminCatalogue } from "./db";
+import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getProtectedResourceZip, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listAttemptAnswers, listMarkerQueue, listMarkerStats, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, getPrintableExamPdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getDemoLearnerForQaAccess, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, updateAdminCoupon, deleteAdminCoupon, validateCoupon, checkoutWithCoupon, getAdminExamPreview, getAdminExamBundleDetail, updateExamBundle, deleteExamBundle, listAdminCatalogue } from "./db";
 import { createCheckoutSession } from "./stripe";
 import { isAdminRole } from "@shared/integrity";
 import { getDb } from "./db";
@@ -13,6 +13,7 @@ import { createPayFastHostedCheckout, type PayFastMode } from "./payfast";
 import { eq, inArray } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "./_core/password";
 import { sdk } from "./_core/sdk";
+import { ENV } from "./_core/env";
 import { ONE_YEAR_MS } from "@shared/const";
 import { type User } from "../drizzle/schema";
 import { parseExamPdf } from "./pdfImport";
@@ -56,6 +57,14 @@ export const appRouter = router({
       const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
       ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
       return toSafeUser(user);
+    }),
+    qaDemoStatus: publicProcedure.query(() => ({ enabled: ENV.qaDemoAccessEnabled() })),
+    qaDemoLogin: publicProcedure.mutation(async ({ ctx }) => {
+      const demoUser = await getDemoLearnerForQaAccess();
+      const sessionToken = await sdk.createSessionToken(demoUser.openId, { name: demoUser.name ?? "", expiresInMs: ONE_YEAR_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+      await updateUserLastSignedIn(demoUser.id);
+      return toSafeUser(demoUser);
     }),
   }),
   catalogue: router({
