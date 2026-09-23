@@ -2,7 +2,7 @@ import { PDFDocument, PDFFont, StandardFonts, rgb } from "pdf-lib";
 import { AFT_LOGO_BASE64 } from "./aftLogo";
 
 export type PrintableExam = { title: string; intro: string | null; totalDurationSeconds: number };
-export type PrintableSection = { sectionNumber: number; title: string; durationSeconds: number; introduction: string | null; scenario?: string | null; question?: string | null };
+export type PrintableSection = { sectionNumber: number; title: string; durationSeconds: number; introduction: string | null; scenario?: string | null; question?: string | null; email?: PrintableEmail | null; attachmentTitles?: string[] };
 export type PrintableEmail = { from?: string | null; to?: string | null; subject?: string | null; html?: string | null };
 export type PrintableAttachment = { kind: string; title: string };
 
@@ -113,6 +113,31 @@ export async function generateBrandedPrintablePdf(exam: PrintableExam, sections:
     paragraph(section.introduction ?? "Refer to the protected question paper for the complete case-study task and instructions.", regular, 10, violet);
     if (section.scenario?.trim()) { y -= 2; line("Scenario", bold, 10, mint); paragraph(section.scenario, regular, 10, violet); }
     if (section.question?.trim()) { y -= 2; line("Task question", bold, 10, mint); paragraph(section.question, regular, 10, violet); }
+    const sectionEmail = section.email && (section.email.from || section.email.to || section.email.subject || section.email.html) ? section.email : null;
+    if (sectionEmail) {
+      y -= 2;
+      line("Task email", bold, 10, mint);
+      if (sectionEmail.from) line(`From: ${sectionEmail.from}`, regular, 10, violet);
+      if (sectionEmail.to) line(`To: ${sectionEmail.to}`, regular, 10, violet);
+      if (sectionEmail.subject) line(`Subject: ${sectionEmail.subject}`, regular, 10, violet);
+      const emailBody = htmlToText(sectionEmail.html);
+      if (emailBody) {
+        y -= 2;
+        for (const segment of emailBody.split("\n")) {
+          paragraph(segment, regular, 10, violet);
+          y -= 2;
+        }
+      }
+    }
+    if (section.attachmentTitles?.length) {
+      y -= 2;
+      line("Attachments", bold, 10, mint);
+      for (const attachmentTitle of section.attachmentTitles) {
+        ensureSpace(60);
+        page.drawCircle({ x: 54, y: y + 3.5, size: 2.4, color: cyan });
+        line(attachmentTitle, regular, 10, violet, 64);
+      }
+    }
     y -= 8;
   }
 

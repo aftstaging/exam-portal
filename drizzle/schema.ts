@@ -62,6 +62,10 @@ export const resources = mysqlTable("resources", {
   kind: mysqlEnum("kind", ["pre_seen", "formulae", "printable_pdf", "feedback", "course_material", "reference", "email"]).notNull(),
   fileKey: varchar("fileKey", { length: 500 }),
   fileUrl: text("fileUrl"),
+  // For case-study exams: when set, this email/reference attachment belongs to a
+  // single task (section). NULL means the attachment is universal across the exam
+  // (e.g. pre-seen, formulae + tables).
+  sectionNumber: int("sectionNumber"),
   status: mysqlEnum("status", ["draft", "published", "archived"]).default("published").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

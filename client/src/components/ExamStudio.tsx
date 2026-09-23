@@ -114,7 +114,7 @@ type ImportedPdfDraft = {
   formulae?: BundleFile | null;
   reference?: BundleFile | null;
   feedbackFile?: BundleFile | null;
-  caseStudySections?: { sectionNumber: number; title: string; introduction?: string; scenario?: string; question?: string; durationSeconds: number }[];
+  caseStudySections?: { sectionNumber: number; title: string; introduction?: string; scenario?: string; question?: string; durationSeconds: number; emailFrom?: string; emailTo?: string; emailSubject?: string; emailText?: string; emailImage?: EditableFile; reference?: EditableFile }[];
   objectiveQuestions?: { topic: string; prompt: string; options: string[]; correct: number; questionType: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input"; explanation?: string; rationale?: string[] }[];
   notes: string[];
 };
@@ -338,6 +338,12 @@ type SectionDraft = {
   introduction: string;
   scenario: string;
   question: string;
+  emailFrom: string;
+  emailTo: string;
+  emailSubject: string;
+  emailText: string;
+  emailImage: EditableFile;
+  reference: EditableFile;
 };
 
 const emptySection = (number: number): SectionDraft => ({
@@ -346,6 +352,12 @@ const emptySection = (number: number): SectionDraft => ({
   introduction: "",
   scenario: "",
   question: "",
+  emailFrom: "",
+  emailTo: "",
+  emailSubject: "",
+  emailText: "",
+  emailImage: null,
+  reference: null,
 });
 
 function SectionEditor({ section, index, onChange, onRemove }: { section: SectionDraft; index: number; onChange: (section: SectionDraft) => void; onRemove: () => void }) {
@@ -375,11 +387,45 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
       <div>
         <FormattingTextarea label="Task / question" value={section.question} onChange={(value) => set({ question: value })} placeholder="The task candidates must answer…" className="min-h-16" />
       </div>
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0c0524]/60">
+        <div className="flex items-center justify-between border-b border-white/10 bg-[#102b36]/40 px-3 py-2">
+          <span className="text-xs font-bold uppercase tracking-[.14em] text-[#00e5ff]">Task email attachment</span>
+          {(section.emailFrom || section.emailTo || section.emailSubject || section.emailText || section.emailImage) && (
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[#ff8278]" onClick={() => set({ emailFrom: "", emailTo: "", emailSubject: "", emailText: "", emailImage: null })}><Trash2 className="h-3.5 w-3.5" /> Clear</Button>
+          )}
+        </div>
+        <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+          <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
+            <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">From</span>
+            <Input value={section.emailFrom} onChange={(event) => set({ emailFrom: event.target.value })} placeholder="sender@accountantstomorrow.co.za" className={emailStyle} aria-label={`Email from ${index + 1}`} />
+          </label>
+          <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
+            <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">To</span>
+            <Input value={section.emailTo} onChange={(event) => set({ emailTo: event.target.value })} placeholder="learner@example.com" className={emailStyle} aria-label={`Email to ${index + 1}`} />
+          </label>
+        </div>
+        <div className="border-t border-white/10">
+          <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
+            <span className="w-11 shrink-0 text-[11px] font-semibold text-[#c4b5fd]">Subject</span>
+            <Input value={section.emailSubject} onChange={(event) => set({ emailSubject: event.target.value })} placeholder="e.g. Advance information for this task" className="h-9 border-none bg-transparent px-0 text-white shadow-none" aria-label={`Email subject ${index + 1}`} />
+          </label>
+        </div>
+        <div className="border-t border-white/10">
+          <p className="bg-[#0c0524] px-3 pt-2 text-[11px] font-semibold text-[#c4b5fd]">Message</p>
+          <div className="bg-[#0c0524] p-2">
+            <RichTextEditor value={section.emailText} onChange={(value) => set({ emailText: value })} placeholder="Type or paste the email message for this task…" />
+          </div>
+        </div>
+        <div className="border-t border-white/10 p-3">
+          <AttachSlot label="Email image" icon={<ImageUp className="h-4 w-4 text-[#00e5ff]" />} hint="A PNG or JPEG screenshot of the email for this task." accept="image/png,image/jpeg" value={section.emailImage} onChange={(file) => set({ emailImage: file })} note="PNG / JPEG only, up to 10 MB." />
+        </div>
+      </div>
+      <AttachSlot label="Reference material" icon={<MapPin className="h-4 w-4 text-[#00e5ff]" />} hint="Permitted reference documents specific to this task." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={section.reference} onChange={(file) => set({ reference: file })} note="Document, PDF, PNG or JPG." />
     </div>
   );
 }
 
-function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, examType, duration, price, accessDays, emailFrom, emailTo, emailSubject, emailText, sections, feedbackText, questions }: {
+function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, examType, duration, price, accessDays, sections, feedbackText, questions }: {
   onClose: () => void;
   isCaseStudy: boolean;
   title: string;
@@ -389,10 +435,6 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
   duration: string;
   price: string;
   accessDays: string;
-  emailFrom: string;
-  emailTo: string;
-  emailSubject: string;
-  emailText: string;
   sections: SectionDraft[];
   feedbackText: string;
   questions: QuestionDraft[];
@@ -450,18 +492,6 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
 
                 {description && <p className="mt-7 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Store description: </span>{description}</p>}
 
-                {isCaseStudy && (emailFrom || emailTo || emailSubject || emailText) && (
-                  <div className="mt-7 overflow-hidden rounded-xl border border-white/10">
-                    <div className="bg-[#102b36] px-4 py-2 text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Email attachment</div>
-                    <div className="grid gap-px bg-white/10 sm:grid-cols-2">
-                      <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">From:</span> {emailFrom || "—"}</div>
-                      <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {emailTo || "—"}</div>
-                    </div>
-                    <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {emailSubject || "—"}</div>
-                    <div className="border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: emailText }} />
-                  </div>
-                )}
-
                 {isCaseStudy && sortedSections.length > 0 && (
                   <div className="mt-7 space-y-6">
                     <p className="eyebrow">Timed sections · {sortedSections.length} task{sortedSections.length === 1 ? "" : "s"}</p>
@@ -485,6 +515,23 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                             <div className="mt-4 rounded-xl border border-[#00ff88]/40 bg-[#102b36] p-5">
                               <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">Task</div>
                               <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.question} />
+                            </div>
+                          )}
+                          {(section.emailFrom || section.emailTo || section.emailSubject || section.emailText) && (
+                            <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+                              <div className="bg-[#102b36] px-4 py-2 text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Email attachment</div>
+                              <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+                                <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">From:</span> {section.emailFrom || "—"}</div>
+                                <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {section.emailTo || "—"}</div>
+                              </div>
+                              <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {section.emailSubject || "—"}</div>
+                              <div className="border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: section.emailText }} />
+                            </div>
+                          )}
+                          {(section.emailImage || section.reference) && (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {section.emailImage && <Badge className="bg-[#102b36] text-[#00e5ff]">Email image: {section.emailImage.fileName}</Badge>}
+                              {section.reference && <Badge className="bg-[#102b36] text-[#00ff88]">Reference: {section.reference.fileName}</Badge>}
                             </div>
                           )}
                         </CardContent>
@@ -551,12 +598,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
   const [featuredImage, setFeaturedImage] = useState<BundleFile | null>(null);
   const [featuredImageUrl, setFeaturedImageUrl] = useState("");
   const [preModeratedPdf, setPreModeratedPdf] = useState<EditableFile>(null);
-  const [emailFrom, setEmailFrom] = useState("");
-  const [emailTo, setEmailTo] = useState("");
-  const [emailSubject, setEmailSubject] = useState("");
-  const [emailText, setEmailText] = useState("");
-  const [emailImage, setEmailImage] = useState<EditableFile>(null);
-  const [reference, setReference] = useState<EditableFile>(null);
   const [preSeen, setPreSeen] = useState<EditableFile>(null);
   const [formulae, setFormulae] = useState<EditableFile>(null);
   const [questions, setQuestions] = useState<QuestionDraft[]>([emptyQuestion()]);
@@ -605,11 +646,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     setPreModeratedPdf(draft.preModeratedPdf ?? null);
     setPreSeen(draft.preSeen ?? null);
     setFormulae(draft.formulae ?? null);
-    setReference(draft.reference ?? null);
-    setEmailFrom(draft.emailFrom ?? "");
-    setEmailTo(draft.emailTo ?? "");
-    setEmailSubject(draft.emailSubject ?? "");
-    setEmailText(draft.emailText ?? "");
     if (draft.examType === "objective_test") {
       setQuestions((draft.objectiveQuestions?.length
         ? draft.objectiveQuestions.map((q) => ({
@@ -631,6 +667,12 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             introduction: s.introduction ?? "",
             scenario: s.scenario ?? "",
             question: s.question ?? "",
+            emailFrom: s.emailFrom ?? "",
+            emailTo: s.emailTo ?? "",
+            emailSubject: s.emailSubject ?? "",
+            emailText: s.emailText ?? "",
+            emailImage: s.emailImage ?? null,
+            reference: s.reference ?? null,
           }))
         : [emptySection(1)]));
       setFeedbackFile(draft.feedbackFile ?? null);
@@ -710,15 +752,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     setPreModeratedPdf(existingFile(resources.find((r) => r.kind === "printable_pdf")));
     setPreSeen(existingFile(resources.find((r) => r.kind === "pre_seen")));
     setFormulae(existingFile(resources.find((r) => r.kind === "formulae")));
-    setReference(existingFile(resources.find((r) => r.kind === "reference")));
-    if (email) {
-      setEmailFrom(email.from ?? "");
-      setEmailTo(email.to ?? "");
-      setEmailSubject(email.subject ?? "");
-      setEmailText(email.html ?? "");
-    }
-    const emailImg = resources.find((r) => r.kind === "email" && r.fileUrl && !r.fileUrl.trim().startsWith("{"));
-    if (emailImg) setEmailImage(existingFile(emailImg));
     if (mockExam.examType === "objective_test") {
       const validTypes: QuestionDraft["questionType"][] = ["single_choice", "multiple_choice", "dropdown", "numerical", "text_input"];
       setQuestions(detailQuestions.length
@@ -742,15 +775,31 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
           })
         : [emptyQuestion()]);
     } else {
-      setSections(detailSections.length
+      const draftSections: SectionDraft[] = detailSections.length
         ? detailSections.map((s) => ({
             title: s.title,
             duration: String(Math.max(1, Math.round(s.durationSeconds / 60))),
             introduction: s.introduction ?? "",
             scenario: s.scenario ?? "",
             question: s.question ?? "",
+            emailFrom: (s.email as { from?: string } | null | undefined)?.from ?? "",
+            emailTo: (s.email as { to?: string } | null | undefined)?.to ?? "",
+            emailSubject: (s.email as { subject?: string } | null | undefined)?.subject ?? "",
+            emailText: (s.email as { html?: string } | null | undefined)?.html ?? "",
+            emailImage: s.emailImage ? { fileName: s.emailImage.fileName, keepUrl: s.emailImage.keepUrl } : null,
+            reference: s.reference ? { fileName: s.reference.fileName, keepUrl: s.reference.keepUrl } : null,
           }))
-        : [emptySection(1)]);
+        : [emptySection(1)];
+      if (email) {
+        const target = draftSections[0];
+        if (target) {
+          target.emailFrom = target.emailFrom || email.from || "";
+          target.emailTo = target.emailTo || email.to || "";
+          target.emailSubject = target.emailSubject || email.subject || "";
+          target.emailText = target.emailText || email.html || "";
+        }
+      }
+      setSections(draftSections);
       const fb = resources.find((r) => r.kind === "feedback");
       if (fb && fb.fileUrl && !fb.fileUrl.trim().startsWith("{")) {
         setFeedbackFile(existingFile(fb));
@@ -775,11 +824,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     if (next === "case_study") {
       setQuestions([emptyQuestion()]);
     } else {
-      setEmailFrom("");
-      setEmailTo("");
-      setEmailSubject("");
-      setEmailText("");
-      setEmailImage(null);
       setSections([emptySection(1)]);
       setFeedbackText("");
       setFeedbackFile(null);
@@ -797,12 +841,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     setFeaturedImage(null);
     setFeaturedImageUrl("");
     setPreModeratedPdf(null);
-    setEmailFrom("");
-    setEmailTo("");
-    setEmailSubject("");
-    setEmailText("");
-    setEmailImage(null);
-    setReference(null);
     setPreSeen(null);
     setFormulae(null);
     setQuestions([emptyQuestion()]);
@@ -867,12 +905,23 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
               scenario: section.scenario.trim() || undefined,
               question: section.question.trim() || undefined,
               durationSeconds: Math.max(60, Math.round(Number(section.duration || 45) * 60)),
+              emailFrom: section.emailFrom.trim() || undefined,
+              emailTo: section.emailTo.trim() || undefined,
+              emailSubject: section.emailSubject.trim() || undefined,
+              emailText: section.emailText.trim() || undefined,
+              emailImage: section.emailImage && "keepUrl" in section.emailImage ? (isEditMode ? section.emailImage : undefined) : section.emailImage ?? undefined,
+              reference: section.reference && "keepUrl" in section.reference ? (isEditMode ? section.reference : undefined) : section.reference ?? undefined,
             }))
             .filter((section) => section.title.trim())
         : undefined;
     if (examType === "case_study" && bundleSections && bundleSections.length === 0) {
       return toast.error("Add at least one case-study section (task)");
     }
+    const createSections = (bundleSections ?? []).map((s) => ({
+      ...s,
+      emailImage: s.emailImage && "keepUrl" in s.emailImage ? undefined : s.emailImage,
+      reference: s.reference && "keepUrl" in s.reference ? undefined : s.reference,
+    }));
     const common = {
       title: title.trim(),
       examType,
@@ -894,12 +943,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
         preModeratedPdf: preModeratedPdf ?? undefined,
         preSeen: preSeen ?? undefined,
         formulae: formulae ?? undefined,
-        reference: reference ?? undefined,
-        emailFrom: examType === "case_study" && emailFrom.trim() ? emailFrom.trim() : examType === "case_study" ? null : undefined,
-        emailTo: examType === "case_study" && emailTo.trim() ? emailTo.trim() : examType === "case_study" ? null : undefined,
-        emailSubject: examType === "case_study" && emailSubject.trim() ? emailSubject.trim() : examType === "case_study" ? null : undefined,
-        emailText: examType === "case_study" ? emailText.trim() || null : undefined,
-        emailImage: examType === "case_study" ? emailImage ?? null : undefined,
         feedbackText: examType === "case_study" ? (feedbackActive ? feedbackText.trim() || null : undefined) : undefined,
         feedbackFile: examType === "case_study" ? (feedbackActive ? feedbackFile ?? null : undefined) : undefined,
       };
@@ -915,17 +958,12 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
     );
     const payload: Parameters<typeof createBundle.mutate>[0] = {
       ...common,
+      caseStudySections: createSections,
       objectiveQuestions: createQuestions,
       featuredImageUrl: featuredImageUrl.trim() || undefined,
       preModeratedPdf: preModeratedPdf && "keepUrl" in preModeratedPdf ? undefined : preModeratedPdf ?? undefined,
       preSeen: preSeen && "keepUrl" in preSeen ? undefined : preSeen ?? undefined,
       formulae: formulae && "keepUrl" in formulae ? undefined : formulae ?? undefined,
-      reference: reference && "keepUrl" in reference ? undefined : reference ?? undefined,
-      emailFrom: examType === "case_study" && emailFrom.trim() ? emailFrom.trim() : undefined,
-      emailTo: examType === "case_study" && emailTo.trim() ? emailTo.trim() : undefined,
-      emailSubject: examType === "case_study" && emailSubject.trim() ? emailSubject.trim() : undefined,
-      emailText: examType === "case_study" ? emailText.trim() || undefined : undefined,
-      emailImage: examType === "case_study" ? (emailImage && "keepUrl" in emailImage ? undefined : emailImage ?? undefined) : undefined,
       feedbackText: examType === "case_study" ? feedbackText.trim() || undefined : undefined,
       feedbackFile: examType === "case_study" ? (feedbackFile && "keepUrl" in feedbackFile ? undefined : feedbackFile ?? undefined) : undefined,
     };
@@ -1069,50 +1107,13 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             </div>
           </section>
 
-          {/* Conditional body: case-study → email attachment; objective test → question builder */}
+          {/* Conditional body: case-study → section/task builder; objective test → question builder */}
           {isCaseStudy ? (
             <>
               <section>
-                <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Mail className="h-4 w-4" /> Email attachment · case study</div>
-                <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-                  <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18093c]/60">
-                    <div className="grid gap-px bg-white/10 lg:grid-cols-2">
-                      <label className="flex items-center gap-2 bg-[#0c0524] px-3">
-                        <span className="w-12 shrink-0 text-xs font-semibold text-[#c4b5fd]">From</span>
-                        <Input value={emailFrom} onChange={(event) => setEmailFrom(event.target.value)} placeholder="sender@accountantstomorrow.co.za" className={emailStyle} aria-label="Email from" />
-                      </label>
-                      <label className="flex items-center gap-2 bg-[#0c0524] px-3">
-                        <span className="w-12 shrink-0 text-xs font-semibold text-[#c4b5fd]">To</span>
-                        <Input value={emailTo} onChange={(event) => setEmailTo(event.target.value)} placeholder="learner@example.com" className={emailStyle} aria-label="Email to" />
-                      </label>
-                    </div>
-                    <div className="border-t border-white/10">
-                      <label className="flex items-center gap-2 bg-[#0c0524] px-3 py-2">
-                        <span className="w-12 shrink-0 text-xs font-semibold text-[#c4b5fd]">Subject</span>
-                        <Input value={emailSubject} onChange={(event) => setEmailSubject(event.target.value)} placeholder="e.g. Advance information for your case-study task" className="h-9 border-none bg-transparent px-0 text-white shadow-none" aria-label="Email subject" />
-                      </label>
-                    </div>
-                    <div className="border-t border-white/10">
-                      <p className="bg-[#0c0524] px-3 pt-2 text-xs font-semibold text-[#c4b5fd]">Message</p>
-                      <div className="bg-[#0c0524] p-2">
-                        <RichTextEditor value={emailText} onChange={setEmailText} placeholder="Type or paste the email message. Use the toolbar to format — bold, italic, underline, bullet and numbered lists…" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-white">Or attach an email image</p>
-                    <AttachSlot label="Email image" icon={<ImageUp className="h-4 w-4 text-[#00e5ff]" />} hint="A PNG or JPEG screenshot of the email." accept="image/png,image/jpeg" value={emailImage} onChange={setEmailImage} note="PNG / JPEG only, up to 10 MB." />
-                    <p className="rounded-lg border border-white/10 bg-[#18093c]/40 px-3 py-2 text-xs leading-5 text-white/45">
-                      Compose the email exactly as learners would receive it. The From, To, Subject and Message are saved with the exam bundle.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              <section>
                 <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> Sections / tasks & timing</div>
                 <p className="mb-3 text-xs leading-5 text-white/50">
-                  Add each case-study task in order. Each section has its own title, time limit, instructions, optional scenario and task wording (like the example Cartn Mock Exams with four 45-minute tasks).
+                  Add each case-study task in order. Each section has its own title, time limit, instructions, optional scenario, task wording, email attachment and reference material (like the example Cartn Mock Exams with four 45-minute tasks). Pre-seen and formulae + tables stay exam-wide below.
                 </p>
                 <div className="space-y-4">
                   {sections.map((section, index) => (
@@ -1171,10 +1172,9 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
           {isCaseStudy && (
             <section>
               <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> Case study resources</div>
-              <div className="grid gap-3 md:grid-cols-3">
-                <AttachSlot label="Pre-seen" icon={<BookOpen className="h-4 w-4 text-[#00e5ff]" />} hint="The scenario / advance information pdf." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={preSeen} onChange={setPreSeen} note="Document, PDF, PNG or JPG." />
-                <AttachSlot label="Formulae + tables" icon={<Calculator className="h-4 w-4 text-[#00e5ff]" />} hint="Formulae sheets and statistical tables." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={formulae} onChange={setFormulae} note="Document, PDF, PNG or JPG." />
-                <AttachSlot label="Reference material" icon={<MapPin className="h-4 w-4 text-[#00e5ff]" />} hint="Permitted reference documents." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={reference} onChange={setReference} note="Document, PDF, PNG or JPG." />
+              <div className="grid gap-3 md:grid-cols-2">
+                <AttachSlot label="Pre-seen" icon={<BookOpen className="h-4 w-4 text-[#00e5ff]" />} hint="The scenario / advance information pdf — shared across every task." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={preSeen} onChange={setPreSeen} note="Document, PDF, PNG or JPG." />
+                <AttachSlot label="Formulae + tables" icon={<Calculator className="h-4 w-4 text-[#00e5ff]" />} hint="Formulae sheets and statistical tables — shared across every task." accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" value={formulae} onChange={setFormulae} note="Document, PDF, PNG or JPG." />
               </div>
             </section>
           )}
@@ -1205,10 +1205,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
           duration={duration}
           price={price}
           accessDays={accessDays}
-          emailFrom={emailFrom}
-          emailTo={emailTo}
-          emailSubject={emailSubject}
-          emailText={emailText}
           sections={sections}
           feedbackText={feedbackText}
           questions={questions}

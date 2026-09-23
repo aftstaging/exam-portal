@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, not } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, not } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
@@ -250,15 +250,32 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
   if (!exam[0]) throw new Error("Mock exam not found");
   const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
   const productResources = await db.select().from(resources).where(eq(resources.productId, exam[0].product.id));
-  const emailMeta = productResources.filter((entry) => entry.kind === "email" && entry.fileUrl && entry.fileUrl.trim().startsWith("{"))
+  const universalResources = productResources.filter((entry) => entry.sectionNumber == null);
+  const emailMeta = universalResources.filter((entry) => entry.kind === "email" && entry.fileUrl && entry.fileUrl.trim().startsWith("{"))
     .map((entry) => { try { return JSON.parse(entry.fileUrl as string) as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } })
     .filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
   const attachmentRank: Record<string, number> = { pre_seen: 0, formulae: 1, reference: 2, printable_pdf: 3, feedback: 4, email: 5 };
-  const attachments = productResources
+  const attachments = universalResources
     .filter((entry) => entry.title && entry.kind in attachmentRank)
     .sort((a, b) => (attachmentRank[a.kind] ?? 9) - (attachmentRank[b.kind] ?? 9))
     .map((entry) => ({ kind: entry.kind, title: entry.title }));
-  const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, sections, { email: emailMeta, attachments });
+
+  // Per-task email / reference attachments for each case-study section.
+  const sectionAttachments = productResources.filter((entry) => entry.sectionNumber != null && (entry.kind === "email" || entry.kind === "reference") && Boolean(entry.title));
+  const pdfSections = sections.map((section) => {
+    const taskRows = sectionAttachments.filter((entry) => entry.sectionNumber === section.sectionNumber);
+    let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
+    const metaRow = taskRows.find((entry) => entry.kind === "email" && entry.fileUrl?.trim().startsWith("{"));
+    if (metaRow?.fileUrl) {
+      try { email = JSON.parse(metaRow.fileUrl) as typeof email; } catch { email = null; }
+    }
+    const attachmentTitles = taskRows
+      .filter((entry) => entry !== metaRow)
+      .map((entry) => `${entry.kind === "email" ? "Email attachment image" : "Reference material"}: ${entry.title}`.replace(` · Task ${section.sectionNumber}`, ""));
+    return { ...section, email, attachmentTitles };
+  });
+
+  const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, pdfSections, { email: emailMeta, attachments });
   const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
   const existing = await db.select().from(resources).where(and(eq(resources.productId, exam[0].product.id), eq(resources.kind, "printable_pdf"))).limit(1);
   if (existing[0]) {
@@ -319,7 +336,7 @@ export async function listProtectedResources(userId: number, productId: number) 
       const parsed = parseStoredEmail(fileUrl);
       if (parsed) email = parsed;
     }
-    return { ...resource, hasFile: Boolean(fileKey || email), mimeType: email ? email.mimeType : mimeType, email };
+    return { ...resource, hasFile: Boolean(fileKey || email || (fileUrl && fileUrl.trimStart().startsWith("/storage/"))), mimeType: email ? email.mimeType : mimeType, email };
   });
 }
 
@@ -349,7 +366,7 @@ export async function getProtectedResourceDownload(userId: number, resourceId: n
     const access = await db.select().from(entitlements).where(and(eq(entitlements.userId, userId), eq(entitlements.productId, row[0].product.id), eq(entitlements.status, "active"))).limit(1);
     if (!hasActiveEntitlement(access[0])) throw new Error("Active entitlement required");
   }
-  const key = row[0].resource.fileKey;
+  const key = row[0].resource.fileKey ?? (row[0].resource.fileUrl?.startsWith("/storage/") ? row[0].resource.fileUrl.slice("/storage/".length) : null);
   if (!key) throw new Error("This resource is not available for download yet");
   return { id: row[0].resource.id, title: row[0].resource.title, kind: row[0].resource.kind, url: await storageGetSignedUrl(key) };
 }
@@ -366,12 +383,13 @@ export async function getProtectedResourceZip(userId: number, productId: number)
   const files: { name: string; data: Buffer }[] = [];
   const seenKinds = new Set<string>();
   for (const row of rows) {
-    if (!row.fileKey) continue;
+    const key = row.fileKey ?? (row.fileUrl?.startsWith("/storage/") ? row.fileUrl.slice("/storage/".length) : null);
+    if (!key) continue;
     if (seenKinds.has(row.kind)) continue;
     seenKinds.add(row.kind);
-    const { body } = await storageGetBytes(row.fileKey);
+    const { body } = await storageGetBytes(key);
     const title = sanitizeZipName(resourceZipName(row) ?? "attachment");
-    const ext = (row.fileKey.split(".").pop() || "").toLowerCase();
+    const ext = (key.split(".").pop() || "").toLowerCase();
     files.push({ name: `${title}${ext ? `.${ext}` : ""}`, data: body });
   }
   if (!files.length) throw new Error("No downloadable attachments are available for this product");
@@ -478,17 +496,33 @@ export async function getAdminExamPreview(mockExamId: number) {
   if (!examRow) throw new Error("Exam not found");
   const sections = await db.select({ id: caseStudySections.id, sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question, durationSeconds: caseStudySections.durationSeconds }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
   const questions = await db.select({ id: objectiveQuestions.id, topic: objectiveQuestions.topic, learningOutcome: objectiveQuestions.learningOutcome, questionType: objectiveQuestions.questionType, prompt: objectiveQuestions.prompt, optionsJson: objectiveQuestions.optionsJson, answerJson: objectiveQuestions.answerJson, explanation: objectiveQuestions.explanation, rationaleJson: objectiveQuestions.rationaleJson, difficulty: objectiveQuestions.difficulty }).from(objectiveQuestions).where(eq(objectiveQuestions.mockExamId, mockExamId)).orderBy(objectiveQuestions.id);
-  const emailResources = await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), eq(resources.kind, "email"))).orderBy(desc(resources.createdAt));
+  const emailResources = await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), eq(resources.kind, "email"), isNull(resources.sectionNumber))).orderBy(desc(resources.createdAt));
   const emailMeta = emailResources.map((resource) => { try { return JSON.parse(resource.fileUrl ?? "null") as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } }).filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
   const feedbackResource = (await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), eq(resources.kind, "feedback"))).limit(1))[0];
   let feedbackText: string | null = null;
   if (feedbackResource?.fileUrl && feedbackResource.fileUrl.trim().startsWith("{")) {
     try { feedbackText = (JSON.parse(feedbackResource.fileUrl) as { text?: string }).text ?? null; } catch { feedbackText = null; }
   }
+  const sectionResources = await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), inArray(resources.kind, ["email", "reference"]), isNotNull(resources.sectionNumber)));
+  const previewSections = sections.map((section) => {
+    const emailRows = sectionResources.filter((resource) => resource.sectionNumber === section.sectionNumber && resource.kind === "email");
+    const referenceRow = sectionResources.find((resource) => resource.sectionNumber === section.sectionNumber && resource.kind === "reference");
+    const metaRow = emailRows.find((resource) => resource.fileUrl?.trim().startsWith("{"));
+    let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
+    if (metaRow?.fileUrl) {
+      try { email = JSON.parse(metaRow.fileUrl) as typeof email; } catch { email = null; }
+    }
+    return {
+      ...section,
+      email,
+      emailImageTitle: emailRows.find((resource) => resource !== metaRow)?.title ?? null,
+      referenceFileName: referenceRow?.title ?? null,
+    };
+  });
   return {
     mockExam: examRow.mockExam,
     product: examRow.product,
-    sections,
+    sections: previewSections,
     questions,
     email: emailMeta,
     feedbackText,
@@ -503,7 +537,7 @@ export async function getAdminExamBundleDetail(mockExamId: number) {
   const questions = await db.select().from(objectiveQuestions).where(eq(objectiveQuestions.mockExamId, mockExamId)).orderBy(objectiveQuestions.id);
   const allResources = await db.select().from(resources).where(eq(resources.productId, examRow.mockExam.productId)).orderBy(desc(resources.createdAt));
   const emailMeta = allResources
-    .filter((resource) => resource.kind === "email" && resource.fileUrl && resource.fileUrl.trim().startsWith("{"))
+    .filter((resource) => resource.kind === "email" && resource.sectionNumber == null && resource.fileUrl && resource.fileUrl.trim().startsWith("{"))
     .map((resource) => { try { return JSON.parse(resource.fileUrl as string) as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } })
     .filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
   const feedbackResource = allResources.find((resource) => resource.kind === "feedback");
@@ -511,10 +545,35 @@ export async function getAdminExamBundleDetail(mockExamId: number) {
   if (feedbackResource?.fileUrl && feedbackResource.fileUrl.trim().startsWith("{")) {
     try { feedbackText = (JSON.parse(feedbackResource.fileUrl) as { text?: string }).text ?? null; } catch { feedbackText = null; }
   }
+  const sectionAttachments = allResources.filter((resource) => resource.sectionNumber != null && (resource.kind === "email" || resource.kind === "reference"));
+  const attachmentFor = (kind: "email" | "reference", sectionNumber: number) => {
+    const rows = sectionAttachments.filter((resource) => resource.sectionNumber === sectionNumber && resource.kind === kind);
+    const metaRow = kind === "email" ? rows.find((resource) => resource.fileUrl?.trim().startsWith("{")) : undefined;
+    return { metaRow, fileRow: rows.find((resource) => resource !== metaRow) };
+  };
   return {
     mockExam: examRow.mockExam,
     product: examRow.product,
-    sections: sections.map((section) => ({ id: section.id, sectionNumber: section.sectionNumber, title: section.title, introduction: section.introduction, scenario: section.scenario, question: section.question, durationSeconds: section.durationSeconds })),
+    sections: sections.map((section) => {
+      const email = attachmentFor("email", section.sectionNumber);
+      const reference = attachmentFor("reference", section.sectionNumber);
+      let sectionEmail: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
+      if (email.metaRow?.fileUrl) {
+        try { sectionEmail = JSON.parse(email.metaRow.fileUrl) as typeof sectionEmail; } catch { sectionEmail = null; }
+      }
+      return {
+        id: section.id,
+        sectionNumber: section.sectionNumber,
+        title: section.title,
+        introduction: section.introduction,
+        scenario: section.scenario,
+        question: section.question,
+        durationSeconds: section.durationSeconds,
+        email: sectionEmail,
+        emailImage: email.fileRow?.fileUrl ? { fileName: email.fileRow.title, keepUrl: email.fileRow.fileUrl } : null,
+        reference: reference.fileRow?.fileUrl ? { fileName: reference.fileRow.title, keepUrl: reference.fileRow.fileUrl } : null,
+      };
+    }),
     questions: questions.map((question) => ({
       id: question.id,
       topic: question.topic,
@@ -808,6 +867,14 @@ export type ExamBundleCaseStudySection = {
   question?: string;
   durationSeconds: number;
   cooldownSeconds?: number;
+  // Per-task attachments: each case-study section may carry its own email
+  // (composed fields and/or an image) and its own reference material.
+  emailFrom?: string;
+  emailTo?: string;
+  emailSubject?: string;
+  emailText?: string;
+  emailImage?: ExamBundleFile;
+  reference?: ExamBundleFile;
 };
 export type ExamBundleInput = {
   userId: number;
@@ -841,11 +908,99 @@ export type ExamBundleInput = {
   objectiveQuestions?: ExamBundleObjectiveQuestion[];
 };
 
+type SectionAttachmentCarrier = {
+  emailFrom?: string;
+  emailTo?: string;
+  emailSubject?: string;
+  emailText?: string;
+  emailImage?: ExamBundleFileInput;
+  reference?: ExamBundleFileInput;
+};
+
+type SectionResourceHints = {
+  emailMeta?: { id: number; fileUrl: string };
+  emailImage?: { id: number; fileKey: string | null; fileUrl: string | null };
+  reference?: { id: number; fileKey: string | null; fileUrl: string | null };
+};
+
+// Case-study tasks each carry their own email attachment and reference material.
+// These are stored as `resources` rows (kind `email` / `reference`) tagged with a
+// `sectionNumber`. Only pre-seen and formulae + tables stay universal (sectionNumber NULL).
+async function writeSectionResources(input: {
+  userId: number;
+  productId: number;
+  examTitle: string;
+  sectionNumber: number;
+  status: "draft" | "published";
+  section: SectionAttachmentCarrier;
+  hints?: SectionResourceHints;
+}) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const { userId, productId, examTitle, sectionNumber, status, section, hints } = input;
+  const taskTitle = (suffix: string) => `${examTitle} · Task ${sectionNumber} · ${suffix}`.slice(0, 240);
+
+  const hasEmailMeta = Boolean(section.emailText?.trim() || section.emailFrom?.trim() || section.emailTo?.trim() || section.emailSubject?.trim());
+  const emailMetaJson = hasEmailMeta
+    ? JSON.stringify({
+        from: section.emailFrom?.trim() || null,
+        to: section.emailTo?.trim() || null,
+        subject: section.emailSubject?.trim() || null,
+        html: section.emailText?.trim() || null,
+      })
+    : null;
+
+  // 1. Email — composed message (stored as JSON metadata).
+  if (emailMetaJson) {
+    if (hints?.emailMeta) {
+      await db.update(resources).set({ title: taskTitle("Email"), fileUrl: emailMetaJson, status }).where(eq(resources.id, hints.emailMeta.id));
+    } else {
+      const resourceId = (await db.insert(resources).values({ productId, title: taskTitle("Email"), kind: "email", fileKey: null, fileUrl: emailMetaJson, sectionNumber, status }).$returningId())[0]?.id;
+      await db.insert(auditEvents).values({ userId, entityType: "resource", entityId: resourceId ?? 0, action: "section_email_composed", metadata: JSON.stringify({ productId, sectionNumber }) });
+    }
+  } else if (hints?.emailMeta) {
+    await db.delete(resources).where(eq(resources.id, hints.emailMeta.id));
+  }
+
+  const uploadSectionFile = async (kind: "email" | "reference", file: { fileName: string; mimeType?: string; base64: string }, suffix: string) => {
+    const payload = file.base64.includes(",") ? file.base64.split(",")[1] : file.base64;
+    const bytes = Buffer.from(payload, "base64");
+    if (!bytes.length) return;
+    const uploaded = await storagePut(`admin-resources/${productId}/${Date.now()}-${(file.fileName || suffix).replace(/[^a-zA-Z0-9._-]/g, "-")}`, bytes, file.mimeType || "application/octet-stream");
+    const resourceId = (await db.insert(resources).values({ productId, title: taskTitle(suffix), kind, fileKey: uploaded.key, fileUrl: uploaded.url, sectionNumber, status }).$returningId())[0]?.id;
+    await db.insert(auditEvents).values({ userId, entityType: "resource", entityId: resourceId ?? 0, action: "section_resource_uploaded", metadata: JSON.stringify({ productId, sectionNumber, kind, fileName: file.fileName }) });
+  };
+
+  // 2. Email image — uploaded screenshot / PDF.
+  const emailImage = section.emailImage;
+  if (emailImage && "base64" in emailImage && emailImage.base64) {
+    await uploadSectionFile("email", { fileName: emailImage.fileName, mimeType: emailImage.mimeType, base64: emailImage.base64 }, "Email");
+    if (hints?.emailImage) await db.delete(resources).where(eq(resources.id, hints.emailImage.id));
+  } else if (emailImage && "keepUrl" in emailImage && emailImage.keepUrl) {
+    if (!hints?.emailImage || hints.emailImage.fileUrl !== emailImage.keepUrl) {
+      await db.insert(resources).values({ productId, title: taskTitle("Email"), kind: "email", fileKey: hints?.emailImage?.fileKey ?? null, fileUrl: emailImage.keepUrl, sectionNumber, status });
+    }
+  } else if (hints?.emailImage) {
+    await db.delete(resources).where(eq(resources.id, hints.emailImage.id));
+  }
+
+  // 3. Reference material file.
+  const reference = section.reference;
+  if (reference && "base64" in reference && reference.base64) {
+    await uploadSectionFile("reference", { fileName: reference.fileName, mimeType: reference.mimeType, base64: reference.base64 }, "Reference material");
+    if (hints?.reference) await db.delete(resources).where(eq(resources.id, hints.reference.id));
+  } else if (reference && "keepUrl" in reference && reference.keepUrl) {
+    if (!hints?.reference || hints.reference.fileUrl !== reference.keepUrl) {
+      await db.insert(resources).values({ productId, title: taskTitle("Reference material"), kind: "reference", fileKey: hints?.reference?.fileKey ?? null, fileUrl: reference.keepUrl, sectionNumber, status });
+    }
+  } else if (hints?.reference) {
+    await db.delete(resources).where(eq(resources.id, hints.reference.id));
+  }
+}
+
 /**
  * Creates a product, its linked mock exam, and any attached resources in a single
  * orchestrating operation. This is the backend for the instructor "create exam"
- * studio. New records are created as drafts so an administrator publishes them.
- * For a case-study exam created manually (no pre-moderated PDF supplied) a branded
+ * studio. New records are created as drafts so an administrator publishes them. For a case-study exam created manually (no pre-moderated PDF supplied) a branded
  * AFT printable PDF is generated automatically from the exam record.
  */
 export async function createExamBundle(input: ExamBundleInput) {
@@ -970,7 +1125,10 @@ export async function createExamBundle(input: ExamBundleInput) {
         durationSeconds: Math.max(60, Math.round(section.durationSeconds) || 2700),
         cooldownSeconds: Math.max(0, Math.round(section.cooldownSeconds ?? 30)),
       }).$returningId())[0]?.id;
-      if (created) sectionNumbers.push(secNumber);
+      if (created) {
+        sectionNumbers.push(secNumber);
+        await writeSectionResources({ userId: input.userId, productId, examTitle: title, sectionNumber: secNumber, status: "draft", section });
+      }
     }
     if (sectionNumbers.length) {
       await db.insert(auditEvents).values({ userId: input.userId, entityType: "case_study_section", entityId: mockExamId, action: "bundle_created", metadata: JSON.stringify({ mockExamId, sectionNumbers }) });
@@ -1027,17 +1185,27 @@ export async function createExamBundle(input: ExamBundleInput) {
   //    (no pre-moderated PDF provided). Uses the existing AFT-logo generation.
   let generatedPdfUrl: string | null = null;
   if (input.examType === "case_study" && !input.preModeratedPdf) {
-    const sections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
+    const persistedSections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
     const exam = { title, intro: input.intro?.trim() || null, totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)) };
-    const pdfEmail = hasEmailText ? { from: input.emailFrom?.trim() || null, to: input.emailTo?.trim() || null, subject: input.emailSubject?.trim() || null, html: input.emailText?.trim() || null } : null;
+    const pdfSections = (persistedSections.length ? persistedSections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }]).map((section) => {
+      const authored = input.caseStudySections?.find((item) => item.sectionNumber === section.sectionNumber);
+      let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
+      const attachmentTitles: string[] = [];
+      if (authored) {
+        if (authored.emailText?.trim() || authored.emailFrom?.trim() || authored.emailTo?.trim() || authored.emailSubject?.trim()) {
+          email = { from: authored.emailFrom?.trim() || null, to: authored.emailTo?.trim() || null, subject: authored.emailSubject?.trim() || null, html: authored.emailText?.trim() || null };
+        }
+        if (authored.reference?.base64) attachmentTitles.push(`Reference material: ${authored.reference.fileName || "attachment"}`);
+        if (authored.emailImage?.base64) attachmentTitles.push(`Email attachment image: ${authored.emailImage.fileName || "attachment"}`);
+      }
+      return { ...section, email, attachmentTitles };
+    });
     const pdfAttachments: { kind: string; title: string }[] = [];
     if (input.preSeen?.base64) pdfAttachments.push({ kind: "pre_seen", title: `${title} · Pre-seen` });
     if (input.formulae?.base64) pdfAttachments.push({ kind: "formulae", title: `${title} · Formulae + tables` });
-    if (input.reference?.base64) pdfAttachments.push({ kind: "reference", title: `${title} · Reference material` });
-    if (input.emailImage?.base64) pdfAttachments.push({ kind: "email", title: `${title} · Email` });
     if (input.feedbackFile?.base64) pdfAttachments.push({ kind: "feedback", title: `${title} · Feedback` });
     try {
-      const bytes = await generateBrandedPrintablePdf(exam, sections.length ? sections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }], { email: pdfEmail, attachments: pdfAttachments });
+      const bytes = await generateBrandedPrintablePdf(exam, pdfSections, { email: null, attachments: pdfAttachments });
       const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
       const resourceId = (await db.insert(resources).values({ productId, title: `${title} · Printable exam`, kind: "printable_pdf", fileKey: uploaded.key, fileUrl: uploaded.url, status: "draft" }).$returningId())[0]?.id;
       generatedPdfUrl = uploaded.url;
@@ -1052,6 +1220,11 @@ export async function createExamBundle(input: ExamBundleInput) {
 
 export type ExamBundleExistingFile = { fileName: string; keepUrl: string };
 export type ExamBundleFileInput = { fileName: string; mimeType?: string; base64?: string; keepUrl?: string } | null;
+
+export type ExamBundleCaseStudySectionUpdate = Omit<ExamBundleCaseStudySection, "emailImage" | "reference"> & {
+  emailImage?: ExamBundleFileInput;
+  reference?: ExamBundleFileInput;
+};
 
 export type ExamBundleUpdateInput = {
   userId: number;
@@ -1074,7 +1247,7 @@ export type ExamBundleUpdateInput = {
   emailSubject?: string | null;
   emailText?: string | null;
   emailImage?: ExamBundleFileInput;
-  caseStudySections?: ExamBundleCaseStudySection[];
+  caseStudySections?: ExamBundleCaseStudySectionUpdate[];
   feedbackText?: string | null;
   feedbackFile?: ExamBundleFileInput;
   objectiveQuestions?: (Omit<ExamBundleObjectiveQuestion, "attachment"> & { attachment?: ExamBundleFileInput })[];
@@ -1211,6 +1384,19 @@ export async function updateExamBundle(input: ExamBundleUpdateInput) {
 
   // 4. Replace case-study sections wholesale
   if (input.caseStudySections) {
+    const existingSectionResources = input.caseStudySections.length ? await db.select().from(resources).where(and(eq(resources.productId, productId), inArray(resources.kind, ["email", "reference"]), isNotNull(resources.sectionNumber))) : [];
+    const hintsFor = (sectionNumber: number): SectionResourceHints => {
+      const rows = existingSectionResources.filter((row) => row.sectionNumber === sectionNumber);
+      const meta = rows.find((row) => row.kind === "email" && row.fileUrl?.trim().startsWith("{"));
+      const image = rows.find((row) => row.kind === "email" && row !== meta);
+      const reference = rows.find((row) => row.kind === "reference");
+      return {
+        emailMeta: meta ? { id: meta.id, fileUrl: meta.fileUrl ?? "" } : undefined,
+        emailImage: image ? { id: image.id, fileUrl: image.fileUrl ?? "", fileKey: image.fileKey } : undefined,
+        reference: reference ? { id: reference.id, fileUrl: reference.fileUrl ?? "", fileKey: reference.fileKey } : undefined,
+      };
+    };
+    const status: "draft" | "published" = existing.mockExam.status === "published" ? "published" : "draft";
     await db.delete(caseStudySections).where(eq(caseStudySections.mockExamId, input.mockExamId));
     const sectionNumbers: number[] = [];
     for (const section of input.caseStudySections) {
@@ -1227,11 +1413,17 @@ export async function updateExamBundle(input: ExamBundleUpdateInput) {
         durationSeconds: Math.max(60, Math.round(section.durationSeconds) || 2700),
         cooldownSeconds: Math.max(0, Math.round(section.cooldownSeconds ?? 30)),
       }).$returningId())[0]?.id;
-      if (created) sectionNumbers.push(secNumber);
+      if (created) {
+        sectionNumbers.push(secNumber);
+        await writeSectionResources({ userId: input.userId, productId, examTitle: title, sectionNumber: secNumber, status, section, hints: hintsFor(secNumber) });
+      }
     }
     if (sectionNumbers.length) {
       await db.insert(auditEvents).values({ userId: input.userId, entityType: "case_study_section", entityId: input.mockExamId, action: "bundle_updated", metadata: JSON.stringify({ mockExamId: input.mockExamId, sectionNumbers }) });
     }
+    // Sweep any per-section resource rows left over from removed sections.
+    const keptNumbers = sectionNumbers.length ? sectionNumbers : [-1];
+    await db.delete(resources).where(and(eq(resources.productId, productId), inArray(resources.kind, ["email", "reference"]), isNotNull(resources.sectionNumber), not(inArray(resources.sectionNumber, keptNumbers))));
   }
 
   const uploadResource = async (kind: "pre_seen" | "formulae" | "reference" | "email" | "printable_pdf" | "feedback", file: { fileName: string; mimeType?: string; base64: string }, resTitle: string) => {
@@ -1273,7 +1465,7 @@ export async function updateExamBundle(input: ExamBundleUpdateInput) {
       subject: input.emailSubject?.trim() || null,
       html: input.emailText?.trim() || null,
     });
-    await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, "email")));
+    await db.delete(resources).where(and(eq(resources.productId, productId), eq(resources.kind, "email"), isNull(resources.sectionNumber)));
     if (input.emailText?.trim() || input.emailFrom?.trim() || input.emailTo?.trim() || input.emailSubject?.trim()) {
       await db.insert(resources).values({ productId, title: `${title} · Email`, kind: "email", fileKey: null, fileUrl: emailMeta, status: existing.mockExam.status === "published" ? "published" : "draft" });
     }

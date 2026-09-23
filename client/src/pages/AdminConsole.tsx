@@ -1427,7 +1427,7 @@ function couponExpiryFromLocal(value: string): Date | null {
   return expiry;
 }
 
-function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { title: string; examType: string; intro: string | null; totalDurationSeconds: number; status: string }; product: { title: string; description: string | null; priceCents: number; accessDays: number }; sections: { sectionNumber: number; title: string; introduction: string | null; scenario: string | null; question: string | null; durationSeconds: number }[]; questions: { topic: string; learningOutcome: string | null; questionType: string; prompt: string; optionsJson: string; answerJson: string; explanation: string | null; difficulty: string }[]; email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null } | null; loading: boolean; onClose: () => void }) {
+function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { title: string; examType: string; intro: string | null; totalDurationSeconds: number; status: string }; product: { title: string; description: string | null; priceCents: number; accessDays: number }; sections: { sectionNumber: number; title: string; introduction: string | null; scenario: string | null; question: string | null; durationSeconds: number; email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; emailImageTitle: string | null; referenceFileName: string | null }[]; questions: { topic: string; learningOutcome: string | null; questionType: string; prompt: string; optionsJson: string; answerJson: string; explanation: string | null; difficulty: string }[]; email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null } | null; loading: boolean; onClose: () => void }) {
   const isCaseStudy = data?.mockExam.examType === "case_study";
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#120730]/85 p-4 backdrop-blur-sm" onClick={onClose}>
@@ -1457,7 +1457,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
 
             {isCaseStudy && data.email && (data.email.from || data.email.to || data.email.subject || data.email.html) && (
               <section>
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Email attachment</h3>
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Email attachment · exam-wide</h3>
                 <div className="overflow-hidden rounded-xl border border-white/10">
                   <div className="grid gap-px bg-white/10 sm:grid-cols-2">
                     <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">From:</span> {data.email.from || "—"}</div>
@@ -1479,6 +1479,23 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                       {section.introduction && <StructuredText className="mt-3 text-sm leading-6 text-[#c4b5fd]" text={`**Introduction:** ${section.introduction ?? ""}`} />}
                       {section.scenario && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Scenario:** ${section.scenario ?? ""}`} />}
                       {section.question && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Question:** ${section.question ?? ""}`} />}
+                      {section.email && (section.email.from || section.email.to || section.email.subject || section.email.html) && (
+                        <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
+                          <div className="bg-[#102b36] px-4 py-2 text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Email attachment · Task {section.sectionNumber}</div>
+                          <div className="grid gap-px bg-white/10 sm:grid-cols-2">
+                            <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">From:</span> {section.email.from || "—"}</div>
+                            <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {section.email.to || "—"}</div>
+                          </div>
+                          <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {section.email.subject || "—"}</div>
+                          <div className="border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: section.email.html ?? "" }} />
+                        </div>
+                      )}
+                      {(section.emailImageTitle || section.referenceFileName) && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {section.emailImageTitle && <Badge className="bg-[#0c0524] text-[#00e5ff]">Email image: {section.emailImageTitle}</Badge>}
+                          {section.referenceFileName && <Badge className="bg-[#0c0524] text-[#00ff88]">Reference: {section.referenceFileName}</Badge>}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
