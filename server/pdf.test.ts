@@ -31,4 +31,25 @@ describe("branded printable exam PDF", () => {
     expect(document.getPageCount()).toBeGreaterThan(0);
     expect(document.getPage(0).getSize().width).toBe(595);
   });
+
+  it("renders content containing characters outside the WinAnsi encoding", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: "● Assess the control environment → review the residual risk", totalDurationSeconds: 10800 },
+      [{ sectionNumber: 1, title: "Digital data sources ●", durationSeconds: 2700, introduction: "● Identify the material misstatement\n● Evaluate the deficiency ≤ R10 000\n● Contribution margin ≥ 40% × 100 ÷ 4", scenario: "─ SoPa Foods ─ ☰ summary █ 42 000", question: "☐ Yes ☐ No ✓ ✔ ✗ ✕ → ← ↔ ≠ ≈ ∑ π √ ∞ ½ ¼ № ⅓ ½" }],
+    );
+    const document = await PDFDocument.load(bytes);
+    expect(bytes.slice(0, 5).toString()).toBe("%PDF-");
+    expect(document.getPageCount()).toBeGreaterThan(0);
+  });
+
+  it("never throws for any Unicode code point", async () => {
+    let all = "";
+    for (let codePoint = 0; codePoint <= 0xffff; codePoint++) {
+      if (codePoint >= 0xd800 && codePoint <= 0xdfff) continue;
+      all += String.fromCodePoint(codePoint);
+    }
+    all += "\u{1F600}\u{1F4A9}\u{20000}";
+    const bytes = await generateBrandedPrintablePdf({ title: all, intro: all, totalDurationSeconds: 3600 }, [{ sectionNumber: 1, title: all, durationSeconds: 600, introduction: all, scenario: all, question: all, email: { subject: all, html: `<p>${all}</p>` }, attachmentTitles: [all] }], { attachments: [{ kind: "pre_seen", title: all }] });
+    expect(bytes.slice(0, 5).toString()).toBe("%PDF-");
+  });
 });

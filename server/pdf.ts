@@ -26,6 +26,73 @@ function htmlToText(html: string | null | undefined): string {
     .join("\n");
 }
 
+const WIN_ANSI_ADDITIONAL_CODE_POINTS = new Set([
+  0x0152, 0x0153, 0x0160, 0x0161, 0x0178, 0x017d, 0x017e, 0x0192, 0x02c6, 0x02dc,
+  0x2013, 0x2014, 0x2018, 0x2019, 0x201a, 0x201c, 0x201d, 0x201e,
+  0x2020, 0x2021, 0x2022, 0x2026, 0x2030, 0x2039, 0x203a, 0x20ac, 0x2122,
+]);
+
+const DROP_CODE_POINTS = new Set([
+  0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2028, 0x2029, 0x202a, 0x202b, 0x202c,
+  0x202d, 0x202e, 0x2060, 0x2061, 0x2062, 0x2063, 0x2064, 0x2066, 0x2067, 0x2068,
+  0x2069, 0xfeff,
+]);
+
+const SYMBOL_REPLACEMENTS = new Map<string, string>([
+  ["●", "•"], ["◕", "•"], ["◉", "•"], ["○", "•"], ["◦", "•"], ["▪", "•"], ["▫", "•"],
+  ["◆", "•"], ["◇", "•"], ["⁃", "•"], ["∙", "•"], ["⋅", "•"], ["⦁", "•"], ["⦂", "•"],
+  ["◘", "@"], ["◙", "O"], ["◯", "O"], ["◎", "O"], ["⊚", "O"], ["☰", "="], ["☐", "[ ]"],
+  ["→", "->"], ["⟶", "->"], ["⇒", "->"], ["⇛", "->"], ["⟹", "->"], ["➔", "->"], ["➜", "->"],
+  ["↪", "->"], ["↳", "->"], ["↷", "->"], ["↗", "->"], ["↘", "->"], ["⇥", "->"], ["⇤", "|>"],
+  ["←", "<-"], ["⟵", "<-"], ["⇐", "<-"], ["⟸", "<-"], ["↩", "<-"], ["↲", "<-"], ["↶", "<-"],
+  ["↖", "<-"], ["↙", "<-"], ["⇦", "<-"], ["↞", "<-"], ["⌫", "<-"], ["⌦", "<-"],
+  ["↔", "<->"], ["⇔", "<->"], ["⟷", "<->"], ["↕", "|^|"], ["↑", "^"], ["↓", "v"], ["↺", "c"], ["↻", "c"],
+  ["−", "-"], ["‐", "-"], ["‑", "-"], ["‒", "-"], ["―", "-"], ["‾", "-"], ["﹘", "-"], ["﹣", "-"],
+  ["≤", "<="], ["≥", ">="], ["≠", "!="], ["≈", "~"], ["∼", "~"], ["≅", "~"], ["≡", "=="], ["≜", "=="],
+  ["√", "sqrt"], ["∛", "cbrt"], ["∞", "inf"], ["∝", "~"], ["∂", "d"], ["∆", "-"], ["∇", "-"],
+  ["∑", "Sum"], ["∏", "Prod"], ["∫", "Int"], ["∬", "Int"], ["∭", "Int"], ["π", "pi"],
+  ["μ", "u"], ["∕", "/"], ["⁄", "/"], ["‰", "%"], ["‱", "%"], ["′", "'"], ["″", "\""],
+  ["№", "No."], ["❮", "<"], ["❯", ">"],
+  ["⅓", "1/3"], ["⅔", "2/3"], ["⅕", "1/5"], ["⅖", "2/5"], ["⅗", "3/5"], ["⅘", "4/5"],
+  ["⅙", "1/6"], ["⅚", "5/6"], ["⅛", "1/8"], ["⅜", "3/8"], ["⅝", "5/8"], ["⅞", "7/8"],
+  ["✓", "Yes"], ["✔", "Yes"], ["☑", "Yes"], ["✗", "No"], ["✘", "No"], ["✕", "No"], ["☒", "No"], ["⊗", "No"],
+  ["⚑", "Flag"], ["⚐", "Flag"], ["⚠", "!"], ["⚡", ""], ["⚙", "*"], ["⚛", "*"],
+  ["✂", ""], ["✇", "*"], ["✈", ""], ["✉", ""], ["☎", ""], ["✆", ""],
+  ["✎", "*"], ["✍", "*"], ["✏", "*"], ["✐", "*"], ["✑", "*"], ["✒", "*"],
+  ["⌘", "Cmd"], ["⌥", "Alt"], ["⇧", "Shift"], ["⎋", "Esc"], ["⏎", ""],
+  ["‥", ".."], ["⋯", "..."], ["⁞", "?"], ["⁝", "!"], ["⁚", ".."], ["⁛", "..."],
+  ["¦", "|"], ["▌", "|"], ["▐", "|"], ["█", "#"], ["▓", "#"], ["▒", "+"], ["░", "-"], ["▀", "-"], ["▄", "-"],
+  ["─", "-"], ["━", "-"], ["┄", "-"], ["┅", "-"], ["┈", "-"], ["┉", "-"], ["╌", "-"], ["╍", "-"],
+  ["│", "|"], ["┃", "|"], ["┆", "|"], ["┇", "|"], ["┊", "|"], ["┋", "|"], ["╎", "|"], ["╏", "|"], ["║", "||"],
+  ["═", "="], ["┌", "+"], ["┐", "+"], ["└", "+"], ["┘", "+"], ["├", "+"], ["┤", "+"], ["┬", "+"],
+  ["┴", "+"], ["┼", "+"], ["╔", "+"], ["╗", "+"], ["╚", "+"], ["╝", "+"], ["╠", "+"], ["╣", "+"],
+  ["╦", "+"], ["╩", "+"], ["╬", "+"], ["╭", "+"], ["╮", "+"], ["╯", "+"], ["╰", "+"],
+  ["╱", "/"], ["╲", "\\"], ["╳", "x"], ["▚", "#"], ["▞", "#"], ["▙", "#"], ["▛", "#"], ["▜", "#"], ["▟", "#"],
+]);
+
+function isWinAnsiEncodable(codePoint: number) {
+  return (codePoint >= 0x20 && codePoint <= 0x7e) || (codePoint >= 0xa0 && codePoint <= 0xff) || WIN_ANSI_ADDITIONAL_CODE_POINTS.has(codePoint);
+}
+
+function toWinAnsi(text: string | null | undefined) {
+  if (!text) return "";
+  let result = "";
+  for (const character of text) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (DROP_CODE_POINTS.has(codePoint)) continue;
+    if (codePoint === 0x00a0 || codePoint === 0x2007 || codePoint === 0x202f || codePoint === 0x3000) {
+      result += " ";
+      continue;
+    }
+    if (isWinAnsiEncodable(codePoint)) {
+      result += character;
+      continue;
+    }
+    result += SYMBOL_REPLACEMENTS.get(character) ?? "";
+  }
+  return result;
+}
+
 export async function generateBrandedPrintablePdf(exam: PrintableExam, sections: PrintableSection[], context?: { email?: PrintableEmail | null; attachments?: PrintableAttachment[] }) {
   const document = await PDFDocument.create();
   const regular = await document.embedFont(StandardFonts.Helvetica);
@@ -40,8 +107,9 @@ export async function generateBrandedPrintablePdf(exam: PrintableExam, sections:
   const slate = rgb(0.32, 0.3, 0.42);
   const addPage = () => { page = document.addPage([pageWidth, pageHeight]); y = 790; };
   const ensureSpace = (needed: number) => { if (y < needed) addPage(); };
-  const line = (text: string, font: PDFFont = regular, size = 10, color = violet, indent = 48) => {
-    const words = text.split(/\s+/); let current = "";
+  const line = (raw: string, font: PDFFont = regular, size = 10, color = violet, indent = 48) => {
+    const text = toWinAnsi(raw);
+    const words = text.split(/\s+/).filter(Boolean); let current = "";
     for (const word of words) {
       const next = current ? `${current} ${word}` : word;
       if (font.widthOfTextAtSize(next, size) > pageWidth - indent - 48) { ensureSpace(60); page.drawText(current, { x: indent, y, size, font, color }); y -= size + 5; current = word; } else current = next;
@@ -55,7 +123,9 @@ export async function generateBrandedPrintablePdf(exam: PrintableExam, sections:
       y -= 3;
     }
   };
-  const sectionBanner = (title: string, note?: string) => {
+  const sectionBanner = (rawTitle: string, rawNote?: string) => {
+    const title = toWinAnsi(rawTitle);
+    const note = rawNote ? toWinAnsi(rawNote) : rawNote;
     ensureSpace(90);
     page.drawRectangle({ x: 42, y: y - 8, width: pageWidth - 84, height: 28, color: violet });
     page.drawText(title, { x: 52, y: y, size: 10, font: bold, color: rgb(1, 1, 1) });
