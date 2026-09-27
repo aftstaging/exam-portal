@@ -6,24 +6,182 @@ export type PrintableSection = { sectionNumber: number; title: string; durationS
 export type PrintableEmail = { from?: string | null; to?: string | null; subject?: string | null; html?: string | null };
 export type PrintableAttachment = { kind: string; title: string };
 
-function htmlToText(html: string | null | undefined): string {
-  if (!html) return "";
-  return html
-    .replace(/\r\n?/g, "\n")
-    .replace(/<(br|hr)\b[^>]*>/gi, "\n")
-    .replace(/<\/(p|div|li|h[1-6]|tr|table|blockquote)>/gi, "\n\n")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/[ \t]+/g, " ")
-    .split("\n")
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .join("\n");
+/** A contiguous stretch of text that shares one emphasis state. */
+type RichRun = { text: string; bold: boolean };
+
+/**
+ * One renderable block. `marker` is the bullet/number to draw in the hanging indent, or
+ * `null` for a plain paragraph. `depth` is the list nesting level (0 = top level).
+ */
+type RichBlock = { marker: string | null; depth: number; runs: RichRun[] };
+
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", "#160": " ", hellip: "...",
+  mdash: "-", ndash: "-", lsquo: "'", rsquo: "'", ldquo: '"', rdquo: '"', bull: "\u2022", middot: "\u00b7",
+};
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]*);/gi, (match, entity: string) => {
+    const key = entity.toLowerCase();
+    if (NAMED_ENTITIES[key] !== undefined) return NAMED_ENTITIES[key];
+    const codePoint = key.startsWith("#x")
+      ? Number.parseInt(key.slice(2), 16)
+      : key.startsWith("#")
+        ? Number.parseInt(key.slice(1), 10)
+        : Number.NaN;
+    if (!Number.isFinite(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return match;
+    try {
+      return String.fromCodePoint(codePoint);
+    } catch {
+      return match;
+    }
+  });
+}
+
+/**
+ * Collapses the collected text parts into whitespace-normalised runs, merging neighbours
+ * that share an emphasis state. Whitespace is dropped between runs so wrapping can be
+ * re-derived at draw time, and adjacent words with equal emphasis are rejoined.
+ */
+function partsToRuns(parts: { text: string; bold: boolean }[]): RichRun[] {
+  let flat = "";
+  const boldMask: boolean[] = [];
+  for (const part of parts) {
+    for (const character of part.text) {
+      flat += character;
+      boldMask.push(part.bold);
+    }
+  }
+
+  const runs: RichRun[] = [];
+  let index = 0;
+  // Tracks whether a whitespace run preceded the current token, so a continuation inside a
+  // single word is rejoined without a space while a genuinely new word gets one.
+  let afterSpace = true;
+  while (index < flat.length) {
+    if (/\s/.test(flat[index])) {
+      while (index < flat.length && /\s/.test(flat[index])) index += 1;
+      afterSpace = true;
+      continue;
+    }
+    const bold = boldMask[index];
+    let word = "";
+    // Emphasis can start or end mid-token (e.g. `total<b>cost</b>ing`), so the token is cut
+    // at every emphasis boundary rather than assuming one emphasis state per word.
+    while (index < flat.length && !/\s/.test(flat[index]) && boldMask[index] === bold) {
+      word += flat[index];
+      index += 1;
+    }
+    const previous = runs[runs.length - 1];
+    if (previous && previous.bold === bold) previous.text += `${afterSpace ? " " : ""}${word}`;
+    else runs.push({ text: word, bold });
+    afterSpace = false;
+  }
+  return runs;
+}
+
+/**
+ * Parses author-supplied email HTML into renderable blocks, preserving the structure that a
+ * naive tag strip destroys: bullet/numbered lists (with nesting depth) and inline emphasis.
+ *
+ * The previous implementation flattened everything to plain text, so bold sub-task markers
+ * and bullet lists were dropped from the printable paper. PDFKit/pdfs only embed the regular
+ * and bold faces here, so italic and underline runs render in the regular face.
+ */
+export function parseRichHtml(html: string | null | undefined): RichBlock[] {
+  if (!html) return [];
+  const source = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ");
+
+  const blocks: RichBlock[] = [];
+  let parts: { text: string; bold: boolean }[] = [];
+  let boldDepth = 0;
+  let listDepth = 0;
+  const orderedStack: boolean[] = [];
+  const counters: number[] = [];
+  let pendingMarker: string | null = null;
+
+  const flush = (marker: string | null, depth: number) => {
+    const runs = partsToRuns(parts);
+    parts = [];
+    if (runs.length) blocks.push({ marker, depth, runs });
+  };
+
+  const tagPattern = /<(\/)?([a-z][a-z0-9]*)((?:"[^"]*"|'[^']*'|[^>])*)>/gi;
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = tagPattern.exec(source))) {
+    if (match.index > cursor) {
+      parts.push({ text: decodeEntities(source.slice(cursor, match.index)), bold: boldDepth > 0 });
+    }
+    cursor = match.index + match[0].length;
+
+    const closing = match[1] === "/";
+    const tag = match[2].toLowerCase();
+    const attributes = match[3] ?? "";
+    const selfClosing = /\/\s*$/.test(attributes);
+
+    switch (tag) {
+      case "strong":
+      case "b":
+        if (!selfClosing) boldDepth = Math.max(0, boldDepth + (closing ? -1 : 1));
+        break;
+      case "br":
+        flush(pendingMarker, listDepth);
+        break;
+      case "p":
+      case "div":
+      case "blockquote":
+      case "tr":
+      case "table":
+      case "h1":
+      case "h2":
+      case "h3":
+      case "h4":
+      case "h5":
+      case "h6":
+        if (!selfClosing && closing) flush(pendingMarker, listDepth);
+        break;
+      case "ul":
+      case "ol":
+        if (selfClosing) break;
+        if (closing) {
+          flush(pendingMarker, listDepth);
+          pendingMarker = null;
+          listDepth = Math.max(0, listDepth - 1);
+          orderedStack.pop();
+          counters.pop();
+        } else {
+          listDepth += 1;
+          orderedStack.push(tag === "ol");
+          counters.push(0);
+        }
+        break;
+      case "li":
+        if (selfClosing) break;
+        if (closing) {
+          flush(pendingMarker, listDepth);
+          pendingMarker = null;
+        } else {
+          flush(pendingMarker, listDepth);
+          const level = Math.max(0, listDepth - 1);
+          if (orderedStack[level]) {
+            counters[level] = (counters[level] ?? 0) + 1;
+            pendingMarker = `${counters[level]}.`;
+          } else {
+            pendingMarker = listDepth > 0 ? "\u2022" : null;
+          }
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  if (cursor < source.length) parts.push({ text: decodeEntities(source.slice(cursor)), bold: boldDepth > 0 });
+  flush(pendingMarker, listDepth);
+  return blocks;
 }
 
 const WIN_ANSI_ADDITIONAL_CODE_POINTS = new Set([
@@ -123,6 +281,80 @@ export async function generateBrandedPrintablePdf(exam: PrintableExam, sections:
       y -= 3;
     }
   };
+  const LIST_INDENT_STEP = 16;
+  const MAX_LIST_DEPTH = 3;
+  const LIST_MARKER_GAP = 14;
+  /**
+   * Draws a block's runs with per-run font selection, so bold sub-task markers keep their
+   * emphasis, and wraps them inside a hanging indent when the block carries a bullet marker.
+   */
+  const richLine = (runs: RichRun[], indent: number, size: number, color: ReturnType<typeof rgb>, marker?: string) => {
+    const fontFor = (isBold: boolean) => (isBold ? bold : regular);
+    const rightEdge = pageWidth - 48;
+    let pending: RichRun[] = [];
+    let pendingWidth = 0;
+    let markerPending = marker ? toWinAnsi(marker) : "";
+
+    const flushLine = () => {
+      if (!pending.length) return;
+      ensureSpace(60);
+      if (markerPending) {
+        // Bullet sits in the gutter so wrapped lines align under the first word.
+        page.drawText(markerPending, { x: indent - LIST_MARKER_GAP, y, size, font: regular, color });
+        markerPending = "";
+      }
+      let cursorX = indent;
+      // Merge neighbouring words that share a face so each styled stretch is a single draw
+      // operation, which keeps the content stream small on long papers.
+      let active: RichRun | null = null;
+      const emit = () => {
+        if (!active || !active.text) return;
+        const font = fontFor(active.bold);
+        page.drawText(active.text, { x: cursorX, y, size, font, color });
+        cursorX += font.widthOfTextAtSize(active.text, size);
+        active = null;
+      };
+      for (const run of pending) {
+        if (active && active.bold === run.bold) {
+          active.text += run.text;
+          continue;
+        }
+        emit();
+        active = { text: run.text, bold: run.bold };
+      }
+      emit();
+      y -= size + 5;
+      pending = [];
+      pendingWidth = 0;
+    };
+
+    for (const run of runs) {
+      const text = toWinAnsi(run.text);
+      if (!text) continue;
+      const font = fontFor(run.bold);
+      for (const word of text.split(/\s+/).filter(Boolean)) {
+        const spaceWidth = pending.length ? font.widthOfTextAtSize(" ", size) : 0;
+        const wordWidth = font.widthOfTextAtSize(word, size);
+        if (pending.length && indent + pendingWidth + spaceWidth + wordWidth > rightEdge) flushLine();
+        if (pending.length) {
+          const spacer = " ";
+          pending.push({ text: spacer, bold: run.bold });
+          pendingWidth += font.widthOfTextAtSize(spacer, size);
+        }
+        pending.push({ text: word, bold: run.bold });
+        pendingWidth += wordWidth;
+      }
+    }
+    flushLine();
+  };
+  /** Renders author-supplied email HTML with its lists and emphasis intact. */
+  const richText = (html: string | null | undefined, size = 10, color = violet) => {
+    for (const block of parseRichHtml(html)) {
+      const depth = Math.min(Math.max(block.depth, 0), MAX_LIST_DEPTH);
+      richLine(block.runs, 48 + depth * LIST_INDENT_STEP, size, color, block.marker ?? undefined);
+      y -= 3;
+    }
+  };
   const sectionBanner = (rawTitle: string, rawNote?: string) => {
     const title = toWinAnsi(rawTitle);
     const note = rawNote ? toWinAnsi(rawNote) : rawNote;
@@ -156,13 +388,9 @@ export async function generateBrandedPrintablePdf(exam: PrintableExam, sections:
     if (email.from) line(`From: ${email.from}`, bold, 10, violet);
     if (email.to) line(`To: ${email.to}`, bold, 10, violet);
     if (email.subject) line(`Subject: ${email.subject}`, bold, 10, violet);
-    const body = htmlToText(email.html);
-    if (body) {
+    if (email.html) {
       y -= 4;
-      for (const segment of body.split("\n")) {
-        paragraph(segment, regular, 10, violet);
-        y -= 2;
-      }
+      richText(email.html);
     }
     y -= 8;
   }
@@ -190,13 +418,9 @@ export async function generateBrandedPrintablePdf(exam: PrintableExam, sections:
       if (sectionEmail.from) line(`From: ${sectionEmail.from}`, regular, 10, violet);
       if (sectionEmail.to) line(`To: ${sectionEmail.to}`, regular, 10, violet);
       if (sectionEmail.subject) line(`Subject: ${sectionEmail.subject}`, regular, 10, violet);
-      const emailBody = htmlToText(sectionEmail.html);
-      if (emailBody) {
+      if (sectionEmail.html) {
         y -= 2;
-        for (const segment of emailBody.split("\n")) {
-          paragraph(segment, regular, 10, violet);
-          y -= 2;
-        }
+        richText(sectionEmail.html);
       }
     }
     if (section.attachmentTitles?.length) {
