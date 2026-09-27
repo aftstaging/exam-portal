@@ -216,7 +216,7 @@ function RichTextEditor({ value, onChange, placeholder }: { value: string; onCha
         data-placeholder={placeholder}
         className="email-editor min-h-40 cursor-text px-3 py-2 text-sm leading-6 text-white outline-none [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-white/30"
       />
-      <style>{`.email-editor ul{list-style:disc;padding-left:1.5rem;margin:0.25rem 0;} .email-editor ol{list-style:decimal;padding-left:1.5rem;margin:0.25rem 0;} .email-editor p{margin:0.25rem 0;} .email-editor div[align="center"],.email-editor [style*="text-align:center"]{text-align:center;} .email-editor [style*="text-align:right"]{text-align:right;} .email-editor [style*="text-align:justify"]{text-align:justify;}`}</style>
+      <style>{`.email-editor ul,.email-editor menu{list-style-type:disc;list-style-position:outside;padding-left:1.5rem;margin:0.25rem 0;} .email-editor ol{list-style-type:decimal;list-style-position:outside;padding-left:1.5rem;margin:0.25rem 0;} .email-editor li{display:list-item;margin:0.1rem 0;} .email-editor p{margin:0.25rem 0;} .email-editor div[align="center"],.email-editor [style*="text-align:center"]{text-align:center;} .email-editor [style*="text-align:right"]{text-align:right;} .email-editor [style*="text-align:justify"]{text-align:justify;}`}</style>
     </div>
   );
 }
@@ -550,7 +550,7 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                                 <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {section.emailTo || "—"}</div>
                               </div>
                               <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {section.emailSubject || "—"}</div>
-                              <div className="border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: section.emailText }} />
+                              <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: section.emailText }} />
                             </div>
                           )}
                           {(section.emailImage || section.reference) && (
