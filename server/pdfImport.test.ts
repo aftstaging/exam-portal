@@ -44,6 +44,15 @@ function syntheticArgs(name: string, base64String: string) {
   return { fileName: name, mimeType: "application/pdf", base64: `data:application/pdf;base64,${base64String}` };
 }
 
+/**
+ * Budget for the tests that import a real multi-page paper.
+ *
+ * These run pdfjs over full exam fixtures and take 1-3s alone, which overruns vitest's 5s
+ * default when the suite runs in parallel. The ceiling is set per test rather than via
+ * `testTimeout` so the cheap rejection tests above keep failing fast on a real regression.
+ */
+const REAL_PAPER_TIMEOUT_MS = 30_000;
+
 describe("exams.createFromPdf — import exam papers from a PDF", () => {
   it("rejects learner and anonymous callers with FORBIDDEN", async () => {
     const learner = learnerCaller();
@@ -78,7 +87,7 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
       expect(section.durationSeconds).toBe(2700);
       expect(section.introduction?.length).toBeGreaterThan(100);
     });
-  });
+  }, REAL_PAPER_TIMEOUT_MS);
 
   it("extracts the Cartn Mock Exam 4 case study with the expected title and tasks", async () => {
     const draft = await staffCaller().exams.createFromPdf(uploadArgs("cartn-mock-4-questions.pdf"));
@@ -90,7 +99,7 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
     expect(draft.reference?.fileName).toBe("cartn-mock-4-questions-reference.pdf");
     expect(draft.formulae?.fileName).toBe("cartn-mock-4-questions-formulae-tables.pdf");
     expect(draft.emailText?.length).toBeGreaterThan(500);
-  });
+  }, REAL_PAPER_TIMEOUT_MS);
 
   it("extracts the CIMA MCS Mock B case study with task titles and resources", async () => {
     const draft = await staffCaller().exams.createFromPdf(uploadArgs("cima-mock-b-questions.pdf"));
@@ -104,7 +113,7 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
     expect(draft.reference?.fileName).toBe("cima-mock-b-questions-reference.pdf");
     expect(draft.formulae?.fileName).toBe("cima-mock-b-questions-formulae-tables.pdf");
     expect(draft.emailSubject).toMatch(/^Cartn trays/);
-  });
+  }, REAL_PAPER_TIMEOUT_MS);
 
   it("treats solutions and marking-guide PDFs as the feedback document without building sections", async () => {
     for (const name of ["cartn-mock-3-solutions.pdf", "cartn-mock-4-solutions.pdf", "cima-mock-b-answers-marking-guide.pdf"]) {
@@ -115,7 +124,7 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
       expect(draft.feedbackFile?.fileName).toBe(name);
       expect(draft.notes).toContain("This file looks like a suggested-solutions / answers / marking-guide document — nothing in it was treated as exam content.");
     }
-  });
+  }, REAL_PAPER_TIMEOUT_MS);
 
   it("does not treat a mock-exam question paper as a solutions document when its cover mentions suggested answers", async () => {
     const base64 = await buildPdf([
