@@ -287,6 +287,30 @@ export async function submitAttempt(input: { userId: number; attemptId: number; 
   return { success: true, status };
 }
 
+/** Resource row fields the printable PDF needs to decide whether to embed a file. */
+type PrintableResource = { kind: string; title: string; fileKey: string | null; fileUrl: string | null };
+
+/** Only raster images can be embedded by the PDF writer; everything else is listed by title. */
+const EMBEDDABLE_IMAGE = /\.(png|jpe?g)$/i;
+
+/**
+ * Loads an attachment as image bytes when the stored file is a PNG or JPEG.
+ *
+ * Failures are not fatal: a resource that cannot be read is still listed by title, which is
+ * what the printable exam did before it could embed images.
+ */
+async function loadPrintableImage(entry: PrintableResource): Promise<{ kind: string; title: string; base64?: string; mimeType?: string }> {
+  const fallback = { kind: entry.kind, title: entry.title };
+  if (!entry.fileKey || !EMBEDDABLE_IMAGE.test(entry.fileKey)) return fallback;
+  try {
+    const { body, contentType } = await storageGetBytes(entry.fileKey);
+    if (!body.length) return fallback;
+    return { ...fallback, base64: body.toString("base64"), mimeType: contentType ?? undefined };
+  } catch {
+    return fallback;
+  }
+}
+
 export async function generatePrintablePdf(userId: number, mockExamId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const exam = await db.select({ mockExam: mockExams, product: products }).from(mockExams).innerJoin(products, eq(mockExams.productId, products.id)).where(eq(mockExams.id, mockExamId)).limit(1);
@@ -298,14 +322,16 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
     .map((entry) => { try { return JSON.parse(entry.fileUrl as string) as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } })
     .filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
   const attachmentRank: Record<string, number> = { pre_seen: 0, formulae: 1, reference: 2, printable_pdf: 3, feedback: 4, email: 5 };
-  const attachments = universalResources
-    .filter((entry) => entry.title && entry.kind in attachmentRank)
-    .sort((a, b) => (attachmentRank[a.kind] ?? 9) - (attachmentRank[b.kind] ?? 9))
-    .map((entry) => ({ kind: entry.kind, title: entry.title }));
+  const attachments = await Promise.all(
+    universalResources
+      .filter((entry) => entry.title && entry.kind in attachmentRank)
+      .sort((a, b) => (attachmentRank[a.kind] ?? 9) - (attachmentRank[b.kind] ?? 9))
+      .map((entry) => loadPrintableImage(entry)),
+  );
 
   // Per-task email / reference attachments for each case-study section.
   const sectionAttachments = productResources.filter((entry) => entry.sectionNumber != null && (entry.kind === "email" || entry.kind === "reference") && Boolean(entry.title));
-  const pdfSections = sections.map((section) => {
+  const pdfSections = await Promise.all(sections.map(async (section) => {
     const taskRows = sectionAttachments.filter((entry) => entry.sectionNumber === section.sectionNumber);
     let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
     const metaRow = taskRows.find((entry) => entry.kind === "email" && entry.fileUrl?.trim().startsWith("{"));
@@ -315,8 +341,12 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
     const attachmentTitles = taskRows
       .filter((entry) => entry !== metaRow)
       .map((entry) => `${entry.kind === "email" ? "Email attachment image" : "Reference material"}: ${entry.title}`.replace(` · Task ${section.sectionNumber}`, ""));
-    return { ...section, email, attachmentTitles };
-  });
+    // Per-task images are embedded under their caption; non-image files stay caption-only.
+    const attachments = await Promise.all(
+      taskRows.filter((entry) => entry !== metaRow).map((entry) => loadPrintableImage(entry)),
+    );
+    return { ...section, email, attachmentTitles, attachments };
+  }));
 
   const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, pdfSections, { email: emailMeta, attachments });
   const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
@@ -1229,7 +1259,7 @@ export async function createExamBundle(input: ExamBundleInput) {
   let generatedPdfUrl: string | null = null;
   if (input.examType === "case_study" && !input.preModeratedPdf) {
     const persistedSections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
-    const exam = { title, intro: input.intro?.trim() || null, totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)) };
+    const exam = { title, intro: input.intro?.trim() || null, totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), examType: input.examType };
     const pdfSections = (persistedSections.length ? persistedSections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }]).map((section) => {
       const authored = input.caseStudySections?.find((item) => item.sectionNumber === section.sectionNumber);
       let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;

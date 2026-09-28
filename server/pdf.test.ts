@@ -1,6 +1,143 @@
 import { describe, expect, it } from "vitest";
-import { PDFDocument } from "pdf-lib";
+import { deflateSync } from "node:zlib";
+import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { generateBrandedPrintablePdf, parseRichHtml } from "./pdf";
+
+/**
+ * Pulls the drawn text back out of a generated PDF.
+ *
+ * The page-level assertions above only prove a PDF was produced; the layout bugs this file
+ * guards against (words run together, dropped table columns) are only visible in the extracted
+ * text, so those tests read it back the way a reader's PDF viewer would.
+ */
+async function extractText(bytes: Uint8Array): Promise<string> {
+  // pdfjs rejects a Node Buffer, so the generator's output is copied into a plain Uint8Array.
+  const doc = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true }).promise;
+  const parts: string[] = [];
+  for (let number = 1; number <= doc.numPages; number += 1) {
+    const page = await doc.getPage(number);
+    const content = await page.getTextContent();
+    for (const item of content.items) {
+      if ("str" in item && item.str) parts.push(item.str);
+    }
+  }
+  return parts.join(" ");
+}
+
+/** Reads back the drawn text with the position of each item, for layout assertions. */
+async function extractTextItems(bytes: Uint8Array): Promise<{ text: string; x: number; y: number }[]> {
+  const doc = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true }).promise;
+  const items: { text: string; x: number; y: number }[] = [];
+  for (let number = 1; number <= doc.numPages; number += 1) {
+    const content = await (await doc.getPage(number)).getTextContent();
+    for (const item of content.items) {
+      if (!("str" in item) || !item.str) continue;
+      items.push({ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number });
+    }
+  }
+  return items;
+}
+
+const CRC_TABLE = (() => {
+  const table: number[] = [];
+  for (let value = 0; value < 256; value += 1) {
+    let crc = value;
+    for (let bit = 0; bit < 8; bit += 1) crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+    table.push(crc >>> 0);
+  }
+  return table;
+})();
+
+function crc32(buffer: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of buffer) crc = CRC_TABLE[(crc ^ byte) & 0xff]! ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type: string, data: Buffer): Buffer {
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const body = Buffer.concat([Buffer.from(type, "latin1"), data]);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(crc32(body), 0);
+  return Buffer.concat([length, body, checksum]);
+}
+
+/**
+ * Builds a valid truecolour PNG so the embed path can be exercised with real image bytes.
+ *
+ * Generated rather than committed as a fixture so the test carries no binary blob.
+ */
+function buildPng(width: number, height: number): string {
+  const scanlines = Buffer.alloc((width * 3 + 1) * height);
+  for (let y = 0; y < height; y += 1) {
+    const start = y * (width * 3 + 1);
+    scanlines[start] = 0;
+    for (let x = 0; x < width; x += 1) {
+      const at = start + 1 + x * 3;
+      const edge = x < 2 || y < 2 || x >= width - 2 || y >= height - 2;
+      scanlines[at] = edge ? 20 : 235;
+      scanlines[at + 1] = edge ? 40 : 235;
+      scanlines[at + 2] = edge ? 90 : 235;
+    }
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  header[9] = 2;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk("IHDR", header),
+    pngChunk("IDAT", deflateSync(scanlines)),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]).toString("base64");
+}
+
+/**
+ * Measures the on-page width of every image drawn in a PDF.
+ *
+ * pdf-lib writes each placement as a `cm` matrix before the image's `Do` operator, so the
+ * horizontal scale in that matrix is the drawn width. Measuring the placement (rather than
+ * checking for an `/Image` object) is what distinguishes a readable embed from a sliver, since
+ * the branded logo is an image too.
+ */
+async function drawnImageWidths(bytes: Uint8Array): Promise<number[]> {
+  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+  const widths: number[] = [];
+  for (const page of document.getPages()) {
+    for (const source of pageContentStreams(document, page.node.Contents())) {
+      const text = Buffer.from(decodePDFRawStream(source).decode()).toString("latin1");
+      // A placement is a `q ... cm ... /Image-x Do ... Q` block. pdf-lib writes the scale as one
+      // matrix and pads the block with identity `1 0 0 1 0 0 cm` steps, so the drawn width is the
+      // product of the horizontal factors in that block rather than any single matrix.
+      for (const doMatch of text.matchAll(/\/Image[\w.-]*\s+(?:[\d.]+ 0 R\s+)?Do/g)) {
+        const blockStart = text.lastIndexOf("\nq\n", doMatch.index);
+        const before = text.slice(blockStart === -1 ? 0 : blockStart, doMatch.index);
+        let width = 1;
+        for (const matrix of before.matchAll(/([\d.]+) 0 0 [\d.]+ [\d.-]+ [\d.-]+ cm/g)) {
+          width *= Number(matrix[1]);
+        }
+        widths.push(width);
+      }
+    }
+  }
+  return widths;
+}
+
+/** Resolves a page's `/Contents` entry, which may be one stream or an array of them. */
+function pageContentStreams(document: PDFDocument, contents: unknown): PDFRawStream[] {
+  const resolved = document.context.lookup(contents as never);
+  if (resolved instanceof PDFRawStream) return [resolved];
+  if (resolved instanceof PDFArray) {
+    return resolved
+      .asArray()
+      .map((entry) => document.context.lookup(entry))
+      .filter((entry): entry is PDFRawStream => entry instanceof PDFRawStream);
+  }
+  return [];
+}
 
 describe("branded printable exam PDF", () => {
   it("creates a readable PDF with exam and section content", async () => {
@@ -51,6 +188,98 @@ describe("branded printable exam PDF", () => {
     all += "\u{1F600}\u{1F4A9}\u{20000}";
     const bytes = await generateBrandedPrintablePdf({ title: all, intro: all, totalDurationSeconds: 3600 }, [{ sectionNumber: 1, title: all, durationSeconds: 600, introduction: all, scenario: all, question: all, email: { subject: all, html: `<p>${all}</p>` }, attachmentTitles: [all] }], { attachments: [{ kind: "pre_seen", title: all }] });
     expect(bytes.slice(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("keeps words separated by spaces when wrapping a line", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: "Answer all tasks. <strong>Show your workings</strong> in the answer pad provided.", totalDurationSeconds: 10800 },
+      [{ sectionNumber: 1, title: "Digital data sources", durationSeconds: 2700, introduction: "Assess the decision context for the new delivery service." }],
+    );
+    const text = await extractText(bytes);
+    // A separator read from the wrong token drops the last space of a run and welds words together.
+    expect(text).toContain("Answer all tasks.");
+    expect(text).toContain("in the answer pad provided.");
+    expect(text).toContain("Digital data sources");
+    expect(text).toContain("45 minutes");
+    expect(text).not.toMatch(/\b\w+(?:ing|ed|tion|ments)\b(?=provided|sources|context)/);
+  });
+
+  it("draws every column of a table row", async () => {
+    const html = "<p>Route data:</p><table><thead><tr><th>Region</th><th>Deliveries</th><th>Contribution</th></tr></thead><tbody><tr><td>Region 1</td><td>1250</td><td>225.00</td></tr></tbody></table>";
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Delivery economics", durationSeconds: 2700, email: { subject: "Route density", html } }],
+    );
+    const text = await extractText(bytes);
+    // Columns were flattened into one line list, so only the first cell of each row survived.
+    expect(text).toContain("Deliveries");
+    expect(text).toContain("Contribution");
+    expect(text).toContain("1250");
+    expect(text).toContain("225.00");
+  });
+
+  it("draws a list marker clear of the text it introduces", async () => {
+    const html = "<ul><li><strong>(sub-task (a) = 52%)</strong> Explain the budgeted results.</li></ul>";
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "CIMA OCS Mock Exam 1", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, email: { subject: "Management accounts", html } }],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Explain the budgeted results.");
+    // A marker drawn at the line's own x would print on top of the first word, so the two are
+    // compared by position on the shared baseline rather than by the order of the text items.
+    const items = await extractTextItems(bytes);
+    const bullet = items.find((item) => item.text === "\u2022");
+    const lead = items.find((item) => item.text.includes("sub-task"));
+    expect(bullet).toBeDefined();
+    expect(lead).toBeDefined();
+    expect(bullet!.y).toBeCloseTo(lead!.y, 0);
+    expect(bullet!.x).toBeLessThan(lead!.x);
+  });
+
+  it("embeds an attachment image instead of only naming it", async () => {
+    const png = buildPng(320, 200);
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [
+        {
+          sectionNumber: 1,
+          title: "Delivery economics",
+          durationSeconds: 2700,
+          attachmentTitles: ["Reference material: route density extract"],
+          attachments: [{ kind: "reference", title: "Reference material: route density extract", base64: png, mimeType: "image/png" }],
+        },
+      ],
+    );
+    // The image must be embedded and drawn near its natural size. Scaling it down to whatever
+    // space is left produced a 82pt-wide sliver, so the width is what actually catches a regression.
+    const drawn = await drawnImageWidths(bytes);
+    expect(drawn.length).toBeGreaterThan(1);
+    expect(Math.max(...drawn)).toBeGreaterThan(300);
+  });
+
+  it("moves an attachment image to its own page instead of squeezing it into leftover space", async () => {
+    const png = buildPng(1400, 900);
+    // Filler is sized to leave well under the minimum inline height, which is what used to make
+    // a tall image collapse to an unreadable strip at the bottom of the text page.
+    const filler = Array.from({ length: 18 }, (_, i) => `Filler paragraph ${i + 1} occupying vertical space before the chart.`).join("<br/>");
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Delivery economics", durationSeconds: 2700, introduction: filler, attachmentTitles: ["Reference material: dense chart"], attachments: [{ kind: "reference", title: "Reference material: dense chart", base64: png, mimeType: "image/png" }] }],
+    );
+    const drawn = await drawnImageWidths(bytes);
+    // Drawn near the full content width, which only happens if the image moved to a new page.
+    expect(Math.max(...drawn)).toBeGreaterThan(400);
+  });
+
+  it("falls back to the caption when the image bytes cannot be decoded", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Delivery economics", durationSeconds: 2700, attachmentTitles: ["Reference material: broken"], attachments: [{ kind: "reference", title: "Reference material: broken", base64: "bm90LWEtcmVhbC1pbWFnZQ==", mimeType: "image/png" }] }],
+    );
+    const text = await extractText(bytes);
+    // Undecodable bytes must not lose the attachment from the document.
+    expect(text).toContain("Reference material: broken");
   });
 
   it("renders an email body containing lists and bold runs", async () => {
