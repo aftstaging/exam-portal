@@ -348,8 +348,8 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
       .map((entry) => loadPrintableImage(entry)),
   );
 
-  // Per-task email / reference attachments for each case-study section.
-  const sectionAttachments = productResources.filter((entry) => entry.sectionNumber != null && (entry.kind === "email" || entry.kind === "reference") && Boolean(entry.title));
+  // Per-task email / reference / instruction-sheet attachments for each case-study section.
+  const sectionAttachments = productResources.filter((entry) => entry.sectionNumber != null && (entry.kind === "email" || entry.kind === "reference" || entry.kind === "instructions") && Boolean(entry.title));
   const pdfSections = await Promise.all(sections.map(async (section) => {
     const taskRows = sectionAttachments.filter((entry) => entry.sectionNumber === section.sectionNumber);
     let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
@@ -358,20 +358,34 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
       try { email = JSON.parse(metaRow.fileUrl) as typeof email; } catch { email = null; }
     }
     const captionFor = (title: string, kind: string) =>
-      `${kind === "email" ? "Email attachment image" : "Reference material"}: ${title}`
+      `${kind === "email" ? "Email attachment image" : kind === "instructions" ? "Instruction sheet" : "Reference material"}: ${title}`
         .split(` · Task ${section.sectionNumber}`)
         .join("");
-    const files = taskRows.filter((entry) => entry !== metaRow);
-    const loaded = await Promise.all(files.map((entry) => loadPrintableImage(entry)));
-    // A printable image prints its own caption directly above it, so only the files that cannot
-    // be placed on the page are listed as plain captions — otherwise every image is captioned
-    // twice, and an image that moves to its own page leaves its caption behind on the last one.
-    const attachmentTitles = files
-      .map((entry, index) => ({ entry, file: loaded[index]! }))
-      .filter(({ file }) => !file.base64)
-      .map(({ entry }) => captionFor(entry.title, entry.kind));
-    const attachments = loaded.map((file, index) => ({ ...file, title: captionFor(files[index]!.title, files[index]!.kind) }));
-    return { ...section, email, attachmentTitles, attachments };
+    // The instruction sheet prints with the task's instructions, so it is split out of the other
+    // per-task files: an image of the sheet is placed on the page, and a PDF of one is listed by
+    // caption, because a PDF page cannot be nested inside another PDF page.
+    const instructionRows = taskRows.filter((entry) => entry.kind === "instructions");
+    const otherRows = taskRows.filter((entry) => entry !== metaRow && entry.kind !== "instructions");
+    const printable = async (rows: typeof taskRows) => {
+      const loaded = await Promise.all(rows.map((entry) => loadPrintableImage(entry)));
+      return {
+        // A printable image prints its own caption directly above it, so only the files that
+        // cannot be placed on the page are listed as plain captions — otherwise every image is
+        // captioned twice, and an image that moves to its own page leaves its caption behind.
+        titles: rows.filter((_, index) => !loaded[index]!.base64).map((entry) => captionFor(entry.title, entry.kind)),
+        images: loaded.map((file, index) => ({ ...file, title: captionFor(rows[index]!.title, rows[index]!.kind) })),
+      };
+    };
+    const intro = await printable(instructionRows);
+    const rest = await printable(otherRows);
+    return {
+      ...section,
+      email,
+      attachmentTitles: rest.titles,
+      attachments: rest.images,
+      introAttachmentTitles: intro.titles,
+      introAttachments: intro.images,
+    };
   }));
 
   const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, pdfSections, { email: emailMeta, attachments });
@@ -602,10 +616,11 @@ export async function getAdminExamPreview(mockExamId: number) {
   if (feedbackResource?.fileUrl && feedbackResource.fileUrl.trim().startsWith("{")) {
     try { feedbackText = (JSON.parse(feedbackResource.fileUrl) as { text?: string }).text ?? null; } catch { feedbackText = null; }
   }
-  const sectionResources = await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), inArray(resources.kind, ["email", "reference"]), isNotNull(resources.sectionNumber)));
+  const sectionResources = await db.select().from(resources).where(and(eq(resources.productId, examRow.mockExam.productId), inArray(resources.kind, ["email", "reference", "instructions"]), isNotNull(resources.sectionNumber)));
   const previewSections = sections.map((section) => {
     const emailRows = sectionResources.filter((resource) => resource.sectionNumber === section.sectionNumber && resource.kind === "email");
     const referenceRow = sectionResources.find((resource) => resource.sectionNumber === section.sectionNumber && resource.kind === "reference");
+    const instructionRow = sectionResources.find((resource) => resource.sectionNumber === section.sectionNumber && resource.kind === "instructions");
     const metaRow = emailRows.find((resource) => resource.fileUrl?.trim().startsWith("{"));
     let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
     if (metaRow?.fileUrl) {
@@ -616,6 +631,7 @@ export async function getAdminExamPreview(mockExamId: number) {
       email,
       emailImageTitle: emailRows.find((resource) => resource !== metaRow)?.title ?? null,
       referenceFileName: referenceRow?.title ?? null,
+      instructionFileName: instructionRow?.title ?? null,
     };
   });
   return {
@@ -644,8 +660,8 @@ export async function getAdminExamBundleDetail(mockExamId: number) {
   if (feedbackResource?.fileUrl && feedbackResource.fileUrl.trim().startsWith("{")) {
     try { feedbackText = (JSON.parse(feedbackResource.fileUrl) as { text?: string }).text ?? null; } catch { feedbackText = null; }
   }
-  const sectionAttachments = allResources.filter((resource) => resource.sectionNumber != null && (resource.kind === "email" || resource.kind === "reference"));
-  const attachmentFor = (kind: "email" | "reference", sectionNumber: number) => {
+  const sectionAttachments = allResources.filter((resource) => resource.sectionNumber != null && (resource.kind === "email" || resource.kind === "reference" || resource.kind === "instructions"));
+  const attachmentFor = (kind: "email" | "reference" | "instructions", sectionNumber: number) => {
     const rows = sectionAttachments.filter((resource) => resource.sectionNumber === sectionNumber && resource.kind === kind);
     const metaRow = kind === "email" ? rows.find((resource) => resource.fileUrl?.trim().startsWith("{")) : undefined;
     return { metaRow, fileRow: rows.find((resource) => resource !== metaRow) };
@@ -656,6 +672,7 @@ export async function getAdminExamBundleDetail(mockExamId: number) {
     sections: sections.map((section) => {
       const email = attachmentFor("email", section.sectionNumber);
       const reference = attachmentFor("reference", section.sectionNumber);
+      const instructions = attachmentFor("instructions", section.sectionNumber);
       let sectionEmail: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
       if (email.metaRow?.fileUrl) {
         try { sectionEmail = JSON.parse(email.metaRow.fileUrl) as typeof sectionEmail; } catch { sectionEmail = null; }
@@ -671,6 +688,9 @@ export async function getAdminExamBundleDetail(mockExamId: number) {
         email: sectionEmail,
         emailImage: email.fileRow?.fileUrl ? { fileName: email.fileRow.title, keepUrl: email.fileRow.fileUrl } : null,
         reference: reference.fileRow?.fileUrl ? { fileName: reference.fileRow.title, keepUrl: reference.fileRow.fileUrl } : null,
+        // Returned with the stored URL so re-saving an untouched section keeps the sheet rather
+        // than re-uploading it, and clearing the slot deletes the row.
+        instructionFile: instructions.fileRow?.fileUrl ? { fileName: instructions.fileRow.title, keepUrl: instructions.fileRow.fileUrl } : null,
       };
     }),
     questions: questions.map((question) => ({
@@ -974,6 +994,8 @@ export type ExamBundleCaseStudySection = {
   emailText?: string;
   emailImage?: ExamBundleFile;
   reference?: ExamBundleFile;
+  // Per-task instruction sheet: a PNG, JPEG or PDF that accompanies the task's instructions.
+  instructionFile?: ExamBundleFile;
 };
 export type ExamBundleInput = {
   userId: number;
@@ -1014,16 +1036,18 @@ type SectionAttachmentCarrier = {
   emailText?: string;
   emailImage?: ExamBundleFileInput;
   reference?: ExamBundleFileInput;
+  instructionFile?: ExamBundleFileInput;
 };
 
 type SectionResourceHints = {
   emailMeta?: { id: number; fileUrl: string };
   emailImage?: { id: number; fileKey: string | null; fileUrl: string | null };
   reference?: { id: number; fileKey: string | null; fileUrl: string | null };
+  instructionFile?: { id: number; fileKey: string | null; fileUrl: string | null };
 };
 
-// Case-study tasks each carry their own email attachment and reference material.
-// These are stored as `resources` rows (kind `email` / `reference`) tagged with a
+// Case-study tasks each carry their own email attachment, reference material and instruction sheet.
+// These are stored as `resources` rows (kind `email` / `reference` / `instructions`) tagged with a
 // `sectionNumber`. Only pre-seen and formulae + tables stay universal (sectionNumber NULL).
 async function writeSectionResources(input: {
   userId: number;
@@ -1060,7 +1084,7 @@ async function writeSectionResources(input: {
     await db.delete(resources).where(eq(resources.id, hints.emailMeta.id));
   }
 
-  const uploadSectionFile = async (kind: "email" | "reference", file: { fileName: string; mimeType?: string; base64: string }, suffix: string) => {
+  const uploadSectionFile = async (kind: "email" | "reference" | "instructions", file: { fileName: string; mimeType?: string; base64: string }, suffix: string) => {
     const payload = file.base64.includes(",") ? file.base64.split(",")[1] : file.base64;
     const bytes = Buffer.from(payload, "base64");
     if (!bytes.length) return;
@@ -1069,31 +1093,36 @@ async function writeSectionResources(input: {
     await db.insert(auditEvents).values({ userId, entityType: "resource", entityId: resourceId ?? 0, action: "section_resource_uploaded", metadata: JSON.stringify({ productId, sectionNumber, kind, fileName: file.fileName }) });
   };
 
-  // 2. Email image — uploaded screenshot / PDF.
-  const emailImage = section.emailImage;
-  if (emailImage && "base64" in emailImage && emailImage.base64) {
-    await uploadSectionFile("email", { fileName: emailImage.fileName, mimeType: emailImage.mimeType, base64: emailImage.base64 }, "Email");
-    if (hints?.emailImage) await db.delete(resources).where(eq(resources.id, hints.emailImage.id));
-  } else if (emailImage && "keepUrl" in emailImage && emailImage.keepUrl) {
-    if (!hints?.emailImage || hints.emailImage.fileUrl !== emailImage.keepUrl) {
-      await db.insert(resources).values({ productId, title: taskTitle("Email"), kind: "email", fileKey: hints?.emailImage?.fileKey ?? null, fileUrl: emailImage.keepUrl, sectionNumber, status });
+  /**
+   * Applies the three states a stored attachment can be in: a new upload replaces the stored row,
+   * a `keepUrl` leaves it alone when it is the same object, and an absent or null value deletes it.
+   */
+  const syncSectionFile = async (
+    kind: "email" | "reference" | "instructions",
+    file: ExamBundleFileInput | undefined,
+    hint: { id: number; fileKey: string | null; fileUrl: string | null } | undefined,
+    suffix: string,
+  ) => {
+    if (file && "base64" in file && file.base64) {
+      await uploadSectionFile(kind, { fileName: file.fileName, mimeType: file.mimeType, base64: file.base64 }, suffix);
+      if (hint) await db.delete(resources).where(eq(resources.id, hint.id));
+    } else if (file && "keepUrl" in file && file.keepUrl) {
+      if (!hint || hint.fileUrl !== file.keepUrl) {
+        await db.insert(resources).values({ productId, title: taskTitle(suffix), kind, fileKey: hint?.fileKey ?? null, fileUrl: file.keepUrl, sectionNumber, status });
+      }
+    } else if (hint) {
+      await db.delete(resources).where(eq(resources.id, hint.id));
     }
-  } else if (hints?.emailImage) {
-    await db.delete(resources).where(eq(resources.id, hints.emailImage.id));
-  }
+  };
+
+  // 2. Email image — uploaded screenshot / PDF.
+  await syncSectionFile("email", section.emailImage, hints?.emailImage, "Email");
 
   // 3. Reference material file.
-  const reference = section.reference;
-  if (reference && "base64" in reference && reference.base64) {
-    await uploadSectionFile("reference", { fileName: reference.fileName, mimeType: reference.mimeType, base64: reference.base64 }, "Reference material");
-    if (hints?.reference) await db.delete(resources).where(eq(resources.id, hints.reference.id));
-  } else if (reference && "keepUrl" in reference && reference.keepUrl) {
-    if (!hints?.reference || hints.reference.fileUrl !== reference.keepUrl) {
-      await db.insert(resources).values({ productId, title: taskTitle("Reference material"), kind: "reference", fileKey: hints?.reference?.fileKey ?? null, fileUrl: reference.keepUrl, sectionNumber, status });
-    }
-  } else if (hints?.reference) {
-    await db.delete(resources).where(eq(resources.id, hints.reference.id));
-  }
+  await syncSectionFile("reference", section.reference, hints?.reference, "Reference material");
+
+  // 4. Instruction sheet — the scanned/exported sheet that goes with this task's instructions.
+  await syncSectionFile("instructions", section.instructionFile, hints?.instructionFile, "Instruction sheet");
 }
 
 /**
@@ -1331,9 +1360,11 @@ export async function createExamBundle(input: ExamBundleInput) {
 export type ExamBundleExistingFile = { fileName: string; keepUrl: string };
 export type ExamBundleFileInput = { fileName: string; mimeType?: string; base64?: string; keepUrl?: string } | null;
 
-export type ExamBundleCaseStudySectionUpdate = Omit<ExamBundleCaseStudySection, "emailImage" | "reference"> & {
+export type ExamBundleCaseStudySectionUpdate = Omit<ExamBundleCaseStudySection, "emailImage" | "reference" | "instructionFile"> & {
   emailImage?: ExamBundleFileInput;
   reference?: ExamBundleFileInput;
+  // Nullable, so clearing the slot in the studio deletes the stored sheet rather than leaving it.
+  instructionFile?: ExamBundleFileInput | null;
 };
 
 export type ExamBundleUpdateInput = {
@@ -1494,16 +1525,18 @@ export async function updateExamBundle(input: ExamBundleUpdateInput) {
 
   // 4. Replace case-study sections wholesale
   if (input.caseStudySections) {
-    const existingSectionResources = input.caseStudySections.length ? await db.select().from(resources).where(and(eq(resources.productId, productId), inArray(resources.kind, ["email", "reference"]), isNotNull(resources.sectionNumber))) : [];
+    const existingSectionResources = input.caseStudySections.length ? await db.select().from(resources).where(and(eq(resources.productId, productId), inArray(resources.kind, ["email", "reference", "instructions"]), isNotNull(resources.sectionNumber))) : [];
     const hintsFor = (sectionNumber: number): SectionResourceHints => {
       const rows = existingSectionResources.filter((row) => row.sectionNumber === sectionNumber);
       const meta = rows.find((row) => row.kind === "email" && row.fileUrl?.trim().startsWith("{"));
       const image = rows.find((row) => row.kind === "email" && row !== meta);
       const reference = rows.find((row) => row.kind === "reference");
+      const instructionFile = rows.find((row) => row.kind === "instructions");
       return {
         emailMeta: meta ? { id: meta.id, fileUrl: meta.fileUrl ?? "" } : undefined,
         emailImage: image ? { id: image.id, fileUrl: image.fileUrl ?? "", fileKey: image.fileKey } : undefined,
         reference: reference ? { id: reference.id, fileUrl: reference.fileUrl ?? "", fileKey: reference.fileKey } : undefined,
+        instructionFile: instructionFile ? { id: instructionFile.id, fileUrl: instructionFile.fileUrl ?? "", fileKey: instructionFile.fileKey } : undefined,
       };
     };
     const status: "draft" | "published" = existing.mockExam.status === "published" ? "published" : "draft";
@@ -1533,7 +1566,7 @@ export async function updateExamBundle(input: ExamBundleUpdateInput) {
     }
     // Sweep any per-section resource rows left over from removed sections.
     const keptNumbers = sectionNumbers.length ? sectionNumbers : [-1];
-    await db.delete(resources).where(and(eq(resources.productId, productId), inArray(resources.kind, ["email", "reference"]), isNotNull(resources.sectionNumber), not(inArray(resources.sectionNumber, keptNumbers))));
+    await db.delete(resources).where(and(eq(resources.productId, productId), inArray(resources.kind, ["email", "reference", "instructions"]), isNotNull(resources.sectionNumber), not(inArray(resources.sectionNumber, keptNumbers))));
   }
 
   const uploadResource = async (kind: "pre_seen" | "formulae" | "reference" | "email" | "printable_pdf" | "feedback", file: { fileName: string; mimeType?: string; base64: string }, resTitle: string) => {

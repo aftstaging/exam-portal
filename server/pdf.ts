@@ -17,6 +17,14 @@ export type PrintableSection = {
   email?: PrintableEmail | null;
   attachmentTitles?: string[];
   attachments?: PrintableAttachment[];
+  /**
+   * Printed immediately after the task's instructions, before the email and the reference
+   * material. A task's instruction sheet belongs with the instructions it belongs to, and a
+   * candidate reading the paper top to bottom has to meet it there rather than at the foot of
+   * the section.
+   */
+  introAttachmentTitles?: string[];
+  introAttachments?: PrintableAttachment[];
 };
 export type PrintableEmail = { from?: string | null; to?: string | null; subject?: string | null; html?: string | null };
 export type PrintableAttachment = { kind: string; title: string; base64?: string | null; mimeType?: string | null };
@@ -235,7 +243,13 @@ export function parseRichHtml(html: string | null | undefined): RichBlock[] {
       rows: rows.map((cells) => cells.map((cell) => scanBlocks(cell.replace(/<br\s*\/?>/gi, "\n")))),
       headerRow,
     });
-    return `<p>AFT_TABLE_${tables.length - 1}</p>`;
+    // A table is a block, so the placeholder is fenced with explicit block breaks. Without them the
+    // scanner keeps accumulating runs until the next closing tag, which merges the prose in front
+    // of the table into the placeholder's own block: the text that follows the table still prints,
+    // but the table itself is printed as the literal placeholder text instead of being laid out.
+    // The breaks are emitted as tags rather than newlines because the scanner breaks blocks on a
+    // closing tag, not on a line ending, and a redundant `</p>` flushes nothing.
+    return `</p><p>AFT_TABLE_${tables.length - 1}</p><p>`;
   });
 
   return scanBlocks(withPlaceholders).map((block) => {
@@ -1033,6 +1047,16 @@ export async function generateBrandedPrintablePdf(
     drawHeading(canvas, `Section ${section.sectionNumber} · ${section.title}`, fonts);
     drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, SMALL_SIZE + 1, BODY_LEADING, BODY_LEADING * 0.5);
     drawFragment(canvas, fonts, section.introduction);
+    // The instruction sheet is read with the instructions, so it prints before the extra notes
+    // and the task itself rather than being held back with the other attachments.
+    for (const title of section.introAttachmentTitles ?? []) {
+      canvas.space(BODY_LEADING * 0.3);
+      drawFragment(canvas, fonts, title, SMALL_SIZE + 1, BODY_LEADING, 0);
+    }
+    for (const attachment of section.introAttachments ?? []) {
+      await drawAttachment(canvas, fonts, attachment);
+      canvas.space(BODY_LEADING * 0.3);
+    }
     drawFragment(canvas, fonts, section.scenario);
     if (section.question) {
       canvas.space(BODY_LEADING * 0.3);

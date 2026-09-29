@@ -22,11 +22,13 @@ import {
   MapPin,
   Menu,
   Package,
+  Paperclip,
   Plus,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   TimerReset,
+  Table2,
   Trash2,
   Underline,
   UploadCloud,
@@ -118,7 +120,7 @@ type ImportedPdfDraft = {
   formulae?: BundleFile | null;
   reference?: BundleFile | null;
   feedbackFile?: BundleFile | null;
-  caseStudySections?: { sectionNumber: number; title: string; introduction?: string; scenario?: string; question?: string; durationSeconds: number; emailFrom?: string; emailTo?: string; emailSubject?: string; emailText?: string; emailImage?: EditableFile; reference?: EditableFile }[];
+  caseStudySections?: { sectionNumber: number; title: string; introduction?: string; scenario?: string; question?: string; durationSeconds: number; emailFrom?: string; emailTo?: string; emailSubject?: string; emailText?: string; emailImage?: EditableFile; reference?: EditableFile; instructionFile?: EditableFile }[];
   objectiveQuestions?: { topic: string; prompt: string; options: string[]; correct: number; questionType: "single_choice" | "multiple_choice" | "dropdown" | "numerical" | "text_input"; explanation?: string; rationale?: string[] }[];
   notes: string[];
 };
@@ -296,15 +298,33 @@ function QuestionEditor({ question, index, onChange, onRemove }: { question: Que
   );
 }
 
-function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, ## heading, ● bullet (start a line with - or ●), 1. numbered." }: {
+/**
+ * Builds the markup for an empty instructions table of the given size.
+ *
+ * The table is plain `<table>`/`<th>`/`<td>` with no styling attributes: the exam shell and the
+ * printable PDF both lay a table out from the element structure alone, so an author only ever
+ * edits cell text, and the same markup is what the PDF writer lays out page by page.
+ */
+function buildTableMarkup(rows: number, columns: number): string {
+  const header = Array.from({ length: columns }, (_, index) => `<th>Column ${index + 1}</th>`).join("");
+  const body = Array.from({ length: rows }, () => `<tr>${Array.from({ length: columns }, () => "<td></td>").join("")}</tr>`).join("");
+  return `<table>\n<thead>\n<tr>${header}</tr>\n</thead>\n<tbody>\n${body}\n</tbody>\n</table>`;
+}
+
+const TABLE_PICKER_COLUMNS = 5;
+const TABLE_PICKER_ROWS = 4;
+
+function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, ## heading, ● bullet (start a line with - or ●), 1. numbered.", allowTable = false }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   label: string;
   className?: string;
   hint?: string;
+  allowTable?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [tablePicker, setTablePicker] = useState(false);
 
   const applyFormat = (prefix: string, suffix = "") => {
     const el = ref.current;
@@ -323,6 +343,27 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
     });
   };
 
+  const insertTable = (rows: number, columns: number) => {
+    const el = ref.current;
+    setTablePicker(false);
+    if (!el) return;
+    const { selectionStart, selectionEnd, value: current } = el;
+    // A table is a block in its own right, so it is dropped onto its own line rather than being
+    // spliced into whatever the caret happened to be sitting in the middle of.
+    const before = current.slice(0, selectionStart).replace(/\s+$/, "");
+    const after = current.slice(selectionEnd);
+    const prefix = before ? `${before}\n\n` : "";
+    const suffix = after.trim() ? `\n\n${after.replace(/^\s+/, "")}` : "\n\n";
+    onChange(`${prefix}${buildTableMarkup(rows, columns)}${suffix}`);
+    requestAnimationFrame(() => {
+      el.focus();
+      // Select the first header cell's placeholder so typing the real heading replaces it,
+      // rather than being typed in front of a leftover "Column 1".
+      const start = prefix.length + "<table>\n<thead>\n<tr><th>".length;
+      el.setSelectionRange(start, start + "Column 1".length);
+    });
+  };
+
   const toolButton = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0c0524] text-white/80 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]";
 
   return (
@@ -334,6 +375,49 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
         <button type="button" className={toolButton} title="Heading (## text)" aria-label="Heading" onClick={() => applyFormat("## ", "")}><Menu className="h-4 w-4" /></button>
         <button type="button" className={toolButton} title="Bullet list (● item)" aria-label="Bullet list" onClick={() => applyFormat("● ", "")}><List className="h-4 w-4" /></button>
         <button type="button" className={toolButton} title="Numbered list (1. item)" aria-label="Numbered list" onClick={() => applyFormat("1. ", "")}><ListOrdered className="h-4 w-4" /></button>
+        {allowTable && (
+          <div className="relative">
+            <button
+              type="button"
+              className={toolButton}
+              title="Insert a table"
+              aria-label="Insert a table"
+              aria-expanded={tablePicker}
+              onClick={() => setTablePicker((open) => !open)}
+            >
+              <Table2 className="h-4 w-4" />
+            </button>
+            {tablePicker && (
+              <div className="absolute left-0 top-9 z-30 rounded-xl border border-white/10 bg-[#0c0524] p-3 shadow-xl">
+                <p className="mb-2 text-[11px] text-white/60">Rows × columns</p>
+                <div className="flex flex-col gap-1">
+                  {Array.from({ length: TABLE_PICKER_ROWS }, (_, row) => (
+                    <div key={row} className="flex gap-1">
+                      {Array.from({ length: TABLE_PICKER_COLUMNS }, (_, column) => {
+                        // The header row is not counted, so a 1×1 pick is a single-column table.
+                        const rows = row + 1;
+                        const columns = column + 1;
+                        return (
+                          <button
+                            key={column}
+                            type="button"
+                            title={`${rows} × ${columns}`}
+                            aria-label={`Insert a ${rows} by ${columns} table`}
+                            className="flex h-6 w-6 items-center justify-center rounded-md border border-white/10 text-[10px] text-white/70 transition hover:border-[#00ff88]/60 hover:bg-[#00ff88]/10 hover:text-[#00ff88]"
+                            onClick={() => insertTable(rows, columns)}
+                          >
+                            {rows}×{columns}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 max-w-56 text-[10px] leading-4 text-white/40">The first row is a heading row. Edit the cell text directly in the field.</p>
+              </div>
+            )}
+          </div>
+        )}
         <span className="ml-auto text-[10px] italic leading-4 text-white/35">{hint}</span>
       </div>
       <textarea ref={ref} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={`mt-1 w-full rounded-lg border border-white/10 bg-[#0c0524] text-white ${className}`} />
@@ -354,6 +438,7 @@ type SectionDraft = {
   emailText: string;
   emailImage: EditableFile;
   reference: EditableFile;
+  instructionFile: EditableFile;
 };
 
 const emptySection = (number: number): SectionDraft => ({
@@ -369,6 +454,7 @@ const emptySection = (number: number): SectionDraft => ({
   emailText: "",
   emailImage: null,
   reference: null,
+  instructionFile: null,
 });
 
 function SectionEditor({ section, index, onChange, onRemove }: { section: SectionDraft; index: number; onChange: (section: SectionDraft) => void; onRemove: () => void }) {
@@ -390,8 +476,17 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
         </div>
       </div>
       <div>
-        <FormattingTextarea label="Introduction / instructions" value={section.introduction} onChange={(value) => set({ introduction: value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="min-h-16" />
+        <FormattingTextarea label="Introduction / instructions" value={section.introduction} onChange={(value) => set({ introduction: value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="min-h-32" allowTable />
       </div>
+      <AttachSlot
+        label="Instruction sheet (optional)"
+        icon={<Paperclip className="h-4 w-4" />}
+        hint="A scanned or exported instruction sheet that goes with this task's instructions. Shown to candidates alongside the instructions and printed with the task."
+        accept="image/png,image/jpeg,application/pdf"
+        value={section.instructionFile}
+        onChange={(file) => set({ instructionFile: file })}
+        note="PNG, JPEG or PDF. In the printable exam the sheet is printed straight after this task's instructions. A PDF is listed by name rather than embedded, so a PDF instruction sheet must also be in the protected course materials."
+      />
       <div>
         <label className="text-xs font-semibold text-[#c4b5fd]">Extra notes (optional)</label>
         <Input value={section.extraNotes} onChange={(event) => set({ extraNotes: event.target.value })} placeholder="Advance information / notes specific to this task…" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label={`Extra notes ${index + 1}`} />
@@ -553,10 +648,11 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                               <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: section.emailText }} />
                             </div>
                           )}
-                          {(section.emailImage || section.reference) && (
+                          {(section.emailImage || section.reference || section.instructionFile) && (
                             <div className="mt-4 flex flex-wrap gap-2">
                               {section.emailImage && <Badge className="bg-[#102b36] text-[#00e5ff]">Email image: {section.emailImage.fileName}</Badge>}
                               {section.reference && <Badge className="bg-[#102b36] text-[#00ff88]">Reference: {section.reference.fileName}</Badge>}
+                              {section.instructionFile && <Badge className="bg-[#102b36] text-[#00e5ff]">Instruction sheet: {section.instructionFile.fileName}</Badge>}
                             </div>
                           )}
                         </CardContent>
@@ -699,6 +795,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             emailText: s.emailText ?? "",
             emailImage: s.emailImage ?? null,
             reference: s.reference ?? null,
+            instructionFile: s.instructionFile ?? null,
           }))
         : [emptySection(1)]));
       setFeedbackFile(draft.feedbackFile ?? null);
@@ -815,6 +912,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
             emailText: (s.email as { html?: string } | null | undefined)?.html ?? "",
             emailImage: s.emailImage ? { fileName: s.emailImage.fileName, keepUrl: s.emailImage.keepUrl } : null,
             reference: s.reference ? { fileName: s.reference.fileName, keepUrl: s.reference.keepUrl } : null,
+            instructionFile: s.instructionFile ? { fileName: s.instructionFile.fileName, keepUrl: s.instructionFile.keepUrl } : null,
           }))
         : [emptySection(1)];
       draftSections.forEach((section) => {
@@ -944,6 +1042,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
               emailText: section.emailText.trim() || undefined,
               emailImage: section.emailImage && "keepUrl" in section.emailImage ? (isEditMode ? section.emailImage : undefined) : section.emailImage ?? undefined,
               reference: section.reference && "keepUrl" in section.reference ? (isEditMode ? section.reference : undefined) : section.reference ?? undefined,
+              instructionFile: section.instructionFile && "keepUrl" in section.instructionFile ? (isEditMode ? section.instructionFile : undefined) : section.instructionFile ?? undefined,
             }))
             .filter((section) => section.title.trim())
         : undefined;
@@ -954,6 +1053,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
       ...s,
       emailImage: s.emailImage && "keepUrl" in s.emailImage ? undefined : s.emailImage,
       reference: s.reference && "keepUrl" in s.reference ? undefined : s.reference,
+      instructionFile: s.instructionFile && "keepUrl" in s.instructionFile ? undefined : s.instructionFile,
     }));
     const common = {
       title: title.trim(),
@@ -1081,7 +1181,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
                 <Input type="number" min="1" value={duration} onChange={(event) => setDuration(event.target.value)} placeholder="Minutes" className="border-white/10 bg-[#0c0524] pl-9 text-white" aria-label="Time (minutes)" />
               </div>
             </div>
-            <FormattingTextarea label="Exam introduction / instructions" value={intro} onChange={setIntro} placeholder="Exam introduction / instructions" className="mt-1 min-h-20" />
+            <FormattingTextarea label="Exam introduction / instructions" value={intro} onChange={setIntro} placeholder="Exam introduction / instructions" className="mt-1 min-h-20" allowTable />
           </section>
 
           {/* Active module banner - switches when the exam type changes */}

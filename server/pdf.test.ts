@@ -346,6 +346,52 @@ describe("branded printable exam PDF", () => {
     expect(find(bold, "budgeted results")).toBeUndefined();
   });
 
+  it("prints the instruction sheet between the instructions and the task", async () => {
+    const png = buildPng(320, 200);
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [
+        {
+          sectionNumber: 1,
+          title: "Delivery economics",
+          durationSeconds: 2700,
+          introduction: "Read the instruction sheet before you begin.",
+          question: "Evaluate the contribution of each region.",
+          introAttachments: [{ kind: "instructions", title: "Instruction sheet: task-one-sheet.png", base64: png, mimeType: "image/png" }],
+        },
+      ],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Instruction sheet: task-one-sheet.png");
+    // The sheet is read with the instructions, so it has to sit between them and the task. Holding
+    // it back with the other attachments left it under the email at the foot of the section, which
+    // a candidate reading top to bottom reaches only after trying the task.
+    expect(text.indexOf("Read the instruction sheet")).toBeLessThan(text.indexOf("Instruction sheet: task-one-sheet.png"));
+    expect(text.indexOf("Instruction sheet: task-one-sheet.png")).toBeLessThan(text.indexOf("Evaluate the contribution"));
+    expect((await drawnImageWidths(bytes)).length).toBeGreaterThan(1);
+  });
+
+  it("lists an instruction sheet supplied as a PDF, which cannot be embedded in the sheet", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [
+        {
+          sectionNumber: 1,
+          title: "Delivery economics",
+          durationSeconds: 2700,
+          introduction: "Read the instruction sheet before you begin.",
+          question: "Evaluate the contribution of each region.",
+          introAttachmentTitles: ["Instruction sheet: task-one-sheet.pdf"],
+        },
+      ],
+    );
+    const text = await extractText(bytes);
+    // A PDF page cannot be drawn inside another PDF page, so it is named in place instead of
+    // being silently dropped, which is what would happen if only the embeddable path were kept.
+    expect(text).toContain("Instruction sheet: task-one-sheet.pdf");
+    expect(text.indexOf("Instruction sheet: task-one-sheet.pdf")).toBeLessThan(text.indexOf("Evaluate the contribution"));
+  });
+
   it("prints the email attachment image with the caption that identifies it", async () => {
     const png = buildPng(900, 1200);
     const bytes = await generateBrandedPrintablePdf(
@@ -412,6 +458,60 @@ describe("branded printable exam PDF", () => {
     const document = await PDFDocument.load(bytes);
     expect(bytes.slice(0, 5).toString()).toBe("%PDF-");
     expect(document.getPageCount()).toBeGreaterThan(0);
+  });
+
+  /**
+   * The table the studio inserts into a task's instructions is stored as markup in the
+   * `introduction` field, and that field is printed through the same HTML path as the email body.
+   * These cover the two ways that can go wrong: the tags printing as literal text, or the table
+   * swallowing the prose around it.
+   */
+  it("prints a table inserted into a task's instructions", async () => {
+    const introduction =
+      "Complete the table below.\n<table>\n<thead>\n<tr><th>Region</th><th>Deliveries</th></tr>\n</thead>\n<tbody>\n<tr><td>Region 1</td><td>1250</td></tr>\n</tbody>\n</table>\nShow your workings.";
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, introduction }],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Complete the table below.");
+    expect(text).toContain("Region");
+    expect(text).toContain("Deliveries");
+    expect(text).toContain("1250");
+    // The paragraph authored after the table has to survive, or the table swallowed the text below it.
+    expect(text).toContain("Show your workings.");
+    // Markup that failed to parse would print as literal tags in the extracted text.
+    expect(text).not.toContain("<th>");
+    expect(text).not.toContain("</tr>");
+  });
+
+  it("prints the table cells of a task's instructions in every column", async () => {
+    // A narrow table is exactly the case where a column gets squeezed to nothing and its text is lost.
+    const introduction = "<table><tr><th>Region</th><th>Deliveries</th><th>Contribution</th></tr><tr><td>Region 1</td><td>1250</td><td>225.00</td></tr></table>";
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, introduction }],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Deliveries");
+    expect(text).toContain("Contribution");
+    expect(text).toContain("1250");
+    expect(text).toContain("225.00");
+  });
+
+  it("prints a table in the exam introduction", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      {
+        title: "Cartn Mock Exam 4",
+        intro: "<p>Answer all tasks.</p><table><tr><th>Section</th><th>Marks</th></tr><tr><td>Task 1</td><td>20</td></tr></table>",
+        totalDurationSeconds: 2700,
+      },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, introduction: "Assess the decision." }],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Answer all tasks.");
+    expect(text).toContain("Marks");
+    expect(text).toContain("20");
   });
 });
 
@@ -486,5 +586,35 @@ describe("parseRichHtml", () => {
     expect(blocks).toHaveLength(1);
     expect(blocks[0].marker).toBe("\u2022");
     expect(blocks[0].runs[0].text).toBe("Wrapped item");
+  });
+
+  it("lifts a table out of the surrounding prose in source order", () => {
+    const blocks = parseRichHtml("<p>Before</p><table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table><p>After</p>");
+    expect(blocks).toHaveLength(3);
+    expect(blocks[0].runs[0].text).toBe("Before");
+    expect(blocks[1].table).toBeDefined();
+    // Cells come back as block streams, so each is read through to the single run it holds.
+    const cellText = (cell: { runs: { text: string }[] }[]) => cell.map((block) => block.runs[0]?.text).join(" ");
+    expect(blocks[1].table!.rows.map((row) => row.map(cellText))).toEqual([["A", "B"], ["1", "2"]]);
+    expect(blocks[1].table!.headerRow).toBe(true);
+    expect(blocks[2].runs[0].text).toBe("After");
+  });
+
+  it("keeps a table authored inside plain text as its own block", () => {
+    // Instructions are written as prose with a table dropped into the middle of it, so the text
+    // either side of the table is not wrapped in paragraphs. If the surrounding prose merges into
+    // the placeholder's block the table never reaches the layout and prints as literal text.
+    const blocks = parseRichHtml("Complete the table below.\n<table><tr><th>Region</th></tr><tr><td>Region 1</td></tr></table>\nShow your workings.");
+    expect(blocks).toHaveLength(3);
+    expect(blocks[0].runs[0].text).toBe("Complete the table below.");
+    expect(blocks[1].table).toBeDefined();
+    expect(blocks[2].runs[0].text).toBe("Show your workings.");
+  });
+
+  it("reads a header row out of the thead the studio inserts", () => {
+    const blocks = parseRichHtml("<table><thead><tr><th>Region</th></tr></thead><tbody><tr><td>Region 1</td></tr></tbody></table>");
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].table!.headerRow).toBe(true);
+    expect(blocks[0].table!.rows).toHaveLength(2);
   });
 });

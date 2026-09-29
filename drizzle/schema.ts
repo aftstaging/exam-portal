@@ -59,7 +59,7 @@ export const resources = mysqlTable("resources", {
   id: int("id").autoincrement().primaryKey(),
   productId: int("productId"),
   title: varchar("title", { length: 240 }).notNull(),
-  kind: mysqlEnum("kind", ["pre_seen", "formulae", "printable_pdf", "feedback", "course_material", "reference", "email"]).notNull(),
+  kind: mysqlEnum("kind", ["pre_seen", "formulae", "printable_pdf", "feedback", "course_material", "reference", "email", "instructions"]).notNull(),
   fileKey: varchar("fileKey", { length: 500 }),
   fileUrl: text("fileUrl"),
   // For case-study exams: when set, this email/reference attachment belongs to a

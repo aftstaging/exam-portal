@@ -196,7 +196,9 @@ export const appRouter = router({
       caseStudySections: z.array(z.object({
         sectionNumber: z.number().int().min(1).max(100),
         title: z.string().max(240),
-        introduction: z.string().max(10000).optional(),
+        // An inserted table is stored as markup in this field, so the cap has to leave room for
+        // the table tags around the text an author actually types.
+        introduction: z.string().max(60000).optional(),
         scenario: z.string().max(100000).optional(),
         question: z.string().max(100000).optional(),
         durationSeconds: z.number().int().min(60).max(86400),
@@ -207,6 +209,7 @@ export const appRouter = router({
         emailText: z.string().max(50000).optional(),
         emailImage: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
         reference: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
+        instructionFile: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
       })).max(100).optional(),
       feedbackText: z.string().max(100000).optional(),
       feedbackFile: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().max(28000000) }).optional(),
@@ -245,7 +248,7 @@ featuredImageUrl: z.string().max(1000).optional().nullable(),
       caseStudySections: z.array(z.object({
         sectionNumber: z.number().int().min(1).max(100),
         title: z.string().max(240),
-        introduction: z.string().max(10000).optional(),
+        introduction: z.string().max(60000).optional(),
         scenario: z.string().max(100000).optional(),
         question: z.string().max(100000).optional(),
         durationSeconds: z.number().int().min(60).max(86400),
@@ -256,6 +259,9 @@ featuredImageUrl: z.string().max(1000).optional().nullable(),
         emailText: z.string().max(50000).optional(),
         emailImage: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional(),
         reference: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional(),
+        // An instruction sheet is a per-task image or PDF, so it carries the same shape as the
+        // task's other attachments: a new upload, an existing object to keep, or null to remove.
+        instructionFile: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
       })).max(100).optional(),
       feedbackText: z.string().max(100000).optional().nullable(),
       feedbackFile: z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().max(28000000).optional(), keepUrl: z.string().max(1000).optional() }).optional().nullable(),
