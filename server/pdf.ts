@@ -359,7 +359,22 @@ type Fonts = { regular: PDFFont; bold: PDFFont };
 type Token = { text: string; bold: boolean; spaceAfter: boolean };
 
 /** One physical line: the runs to paint, the x to start at, and an optional list marker. */
-type VisualLine = { runs: RichRun[]; x: number; marker: string | null; forceBold?: boolean };
+type VisualLine = { runs: RichRun[]; x: number; marker: string | null };
+
+/**
+ * Returns a copy of `blocks` with every run set to bold, tables included.
+ *
+ * Emphasis has to be decided before a line is measured: the bold face is wider than the
+ * regular one, so text laid out in one and painted in the other overflows the column it was
+ * wrapped against and drifts out of alignment with the rest of the sheet.
+ */
+function boldedBlocks(blocks: RichBlock[]): RichBlock[] {
+  return blocks.map((block) =>
+    block.table
+      ? { ...block, table: { ...block.table, rows: block.table.rows.map((row) => row.map(boldedBlocks)) } }
+      : { ...block, runs: block.runs.map((run) => ({ ...run, bold: true })) },
+  );
+}
 
 /** A vertical slice of content that stays together, measured in points from its top edge. */
 /**
@@ -374,7 +389,7 @@ type Group = { height: number; lines: VisualLine[]; rows?: VisualLine[][]; gapAf
 function lineWidth(line: VisualLine, fonts: Fonts, size: number): number {
   let width = 0;
   for (const run of line.runs) {
-    const font = line.forceBold ? fonts.bold : run.bold ? fonts.bold : fonts.regular;
+    const font = run.bold ? fonts.bold : fonts.regular;
     width += font.widthOfTextAtSize(run.text, size);
   }
   if (line.marker) width += MARKER_GAP;
@@ -542,9 +557,11 @@ function layoutRuns(
     }
     const lead = current.length && tokens[index - 1]?.spaceAfter ? spaceWidth : 0;
     if (current.length && indent + width + lead + tokenWidth(token, fonts, size) > limitX) {
+      // The break itself separates this token from the last one on the previous line, so the
+      // gap in front of it is dropped here. Nothing may be cleared from the token's own
+      // `spaceAfter`: that gap belongs to the *next* token, and dropping it welds the first two
+      // words of the continuation line together ("circulated" + "by" -> "circulatedby").
       commit();
-      // A trailing space on the broken line must not indent the continuation.
-      if (token.spaceAfter) token.spaceAfter = false;
       current = [];
     }
     // `spaceAfter` describes the gap that follows a token, so the separator in front of this one
@@ -596,8 +613,10 @@ function columnWidths(table: RichTable, fonts: Fonts, size: number, limitX: numb
   const natural: number[] = [];
   for (let column = 0; column < columns; column += 1) {
     let widest = 0;
-    for (const row of table.rows) {
-      const cell = row[column] ?? [];
+    table.rows.forEach((row, rowIndex) => {
+      // A header cell is painted bold, so it has to be measured bold for the column to be
+      // wide enough to hold it.
+      const cell = table.headerRow && rowIndex === 0 ? boldedBlocks(row[column] ?? []) : row[column] ?? [];
       for (const block of cell) {
         if (block.table) continue;
         const lines = layoutRuns(block.runs, fonts, size, 0, 0, PROBE_WIDTH);
@@ -605,7 +624,7 @@ function columnWidths(table: RichTable, fonts: Fonts, size: number, limitX: numb
         for (const line of lines) width = Math.max(width, lineWidth(line, fonts, size));
         widest = Math.max(widest, width + CELL_PADDING * 2);
       }
-    }
+    });
     natural.push(Math.max(48, Math.min(240, widest)));
   }
   const available = limitX - originX;
@@ -633,7 +652,11 @@ function layoutTable(
   table.rows.forEach((row, rowIndex) => {
     const cellLines: VisualLine[][] = [];
     let tallest = 0;
-    row.forEach((cell, column) => {
+    // A header row is set bold, which has to happen before the cells are measured: the bold
+    // face is wider, so a header measured in the regular face overflows its column and runs
+    // into the text of the next one.
+    const cells = table.headerRow && rowIndex === 0 ? row.map((cell) => boldedBlocks(cell)) : row;
+    cells.forEach((cell, column) => {
       const cellWidth = widths[column] ?? 0;
       const x = originX + widths.slice(0, column).reduce((sum, width) => sum + width, 0) + CELL_PADDING;
       const blocks = cell ?? [];
@@ -651,15 +674,13 @@ function layoutTable(
       tallest = Math.max(tallest, lines.length * leading);
     });
 
-    const bold = table.headerRow && rowIndex === 0;
     groups.push({
       height: tallest + CELL_PADDING,
-      // Header text is forced bold without duplicating the run list.
       lines: cellLines.flat(),
       // Cells are transposed into one list per visual row so each column shares a baseline.
       rows: Array.from({ length: Math.max(...cellLines.map((lines) => lines.length)) }, (_, line) =>
         cellLines.map((lines) => lines[line] ?? { runs: [], x: 0, marker: null }),
-      ).map((row) => row.map((line) => ({ ...line, forceBold: bold }))),
+      ),
       gapAfter: rowIndex === table.rows.length - 1 ? 0 : leading * 0.35,
     });
   });
@@ -750,7 +771,7 @@ class Canvas {
       this.page.drawText(sanitizeText(line.marker), { x: Math.max(0, line.x - MARKER_GAP), y: baseline, size, font: this.fonts.regular, color });
     }
     for (const run of line.runs) {
-      const font = line.forceBold || run.bold ? this.fonts.bold : this.fonts.regular;
+      const font = run.bold ? this.fonts.bold : this.fonts.regular;
       if (run.text) this.page.drawText(run.text, { x, y: baseline, size, font, color });
       x += font.widthOfTextAtSize(run.text, size);
     }
@@ -847,23 +868,24 @@ function drawFragment(
   bold = false,
 ): void {
   if (!text) return;
-  const blocks = parseRichHtml(text);
-  if (!blocks.length) return;
+  const parsed = parseRichHtml(text);
+  if (!parsed.length) return;
+  // Emphasis is applied to the runs before layout, never after it: painting a line in a wider
+  // face than the one it was wrapped against pushes it past the margin and out of alignment.
+  const blocks = bold ? boldedBlocks(parsed) : parsed;
   const groups = layoutBlocks(blocks, fonts, size, leading, MARGIN_X, MARGIN_X + CONTENT_WIDTH, leading * 0.45);
   groups.forEach((group, index) => {
-    canvas.drawGroup(
-      bold ? { ...group, lines: group.lines.map((line) => ({ ...line, forceBold: true })) } : group,
-      size,
-      leading,
-      INK,
-    );
+    canvas.drawGroup(group, size, leading, INK);
     if (index === groups.length - 1) canvas.space(gapAfter);
   });
 }
 
 /**
- * Renders the email panel: `From`, `To` and `Subject` labels in the regular face with bold
- * values, followed by the message body.
+ * Renders the email header: a bold, muted label followed by the value on the same baseline.
+ *
+ * The values stay in the regular face. Setting a whole email block bold flattened every
+ * distinction in it, so the header read as one slab of text and the message body lost the
+ * emphasis the author actually applied.
  */
 function drawEmail(canvas: Canvas, email: PrintableEmail, fonts: Fonts): void {
   const rows: [string, string | null | undefined][] = [
@@ -871,54 +893,104 @@ function drawEmail(canvas: Canvas, email: PrintableEmail, fonts: Fonts): void {
     ["To", email.to],
     ["Subject", email.subject],
   ];
-  const labelWidth = Math.max(...rows.map(([label]) => fonts.regular.widthOfTextAtSize(label, SMALL_SIZE + 1.5))) + 6;
+  const present = rows.filter(([, value]) => value);
+  if (!present.length) return;
+  const labelSize = SMALL_SIZE + 1.5;
+  const labelWidth = Math.max(...present.map(([label]) => fonts.bold.widthOfTextAtSize(label, labelSize))) + 8;
 
-  for (const [label, value] of rows) {
-    if (!value) continue;
+  for (const [label, value] of present) {
     canvas.reserve(BODY_LEADING);
     const baseline = canvas.cursor - BODY_SIZE;
-    canvas.drawAt(MARGIN_X, baseline, label, SMALL_SIZE + 1.5, false, MUTED);
-    canvas.drawAt(MARGIN_X + labelWidth, baseline, value, BODY_SIZE, true, INK);
+    canvas.drawAt(MARGIN_X, baseline, label, labelSize, true, MUTED);
+    canvas.drawAt(MARGIN_X + labelWidth, baseline, value!, BODY_SIZE, false, INK);
   }
-  canvas.space(4);
-  // The body of an exam email reads as instructions, so it is set bold like the reference.
-  drawFragment(canvas, fonts, email.html, BODY_SIZE, BODY_LEADING, BODY_LEADING * 0.8, true);
+  canvas.space(BODY_LEADING * 0.4);
+  drawFragment(canvas, fonts, email.html, BODY_SIZE, BODY_LEADING, BODY_LEADING * 0.8);
 }
 
-/** Renders an attachment: the image itself when bytes are present, otherwise its title. */
-async function drawAttachment(canvas: Canvas, fonts: Fonts, attachment: PrintableAttachment): Promise<void> {
-  const mime = attachment.mimeType ?? "";
-  const body = attachment.base64 ?? "";
-  const isPng = mime.includes("png") || body.startsWith("iVBOR");
-  const isJpeg = mime.includes("jpeg") || mime.includes("jpg") || body.startsWith("/9j/");
+/** A decoded attachment image, or null when the attachment is not an image the writer can embed. */
+type EmbeddedImage = { draw: (x: number, y: number, width: number, height: number) => void; width: number; height: number };
 
-  if (body && (isPng || isJpeg)) {
-    try {
-      const bytes = Buffer.from(body, "base64");
-      const image = isPng ? await canvas.document.embedPng(bytes) : await canvas.document.embedJpg(bytes);
-      // The size an image gets when it is allowed the whole content box.
-      const fullScale = Math.min(CONTENT_WIDTH / image.width, MAX_IMAGE_HEIGHT / image.height, 1);
-      const fullWidth = image.width * fullScale;
-      const fullHeight = image.height * fullScale;
-      // Squeezing an image into a sliver of leftover page makes it unreadable, so an image that
-      // does not already fit is moved to a fresh page unless enough usable room remains.
-      if (fullHeight > canvas.remaining && canvas.remaining < MIN_INLINE_IMAGE_HEIGHT) {
-        canvas.breakToNewPage();
-        canvas.page.drawImage(image, { x: MARGIN_X, y: canvas.cursor - fullHeight, width: fullWidth, height: fullHeight });
-        canvas.space(fullHeight);
-        return;
-      }
-      const scale = Math.min(fullScale, canvas.remaining / image.height);
-      const width = image.width * scale;
-      const height = image.height * scale;
-      canvas.page.drawImage(image, { x: MARGIN_X, y: canvas.cursor - height, width, height });
-      canvas.space(height);
-      return;
-    } catch {
-      // Undecodable bytes: fall through and render the caption instead.
-    }
+/** True when `bytes` begin with a PNG signature, which is the only lossless image pdf-lib writes. */
+export function isPngBytes(bytes: Uint8Array): boolean {
+  return bytes.length > 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+}
+
+/** True when `bytes` begin with the JPEG start-of-image marker. */
+export function isJpegBytes(bytes: Uint8Array): boolean {
+  return bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8;
+}
+
+/**
+ * Decodes an attachment as a PNG or JPEG.
+ *
+ * The bytes are sniffed rather than trusted from the key or the stored content type: an upload
+ * stored under a key that does not end in an image extension, or served with a generic
+ * `application/octet-stream`, is still a perfectly good picture and must reach the page.
+ */
+async function embedAttachmentImage(canvas: Canvas, attachment: PrintableAttachment): Promise<EmbeddedImage | null> {
+  const body = attachment.base64 ?? "";
+  if (!body) return null;
+  const mime = attachment.mimeType ?? "";
+  const isPng = body.startsWith("iVBOR") || mime.includes("png");
+  const isJpeg = body.startsWith("/9j/") || mime.includes("jpeg") || mime.includes("jpg");
+  if (!isPng && !isJpeg) return null;
+  try {
+    const bytes = Buffer.from(body, "base64");
+    const image = isPng ? await canvas.document.embedPng(bytes) : await canvas.document.embedJpg(bytes);
+    return { width: image.width, height: image.height, draw: (x, y, width, height) => canvas.page.drawImage(image, { x, y, width, height }) };
+  } catch {
+    // Undecodable bytes: the caller falls back to printing the caption.
+    return null;
   }
-  drawFragment(canvas, fonts, attachment.title, SMALL_SIZE + 1, BODY_LEADING, 0, false);
+}
+
+/**
+ * Renders one attachment and reports whether the image itself made it onto the page.
+ *
+ * The caption is always printed — for a non-image file it is the only representation of the
+ * attachment — and it travels with the image when the image is too tall for the space left and
+ * has to move to a fresh page, so no page ends up as a picture with nothing to identify it.
+ */
+async function drawAttachment(
+  canvas: Canvas,
+  fonts: Fonts,
+  attachment: PrintableAttachment,
+  caption = attachment.title,
+): Promise<boolean> {
+  const captionSize = SMALL_SIZE + 1;
+  const printCaption = () => drawFragment(canvas, fonts, caption, captionSize, BODY_LEADING, BODY_LEADING * 0.3);
+
+  const image = await embedAttachmentImage(canvas, attachment);
+  if (!image) {
+    printCaption();
+    return false;
+  }
+
+  // The size an image gets when it is allowed the whole content box.
+  const fullScale = Math.min(CONTENT_WIDTH / image.width, MAX_IMAGE_HEIGHT / image.height, 1);
+  const fullWidth = image.width * fullScale;
+  const fullHeight = image.height * fullScale;
+  const captionHeight = caption ? BODY_LEADING * 1.3 : 0;
+  // Squeezing an image into a sliver of leftover page makes it unreadable, so an image that does
+  // not already fit is moved to a fresh page unless enough usable room remains.
+  const ownPage = fullHeight + captionHeight > canvas.remaining && canvas.remaining < MIN_INLINE_IMAGE_HEIGHT + captionHeight;
+
+  if (ownPage) {
+    canvas.breakToNewPage();
+    if (caption) printCaption();
+    image.draw(MARGIN_X, canvas.cursor - fullHeight, fullWidth, fullHeight);
+    canvas.space(fullHeight);
+    return true;
+  }
+
+  printCaption();
+  const scale = Math.min(fullScale, Math.max(0, canvas.remaining) / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  image.draw(MARGIN_X, canvas.cursor - height, width, height);
+  canvas.space(height);
+  return true;
 }
 
 /**
@@ -959,7 +1031,7 @@ export async function generateBrandedPrintablePdf(
     canvas.reserve(H1_LEADING * 3);
     canvas.space(BODY_LEADING * 0.5);
     drawHeading(canvas, `Section ${section.sectionNumber} · ${section.title}`, fonts);
-    drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, SMALL_SIZE + 1, BODY_LEADING, BODY_LEADING * 0.5, false);
+    drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, SMALL_SIZE + 1, BODY_LEADING, BODY_LEADING * 0.5);
     drawFragment(canvas, fonts, section.introduction);
     drawFragment(canvas, fonts, section.scenario);
     if (section.question) {
@@ -971,12 +1043,11 @@ export async function generateBrandedPrintablePdf(
       drawEmail(canvas, section.email, fonts);
     }
     for (const title of section.attachmentTitles ?? []) {
-      drawFragment(canvas, fonts, title, SMALL_SIZE + 1, BODY_LEADING, 0, false);
+      drawFragment(canvas, fonts, title, SMALL_SIZE + 1, BODY_LEADING, 0);
     }
-    // An embedded image already carries its own caption from `attachmentTitles`, so only
-    // caption-less files are listed here.
     for (const attachment of section.attachments ?? []) {
-      if (attachment.base64) await drawAttachment(canvas, fonts, { ...attachment, title: "" });
+      await drawAttachment(canvas, fonts, attachment);
+      canvas.space(BODY_LEADING * 0.3);
     }
   }
 

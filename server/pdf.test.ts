@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deflateSync } from "node:zlib";
-import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, decodePDFRawStream } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { generateBrandedPrintablePdf, parseRichHtml } from "./pdf";
 
@@ -25,18 +25,76 @@ async function extractText(bytes: Uint8Array): Promise<string> {
   return parts.join(" ");
 }
 
-/** Reads back the drawn text with the position of each item, for layout assertions. */
-async function extractTextItems(bytes: Uint8Array): Promise<{ text: string; x: number; y: number }[]> {
+/** Reads back the drawn text with the position and drawn width of each item, for layout assertions. */
+async function extractTextItems(bytes: Uint8Array): Promise<{ text: string; x: number; y: number; width: number }[]> {
   const doc = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true }).promise;
-  const items: { text: string; x: number; y: number }[] = [];
+  const items: { text: string; x: number; y: number; width: number }[] = [];
   for (let number = 1; number <= doc.numPages; number += 1) {
     const content = await (await doc.getPage(number)).getTextContent();
     for (const item of content.items) {
       if (!("str" in item) || !item.str) continue;
-      items.push({ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number });
+      items.push({ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number, width: (item as { width?: number }).width ?? 0 });
     }
   }
   return items;
+}
+
+/**
+ * Walks the page's content stream and reports every text run with the face it was drawn in.
+ *
+ * This reads the file's own drawing operators rather than asking a renderer, because neither the
+ * resource name pdfjs reports (`g_d0_f1`) nor the width it measures identifies the face: the two
+ * standard faces are close enough in width that a measurement decides wrongly, and a table header
+ * or an email block set in the wrong face is exactly what these assertions exist to catch.
+ * pdf-lib registers one font resource per embed, named after its base font, so the face follows
+ * from the resource the `Tf` operator selected.
+ */
+async function drawnRuns(bytes: Uint8Array): Promise<{ font: string; text: string }[]> {
+  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+  const runs: { font: string; text: string }[] = [];
+  for (const page of document.getPages()) {
+    const fontResources = new Map<string, string>();
+    const fonts = page.node.Resources()?.lookup(PDFName.of("Font"), PDFDict);
+    if (fonts) {
+      for (const [key, value] of fonts.entries()) {
+        const font = document.context.lookup(value);
+        if (font instanceof PDFDict) {
+          const base = font.get(PDFName.of("BaseFont"));
+          if (base instanceof PDFName) fontResources.set(key.asString().slice(1), base.asString().slice(1));
+        }
+      }
+    }
+    for (const source of pageContentStreams(document, page.node.Contents())) {
+      const text = Buffer.from(decodePDFRawStream(source).decode()).toString("latin1");
+      let font = "";
+      // pdf-lib writes one `Tf` per run followed by a single `Tj`, so the face in force when a
+      // string is shown is the face that run was drawn with. Strings are hex-encoded, which is
+      // why they are decoded from the byte pairs rather than read as literal text.
+      for (const token of text.matchAll(/\/([A-Za-z0-9#+.-]+)\s+[\d.]+\s+Tf|<([0-9A-Fa-f]*)>\s*Tj/g)) {
+        if (token[1] !== undefined) {
+          font = fontResources.get(token[1]) ?? token[1];
+          continue;
+        }
+        const bytes = token[2] ?? "";
+        let shown = "";
+        for (let index = 0; index + 1 < bytes.length; index += 2) shown += String.fromCharCode(Number.parseInt(bytes.slice(index, index + 2), 16));
+        runs.push({ font, text: shown });
+      }
+    }
+  }
+  return runs;
+}
+
+/** The runs drawn in the bold face, and those in the regular one. */
+function facesOf(runs: { font: string; text: string }[]): { bold: string[]; regular: string[] } {
+  const bold: string[] = [];
+  const regular: string[] = [];
+  for (const run of runs) {
+    if (!run.text.trim()) continue;
+    if (/bold/i.test(run.font)) bold.push(run.text);
+    else regular.push(run.text);
+  }
+  return { bold, regular };
 }
 
 const CRC_TABLE = (() => {
@@ -235,6 +293,69 @@ describe("branded printable exam PDF", () => {
     expect(lead).toBeDefined();
     expect(bullet!.y).toBeCloseTo(lead!.y, 0);
     expect(bullet!.x).toBeLessThan(lead!.x);
+  });
+
+  it("keeps every line inside the printable width", async () => {
+    // Both defects this guards against pushed text past the right margin: a line laid out in the
+    // regular face but painted bold, and the same for a bold table header row.
+    const html =
+      "<p>Please answer all of the following questions in the answer pad provided and show all of your workings clearly, including every assumption that you have made.</p>" +
+      "<table><thead><tr><th>Region</th><th>Deliveries</th><th>Contribution</th></tr></thead><tbody><tr><td>Region 1</td><td>1250</td><td>225.00</td></tr></tbody></table>";
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: "Answer all tasks in the answer pad provided.", totalDurationSeconds: 10800 },
+      [{ sectionNumber: 1, title: "Digital data sources", durationSeconds: 2700, email: { from: "fd@sofa.co.za", subject: "Management accounts", html } }],
+    );
+    // `width` is the width pdfjs measured on the page, so this catches a run that was laid out in
+    // one face and painted in another just as a genuinely too-wide line would be caught.
+    const items = await extractTextItems(bytes);
+    const limit = 595 - 56.7;
+    const overflow = items.filter((item) => item.x + item.width > limit + 0.5);
+    expect(overflow.map((item) => item.text)).toEqual([]);
+  });
+
+  it("keeps the first two words of a wrapped line apart", async () => {
+    // The break consumed the gap that belonged to the *next* token, so the first word of every
+    // continuation line was welded to the second ("circulated" + "by" -> "circulatedby").
+    const filler =
+      "Please answer all of the following questions in the answer pad provided and show all of your workings clearly, including the assumptions that you have made in respect of the delivery schedule that was circulated by the operations team last week.";
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: filler, totalDurationSeconds: 10800 },
+      [{ sectionNumber: 1, title: "Delivery economics", durationSeconds: 2700, introduction: filler }],
+    );
+    const text = await extractText(bytes);
+    // The text is long enough to wrap, and a welded word reads as one token, so the phrase is
+    // only findable when the gap survived the break.
+    expect(text.length).toBeGreaterThan(0);
+    const lines = (await extractTextItems(bytes)).filter((item) => item.x < 60 && item.y > 300);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(text).not.toMatch(/circulatedby|\bclearlyincluding\b/);
+  });
+
+  it("sets the email body in the regular face, keeping only the header labels bold", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "CIMA OCS Mock Exam 1", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, email: { from: "fd@sofa.co.za", to: "smt@sofa.co.za", subject: "Management accounts", html: "<p>Please include the budgeted results in your answer.</p>" } }],
+    );
+    const { bold, regular } = facesOf(await drawnRuns(bytes));
+    const find = (runs: string[], needle: string) => runs.find((text) => text.includes(needle));
+    // A whole email block set bold flattened every distinction in it; only the labels stay bold.
+    expect(find(bold, "From")).toBeDefined();
+    expect(find(bold, "Subject")).toBeDefined();
+    expect(find(regular, "fd@sofa.co.za")).toBeDefined();
+    expect(find(regular, "budgeted results")).toBeDefined();
+    expect(find(bold, "budgeted results")).toBeUndefined();
+  });
+
+  it("prints the email attachment image with the caption that identifies it", async () => {
+    const png = buildPng(900, 1200);
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Delivery economics", durationSeconds: 2700, attachments: [{ kind: "email", title: "Email attachment image: board minute.png", base64: png, mimeType: "image/png" }] }],
+    );
+    // An image pushed onto its own page used to leave its caption behind on the previous one.
+    const text = await extractText(bytes);
+    expect(text).toContain("Email attachment image: board minute.png");
+    expect((await drawnImageWidths(bytes)).length).toBeGreaterThan(1);
   });
 
   it("embeds an attachment image instead of only naming it", async () => {

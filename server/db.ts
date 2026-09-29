@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
 import { storageGetBytes, storageGetSignedUrl, storagePut } from "./storage";
-import { generateBrandedPrintablePdf } from "./pdf";
+import { generateBrandedPrintablePdf, isJpegBytes, isPngBytes } from "./pdf";
 import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
@@ -290,25 +290,44 @@ export async function submitAttempt(input: { userId: number; attemptId: number; 
 /** Resource row fields the printable PDF needs to decide whether to embed a file. */
 type PrintableResource = { kind: string; title: string; fileKey: string | null; fileUrl: string | null };
 
-/** Only raster images can be embedded by the PDF writer; everything else is listed by title. */
-const EMBEDDABLE_IMAGE = /\.(png|jpe?g)$/i;
+/**
+ * Keys that name a document rather than a picture, so their bytes are never worth downloading.
+ * Anything else is fetched and judged on its content: uploads land under generated keys that do
+ * not always keep the original extension, and a stored content type is not always the real one.
+ */
+const DOCUMENT_FILE = /\.(pdf|docx?|txt|xlsx?|pptx?|csv|rtf|odt|zip)$/i;
 
 /**
- * Loads an attachment as image bytes when the stored file is a PNG or JPEG.
+ * Loads an attachment as image bytes when the stored file really is a PNG or JPEG.
  *
- * Failures are not fatal: a resource that cannot be read is still listed by title, which is
- * what the printable exam did before it could embed images.
+ * Failures are not fatal: a resource that cannot be read, or that turns out to be a document the
+ * PDF writer cannot place, is still listed by title.
  */
 async function loadPrintableImage(entry: PrintableResource): Promise<{ kind: string; title: string; base64?: string; mimeType?: string }> {
   const fallback = { kind: entry.kind, title: entry.title };
-  if (!entry.fileKey || !EMBEDDABLE_IMAGE.test(entry.fileKey)) return fallback;
+  if (!entry.fileKey || DOCUMENT_FILE.test(entry.fileKey)) return fallback;
   try {
     const { body, contentType } = await storageGetBytes(entry.fileKey);
     if (!body.length) return fallback;
-    return { ...fallback, base64: body.toString("base64"), mimeType: contentType ?? undefined };
+    const mimeType = isPngBytes(body) ? "image/png" : isJpegBytes(body) ? "image/jpeg" : contentType ?? undefined;
+    if (!mimeType) return fallback;
+    return { ...fallback, base64: body.toString("base64"), mimeType };
   } catch {
     return fallback;
   }
+}
+
+/**
+ * Turns an uploaded file's data URL into printable image bytes, or null when it is not a picture
+ * the PDF writer can place — a PDF or Word attachment, for instance, stays a listed caption.
+ */
+function inlineImagePayload(base64: string): { base64: string; mimeType: string } | null {
+  const match = /^data:([^;,]+)?(?:;[^,]*)?,([\s\S]*)$/.exec(base64);
+  const payload = match ? match[2] ?? "" : base64;
+  if (!payload) return null;
+  const head = Buffer.from(payload.slice(0, 16), "base64");
+  const mimeType = isPngBytes(head) ? "image/png" : isJpegBytes(head) ? "image/jpeg" : null;
+  return mimeType ? { base64: payload, mimeType } : null;
 }
 
 export async function generatePrintablePdf(userId: number, mockExamId: number) {
@@ -338,13 +357,20 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
     if (metaRow?.fileUrl) {
       try { email = JSON.parse(metaRow.fileUrl) as typeof email; } catch { email = null; }
     }
-    const attachmentTitles = taskRows
-      .filter((entry) => entry !== metaRow)
-      .map((entry) => `${entry.kind === "email" ? "Email attachment image" : "Reference material"}: ${entry.title}`.replace(` · Task ${section.sectionNumber}`, ""));
-    // Per-task images are embedded under their caption; non-image files stay caption-only.
-    const attachments = await Promise.all(
-      taskRows.filter((entry) => entry !== metaRow).map((entry) => loadPrintableImage(entry)),
-    );
+    const captionFor = (title: string, kind: string) =>
+      `${kind === "email" ? "Email attachment image" : "Reference material"}: ${title}`
+        .split(` · Task ${section.sectionNumber}`)
+        .join("");
+    const files = taskRows.filter((entry) => entry !== metaRow);
+    const loaded = await Promise.all(files.map((entry) => loadPrintableImage(entry)));
+    // A printable image prints its own caption directly above it, so only the files that cannot
+    // be placed on the page are listed as plain captions — otherwise every image is captioned
+    // twice, and an image that moves to its own page leaves its caption behind on the last one.
+    const attachmentTitles = files
+      .map((entry, index) => ({ entry, file: loaded[index]! }))
+      .filter(({ file }) => !file.base64)
+      .map(({ entry }) => captionFor(entry.title, entry.kind));
+    const attachments = loaded.map((file, index) => ({ ...file, title: captionFor(files[index]!.title, files[index]!.kind) }));
     return { ...section, email, attachmentTitles, attachments };
   }));
 
@@ -1264,14 +1290,25 @@ export async function createExamBundle(input: ExamBundleInput) {
       const authored = input.caseStudySections?.find((item) => item.sectionNumber === section.sectionNumber);
       let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
       const attachmentTitles: string[] = [];
+      const attachments: { kind: string; title: string; base64?: string; mimeType?: string }[] = [];
       if (authored) {
         if (authored.emailText?.trim() || authored.emailFrom?.trim() || authored.emailTo?.trim() || authored.emailSubject?.trim()) {
           email = { from: authored.emailFrom?.trim() || null, to: authored.emailTo?.trim() || null, subject: authored.emailSubject?.trim() || null, html: authored.emailText?.trim() || null };
         }
-        if (authored.reference?.base64) attachmentTitles.push(`Reference material: ${authored.reference.fileName || "attachment"}`);
-        if (authored.emailImage?.base64) attachmentTitles.push(`Email attachment image: ${authored.emailImage.fileName || "attachment"}`);
+        // A picture has to be handed to the writer as bytes: listing only its name produced a
+        // question paper full of captions and no illustrations at all.
+        for (const [kind, file, label] of [
+          ["reference", authored.reference, "Reference material"],
+          ["email", authored.emailImage, "Email attachment image"],
+        ] as const) {
+          if (!file?.base64) continue;
+          const title = `${label}: ${file.fileName || "attachment"}`;
+          const payload = inlineImagePayload(file.base64);
+          if (payload) attachments.push({ kind, title, base64: payload.base64, mimeType: payload.mimeType });
+          else attachmentTitles.push(title);
+        }
       }
-      return { ...section, email, attachmentTitles };
+      return { ...section, email, attachmentTitles, attachments };
     });
     const pdfAttachments: { kind: string; title: string }[] = [];
     if (input.preSeen?.base64) pdfAttachments.push({ kind: "pre_seen", title: `${title} · Pre-seen` });
