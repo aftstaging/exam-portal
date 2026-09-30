@@ -273,6 +273,7 @@ const MARGIN_X = 56.7;
 const CONTENT_TOP = PAGE_HEIGHT - 62;
 const CONTENT_BOTTOM = 62;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
+const CONTENT_HEIGHT = CONTENT_TOP - CONTENT_BOTTOM;
 
 const BODY_SIZE = 10.5;
 const BODY_LEADING = 15.5;
@@ -372,8 +373,13 @@ type Fonts = { regular: PDFFont; bold: PDFFont };
 /** A word-sized chunk of text plus whether a space separates it from the previous chunk. */
 type Token = { text: string; bold: boolean; spaceAfter: boolean };
 
-/** One physical line: the runs to paint, the x to start at, and an optional list marker. */
-type VisualLine = { runs: RichRun[]; x: number; marker: string | null };
+/**
+ * One physical line: the runs to paint, the x to start at, and an optional list marker.
+ *
+ * `justify` marks a line that is not the last of its paragraph, so it is the only kind of line
+ * that gets its word spacing stretched out to reach the right margin.
+ */
+type VisualLine = { runs: RichRun[]; x: number; marker: string | null; justify?: boolean };
 
 /**
  * Returns a copy of `blocks` with every run set to bold, tables included.
@@ -522,7 +528,13 @@ function appendRun(lines: RichRun[], run: RichRun): void {
   else lines.push({ text: run.text, bold: run.bold });
 }
 
-/** Wraps runs into lines, indenting the first line and continuations independently. */
+/**
+ * Wraps runs into lines, indenting the first line and continuations independently.
+ *
+ * `justify` asks for the body style: every line except the last of the paragraph is marked for
+ * stretching to the right margin. Titles, headings and table cells leave it off, because a
+ * stretched heading or a stretched table cell reads as a mistake rather than as alignment.
+ */
 function layoutRuns(
   runs: RichRun[],
   fonts: Fonts,
@@ -531,6 +543,7 @@ function layoutRuns(
   contX: number,
   limitX: number,
   marker: string | null = null,
+  justify = false,
 ): VisualLine[] {
   const tokens: Token[] = [];
   for (const token of splitRuns(runs)) tokens.push(token);
@@ -589,6 +602,9 @@ function layoutRuns(
     width += (spacing ? spaceWidth : 0) + tokenWidth(token, fonts, size);
   }
   commit();
+  // The line after the break is the last of the paragraph and stays ragged, which is what tells a
+  // reader where the paragraph ended.
+  if (justify) lines.forEach((line, index) => { if (index < lines.length - 1) line.justify = true; });
   return lines;
 }
 
@@ -610,7 +626,9 @@ function layoutBlocks(
     }
     const indent = originX + block.depth * NEST_INDENT;
     const textX = block.marker ? indent + MARKER_GAP : indent;
-    const lines = layoutRuns(block.runs, fonts, size, textX, textX, limitX, block.marker);
+    // Body prose is the only thing justified. Table cells are laid out by `layoutTable`, which
+    // calls `layoutRuns` without the flag, so a stretched table cell is not possible here.
+    const lines = layoutRuns(block.runs, fonts, size, textX, textX, limitX, block.marker, true);
     if (!lines.length) return;
     groups.push({
       height: lines.length * leading,
@@ -740,6 +758,17 @@ class Canvas {
     this.breakPage();
   }
 
+  /**
+   * Marks the current page as used up without starting a new one.
+   *
+   * Content that fills the page itself, such as an embedded PDF page, leaves the cursor where the
+   * page ended. Moving it to the bottom makes the next `reserve` break the page, so nothing is
+   * drawn on top of it and no blank page is added at the end either.
+   */
+  markFilled(): void {
+    this.cursor = CONTENT_BOTTOM;
+  }
+
   get remaining(): number {
     return this.cursor - CONTENT_BOTTOM;
   }
@@ -775,7 +804,57 @@ class Canvas {
     this.cursor -= gapAfter;
   }
 
+  /**
+   * Stretches a line's word spacing so it reaches the right margin.
+   *
+   * This is what a word processor does to body text, and it is the difference between a page that
+   * looks typeset and one where every line ends at a different place with lumpy gaps between some
+   * words and none between others. The slack is shared evenly between the gaps.
+   */
+  private drawJustified(line: VisualLine, baseline: number, size: number, color: RGB): void {
+    const gaps = line.runs.reduce((count, run) => count + (run.text.match(/ /g)?.length ?? 0), 0);
+    const slack = MARGIN_X + CONTENT_WIDTH - (line.x + lineWidth(line, this.fonts, size));
+    // A line with no gaps has nothing to stretch, and a line whose slack is far larger than its
+    // gaps would open rivers down the page, so both are left ragged.
+    if (!gaps || slack <= 0.5 || slack / gaps > size * 0.5) {
+      this.paintLine(line, baseline, size, color, line.x);
+      return;
+    }
+    if (line.marker) {
+      this.page.drawText(sanitizeText(line.marker), { x: Math.max(0, line.x - MARKER_GAP), y: baseline, size, font: this.fonts.regular, color });
+    }
+    const extra = slack / gaps;
+    let x = line.x;
+    for (const run of line.runs) {
+      const font = run.bold ? this.fonts.bold : this.fonts.regular;
+      const pieces = run.text.split(" ");
+      for (let index = 0; index < pieces.length; index += 1) {
+        // The space is painted as part of the piece that precedes it so the font matches, then
+        // the shared slack is added on top of it.
+        const last = index === pieces.length - 1;
+        const text = last ? pieces[index]! : `${pieces[index]} `;
+        if (text) this.page.drawText(text, { x, y: baseline, size, font, color });
+        x += font.widthOfTextAtSize(text, size);
+        if (!last) x += extra;
+      }
+    }
+  }
+
+  /** Paints a line's runs left to right from `startX`, advancing by each run's own width. */
+  private paintLine(line: VisualLine, baseline: number, size: number, color: RGB, startX: number): void {
+    let x = startX;
+    for (const run of line.runs) {
+      const font = run.bold ? this.fonts.bold : this.fonts.regular;
+      if (run.text) this.page.drawText(run.text, { x, y: baseline, size, font, color });
+      x += font.widthOfTextAtSize(run.text, size);
+    }
+  }
+
   private drawLine(line: VisualLine, baseline: number, size: number, color: RGB, align?: "right" | "center"): void {
+    if (line.justify) {
+      this.drawJustified(line, baseline, size, color);
+      return;
+    }
     let x = line.x;
     // Measuring a line is only needed to align it, so left-aligned lines skip the pass.
     if (align === "right") x = MARGIN_X + CONTENT_WIDTH - lineWidth(line, this.fonts, size);
@@ -784,11 +863,7 @@ class Canvas {
       // The marker sits in the hanging indent, to the left of the text it introduces.
       this.page.drawText(sanitizeText(line.marker), { x: Math.max(0, line.x - MARKER_GAP), y: baseline, size, font: this.fonts.regular, color });
     }
-    for (const run of line.runs) {
-      const font = run.bold ? this.fonts.bold : this.fonts.regular;
-      if (run.text) this.page.drawText(run.text, { x, y: baseline, size, font, color });
-      x += font.widthOfTextAtSize(run.text, size);
-    }
+    this.paintLine(line, baseline, size, color, x);
   }
 
   /** Draws a single run of text at an absolute position, used for the title block. */
@@ -887,7 +962,9 @@ function drawFragment(
   // Emphasis is applied to the runs before layout, never after it: painting a line in a wider
   // face than the one it was wrapped against pushes it past the margin and out of alignment.
   const blocks = bold ? boldedBlocks(parsed) : parsed;
-  const groups = layoutBlocks(blocks, fonts, size, leading, MARGIN_X, MARGIN_X + CONTENT_WIDTH, leading * 0.45);
+  // Paragraphs are separated by more than a fraction of the leading: at this measure two
+  // consecutive paragraphs run together and the reader loses the break between them.
+  const groups = layoutBlocks(blocks, fonts, size, leading, MARGIN_X, MARGIN_X + CONTENT_WIDTH, leading * 0.6);
   groups.forEach((group, index) => {
     canvas.drawGroup(group, size, leading, INK);
     if (index === groups.length - 1) canvas.space(gapAfter);
@@ -935,6 +1012,53 @@ export function isJpegBytes(bytes: Uint8Array): boolean {
   return bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8;
 }
 
+/** True when `bytes` begin with a PDF signature. */
+export function isPdfBytes(bytes: Uint8Array): boolean {
+  return bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+}
+
+/**
+ * Prints a PDF attachment into the document as real pages and reports how many were added.
+ *
+ * The pages are added at the point in the document where the attachment is being drawn, so a
+ * reference sheet stays with the section that cites it instead of being banished to the back.
+ *
+ * Each page is embedded as a page object rather than re-rendered into a picture, so the source's
+ * own typography, charts and images survive exactly. A rasterised page would come out soft at print
+ * size, which is the opposite of what an attached reference is for.
+ */
+async function drawPdfAttachmentPages(canvas: Canvas, attachment: PrintableAttachment): Promise<number> {
+  const body = attachment.base64 ?? "";
+  if (!body) return 0;
+  try {
+    const source = await PDFDocument.load(Buffer.from(body, "base64"), { ignoreEncryption: true });
+    let added = 0;
+    for (const page of source.getPages()) {
+      const embedded = await canvas.document.embedPage(page);
+      // Scaled to sit inside the printable content box, so a source page larger than the sheet or
+      // of a different shape is never clipped by it.
+      const scale = Math.min(CONTENT_WIDTH / embedded.width, CONTENT_HEIGHT / embedded.height, 1);
+      const width = embedded.width * scale;
+      const height = embedded.height * scale;
+      canvas.breakToNewPage();
+      canvas.page.drawPage(embedded, {
+        x: MARGIN_X + (CONTENT_WIDTH - width) / 2,
+        y: CONTENT_BOTTOM + (CONTENT_HEIGHT - height) / 2,
+        width,
+        height,
+      });
+      added += 1;
+    }
+    // The embedded page occupies the whole content box, so whatever is drawn next has to start on
+    // a fresh page rather than landing on top of it.
+    if (added) canvas.markFilled();
+    return added;
+  } catch {
+    // Unreadable or encrypted bytes: the caller falls back to printing the caption.
+    return 0;
+  }
+}
+
 /**
  * Decodes an attachment as a PNG or JPEG.
  *
@@ -960,11 +1084,12 @@ async function embedAttachmentImage(canvas: Canvas, attachment: PrintableAttachm
 }
 
 /**
- * Renders one attachment and reports whether the image itself made it onto the page.
+ * Renders one attachment and reports whether its content made it onto the page.
  *
- * The caption is always printed — for a non-image file it is the only representation of the
- * attachment — and it travels with the image when the image is too tall for the space left and
- * has to move to a fresh page, so no page ends up as a picture with nothing to identify it.
+ * The caption is always printed — it identifies the attachment, and for a file that cannot be
+ * reproduced it is the only representation of it. It travels with an image when the image is too
+ * tall for the space left and has to move to a fresh page, so no page ends up as a picture with
+ * nothing to identify it.
  */
 async function drawAttachment(
   canvas: Canvas,
@@ -974,6 +1099,16 @@ async function drawAttachment(
 ): Promise<boolean> {
   const captionSize = SMALL_SIZE + 1;
   const printCaption = () => drawFragment(canvas, fonts, caption, captionSize, BODY_LEADING, BODY_LEADING * 0.3);
+
+  // A PDF is printed page for page. Merely naming it left the sheet with a caption and no reference
+  // to read, which is the one thing an attached PDF is there for, so the pages are now embedded.
+  // The caption goes first because it introduces what follows it.
+  if ((attachment.mimeType ?? "").includes("pdf") || (attachment.base64 ?? "").startsWith("JVBER")) {
+    printCaption();
+    if (await drawPdfAttachmentPages(canvas, attachment)) return true;
+    // The bytes could not be parsed, so the caption above is the whole representation of them.
+    return false;
+  }
 
   const image = await embedAttachmentImage(canvas, attachment);
   if (!image) {
@@ -1043,8 +1178,11 @@ export async function generateBrandedPrintablePdf(
 
   for (const section of sections) {
     canvas.reserve(H1_LEADING * 3);
-    canvas.space(BODY_LEADING * 0.5);
+    canvas.space(BODY_LEADING * 0.6);
     drawHeading(canvas, `Section ${section.sectionNumber} · ${section.title}`, fonts);
+    // The heading is held to the first thing under it, then given room to breathe before the text
+    // that follows, so a section opens as a block instead of as a heading buried in a paragraph.
+    canvas.space(H1_LEADING * 0.3);
     drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, SMALL_SIZE + 1, BODY_LEADING, BODY_LEADING * 0.5);
     drawFragment(canvas, fonts, section.introduction);
     // The instruction sheet is read with the instructions, so it prints before the extra notes

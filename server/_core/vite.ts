@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type IRouter } from "express";
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
@@ -6,7 +6,11 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
-export async function setupVite(app: Express, server: Server) {
+/**
+ * `portal` is the express app with the base path already stripped from `req.url`, so every route
+ * below is written root-relative. `app` is the unstripped app, used for Vite in development.
+ */
+export async function setupVite(app: Express, server: Server, portal: IRouter) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -20,8 +24,11 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  // Vite applies `base` to the raw request path itself, so its middleware is mounted on `app`,
+  // where the `/exam` prefix is still on `req.url`. Mounting it on `portal` would hand it a
+  // stripped path that no longer matches the base it was built with.
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  portal.use("*", async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -47,7 +54,8 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-export function serveStatic(app: Express) {
+/** Serves the built client from `portal`, which already has the base path stripped from `req.url`. */
+export function serveStatic(portal: IRouter) {
   const distPath =
     process.env.NODE_ENV === "development"
       ? path.resolve(import.meta.dirname, "../..", "dist", "public")
@@ -58,10 +66,10 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  portal.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  portal.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

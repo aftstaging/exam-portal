@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { deflateSync } from "node:zlib";
-import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, decodePDFRawStream } from "pdf-lib";
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, StandardFonts, decodePDFRawStream } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { generateBrandedPrintablePdf, parseRichHtml } from "./pdf";
 
@@ -386,10 +386,88 @@ describe("branded printable exam PDF", () => {
       ],
     );
     const text = await extractText(bytes);
-    // A PDF page cannot be drawn inside another PDF page, so it is named in place instead of
-    // being silently dropped, which is what would happen if only the embeddable path were kept.
+    // A title-only reference has no file to reproduce, so it is named in place rather than being
+    // silently dropped, which is what would happen if only the embeddable path were kept.
     expect(text).toContain("Instruction sheet: task-one-sheet.pdf");
     expect(text.indexOf("Instruction sheet: task-one-sheet.pdf")).toBeLessThan(text.indexOf("Evaluate the contribution"));
+  });
+
+  it("reproduces a PDF instruction sheet on the page instead of only naming it", async () => {
+    // A real single-page PDF, so the bytes parse and the page is actually embedded rather than
+    // falling through to the caption-only path.
+    const source = await PDFDocument.create();
+    const page = source.addPage([595, 842]);
+    page.drawText("Contribution by region", { x: 56, y: 760, size: 14, font: await source.embedFont(StandardFonts.Helvetica) });
+    const base64 = Buffer.from(await source.save()).toString("base64");
+
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [
+        {
+          sectionNumber: 1,
+          title: "Delivery economics",
+          durationSeconds: 2700,
+          introduction: "Read the instruction sheet before you begin.",
+          question: "Evaluate the contribution of each region.",
+          introAttachments: [{ kind: "instructions", title: "Instruction sheet: region-data.pdf", base64, mimeType: "application/pdf" }],
+        },
+      ],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Instruction sheet: region-data.pdf");
+    // The whole point of the attachment: its own words are on the sheet, not just its name.
+    expect(text).toContain("Contribution by region");
+  });
+
+  it("falls back to the caption when PDF attachment bytes cannot be parsed", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [
+        {
+          sectionNumber: 1,
+          title: "Delivery economics",
+          durationSeconds: 2700,
+          question: "Evaluate the contribution of each region.",
+          introAttachments: [{ kind: "instructions", title: "Instruction sheet: broken.pdf", base64: Buffer.from("%PDF-1.7 truncated").toString("base64"), mimeType: "application/pdf" }],
+        },
+      ],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Instruction sheet: broken.pdf");
+  });
+
+  it("justifies body paragraphs so each line but the last reaches the right margin", async () => {
+    const words = Array.from({ length: 40 }, (_, index) => `word${index}`);
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Alignment", intro: words.join(" "), totalDurationSeconds: 2700 },
+      [],
+    );
+    // Read the drawn runs back and group them by baseline, which is how the sheet is perceived:
+    // as lines, each with a left and a right edge.
+    const lines = new Map<number, { text: string; right: number }>();
+    for (const item of await extractTextItems(bytes)) {
+      // The running head and foot sit outside the body area.
+      if (item.y < 70 || item.y > 780) continue;
+      const key = Math.round(item.y);
+      const line = lines.get(key) ?? { text: "", right: 0 };
+      line.text += ` ${item.text}`;
+      line.right = Math.max(line.right, item.x + item.width);
+      lines.set(key, line);
+    }
+    // Only the intro is paragraph text. The title block shares the band and is deliberately left
+    // ragged, since a stretched heading reads as a mistake.
+    const paragraph = [...lines.values()].filter((line) => line.text.includes("word"));
+    expect(paragraph.length).toBeGreaterThan(2);
+
+    // The right edge of the content column, the same value the printable width test uses.
+    const RIGHT_MARGIN = 595 - 56.7;
+    const reached = paragraph.filter((line) => line.right > RIGHT_MARGIN - 6);
+    // Every line of the paragraph is wrapped from the same column, so all but the closing line
+    // should be stretched out to it. Ragged-right output reached none of them, which is the
+    // uneven, drifting look the justification is here to remove.
+    expect(reached.length).toBe(paragraph.length - 1);
+    // Stretching must not push anything past the printable area.
+    for (const line of lines.values()) expect(line.right).toBeLessThanOrEqual(RIGHT_MARGIN + 1);
   });
 
   it("prints the email attachment image with the caption that identifies it", async () => {

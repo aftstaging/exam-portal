@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type IRouter } from "express";
 import Stripe from "stripe";
 import { getDb, recordPayment } from "./db";
 import { entitlements, notifications, products } from "../drizzle/schema";
@@ -7,7 +7,7 @@ import { entitlementExpiryFromAccessDays, shouldGrantPurchasedEntitlement } from
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
-export function registerStripeWebhook(app: Express) {
+export function registerStripeWebhook(app: IRouter) {
   app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
     if (!stripe || !process.env.STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: "Stripe is not configured" });
     let event: Stripe.Event;

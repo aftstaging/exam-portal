@@ -2,8 +2,9 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { startLogin } from "@/const";
+import { withBasePath } from "@/lib/basePath";
 
-const logoUrl = "/assets/aft_logo_white.png";
+const logoUrl = withBasePath("/assets/aft_logo_white.png");
 
 export function PublicHeader({ onLogin }: { onLogin: () => void }) {
   return (

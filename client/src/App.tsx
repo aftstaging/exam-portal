@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import AdminConsole from "@/pages/AdminConsole";
-import { Route, Switch } from "wouter";
+import { Route, Router as BasePathRouter, Switch } from "wouter";
+import { APP_BASE_PATH } from "@/lib/basePath";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "@/pages/Home";
@@ -11,7 +12,7 @@ import Cart from "@/pages/Cart";
 import StudyResources from "@/pages/StudyResources";
 import { LoginDialog } from "@/components/LoginDialog";
 
-function Router() {
+function Routes() {
   return (
     <Switch>
       <Route path="/" component={Home} />
@@ -34,13 +35,18 @@ function Router() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-          <LoginDialog />
-        </TooltipProvider>
-      </ThemeProvider>
+      {/* `base` makes every route below it relative to the prefix, so `navigate("/admin")` and
+          `<Link href="/dashboard">` resolve to `/exam/admin` and `/exam/dashboard`. Without it a
+          login redirect would push `/admin` and land outside the portal. */}
+      <BasePathRouter base={APP_BASE_PATH}>
+        <ThemeProvider defaultTheme="dark">
+          <TooltipProvider>
+            <Toaster />
+            <Routes />
+            <LoginDialog />
+          </TooltipProvider>
+        </ThemeProvider>
+      </BasePathRouter>
     </ErrorBoundary>
   );
 }

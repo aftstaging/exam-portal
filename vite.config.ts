@@ -1,10 +1,18 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
+import { normalizeBasePath } from "./shared/basePath";
 
-export default defineConfig({
-  base: '/',
+export default defineConfig(({ mode }) => {
+  // Vite's own mode is used rather than NODE_ENV, so `APP_BASE_PATH` can be set per mode (in
+  // `.env.production`, say) and still reach the build that needs it.
+  const env = loadEnv(mode, import.meta.dirname, "");
+  const basePath = normalizeBasePath(env.APP_BASE_PATH);
+  return {
+  // Vite wants a trailing slash so that `base` can be concatenated with a root-relative asset
+  // path. The prefix is shared with the Express app and the browser bundle via `APP_BASE_PATH`.
+  base: `${basePath}/`,
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -47,4 +55,5 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  };
 });

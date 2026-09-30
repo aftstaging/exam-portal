@@ -1,7 +1,7 @@
-import type { Express } from "express";
+import type { IRouter } from "express";
 import { storageGetSignedUrl } from "../storage";
 
-export function registerStorageProxy(app: Express) {
+export function registerStorageProxy(app: IRouter) {
   app.get("/storage/:key(*)", async (req, res) => {
     const key = req.params.key;
     if (!key) {

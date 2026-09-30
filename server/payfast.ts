@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import type { Express } from "express";
+import type { IRouter } from "express";
 import { ENV } from "./_core/env";
 import { getDb, recordPayment } from "./db";
 import { entitlements, notifications, products } from "../drizzle/schema";
@@ -66,7 +66,7 @@ export function createPayFastHostedCheckout(input: { productId: number; userId: 
   return buildPayFastCheckout(fields, input.mode);
 }
 
-export function registerPayFastITN(app: Express, getMode: () => Promise<PayFastMode>) {
+export function registerPayFastITN(app: IRouter, getMode: () => Promise<PayFastMode>) {
   app.post("/api/payfast/itn", async (req, res) => {
     const fields = Object.fromEntries(Object.entries(req.body ?? {}).map(([key, value]) => [key, String(value ?? "")]));
     const mode = await getMode();

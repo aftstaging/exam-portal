@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { type IRouter, Router } from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -11,6 +11,7 @@ import { registerStripeWebhook } from "../stripe";
 import { registerPayFastITN } from "../payfast";
 import { getPayFastGatewaySettings } from "../db";
 import { handleAutoSubmit } from "./autoSubmit";
+import { APP_BASE_PATH } from "./basePath";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -34,15 +35,28 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  registerStripeWebhook(app);
+  // The app is reached through nginx, so `req.protocol`/`req.ip` only describe the hop to
+  // 127.0.0.1. Trusting the proxy makes Express read the client's scheme from X-Forwarded-Proto,
+  // which is what the session cookie and the payment return URLs need.
+  app.set("trust proxy", true);
+
+  // Every route below is registered on `portal` and written root-relative. Mounting that router
+  // under the base path is what lets the app live at /exam while its own routes stay /api/trpc,
+  // /admin and so on. With no base path configured the routes are registered on `app` directly,
+  // so local development at the domain root behaves exactly as before.
+  const portal: IRouter = APP_BASE_PATH ? Router() : app;
+  if (APP_BASE_PATH) app.use(APP_BASE_PATH, portal);
+
+  // Registered before the JSON body parser so Stripe's signature check sees the raw body.
+  registerStripeWebhook(portal);
   // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
-  registerPayFastITN(app, async () => (await getPayFastGatewaySettings()).mode);
-  registerStorageProxy(app);
-  app.post("/api/auto-submit", handleAutoSubmit);
+  portal.use(express.json({ limit: "50mb" }));
+  portal.use(express.urlencoded({ limit: "50mb", extended: true }));
+  registerPayFastITN(portal, async () => (await getPayFastGatewaySettings()).mode);
+  registerStorageProxy(portal);
+  portal.post("/api/auto-submit", handleAutoSubmit);
   // tRPC API
-  app.use(
+  portal.use(
     "/api/trpc",
     createExpressMiddleware({
       router: appRouter,
@@ -51,9 +65,9 @@ async function startServer() {
   );
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
+    await setupVite(app, server, portal);
   } else {
-    serveStatic(app);
+    serveStatic(portal);
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");
@@ -64,7 +78,9 @@ async function startServer() {
   }
 
   server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+    console.log(
+      `Server running on http://localhost:${port}${APP_BASE_PATH || "/"}`
+    );
   });
 }
 

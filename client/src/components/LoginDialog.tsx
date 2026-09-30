@@ -30,18 +30,22 @@ export function LoginDialog() {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function redirectAdminAfterLogin() {
+  // Staff land on their own console, everyone else on their learner dashboard. The paths are
+  // authored root-relative; wouter's `base` (see App.tsx) prefixes them with `/exam` so a login
+  // never redirects outside the portal.
+  async function redirectAfterLogin() {
     const me = await utils.auth.me.fetch();
     if (!me) return;
     if (me.role === "admin") navigate("/admin");
     else if (me.role === "instructor") navigate("/instructor");
+    else navigate("/dashboard");
   }
 
   const loginMutation = trpc.auth.login.useMutation({
     onSuccess: async () => {
       await utils.auth.me.invalidate();
       handleClose();
-      await redirectAdminAfterLogin();
+      await redirectAfterLogin();
     },
     onError: handleError,
   });
@@ -49,7 +53,7 @@ export function LoginDialog() {
     onSuccess: async () => {
       await utils.auth.me.invalidate();
       handleClose();
-      await redirectAdminAfterLogin();
+      await redirectAfterLogin();
     },
     onError: handleError,
   });
@@ -58,7 +62,7 @@ export function LoginDialog() {
     onSuccess: async () => {
       await utils.auth.me.invalidate();
       handleClose();
-      await redirectAdminAfterLogin();
+      await redirectAfterLogin();
     },
     onError: handleError,
   });

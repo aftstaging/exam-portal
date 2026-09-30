@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { publicOrigin } from "./_core/basePath";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { assignMarking, createLockedSubmission, getAdminContentOverview, getAdminOverview, getAttemptContext, getProtectedResourceDownload, getProtectedResourceZip, getUserFeedbackStates, listAdminContent, listAdminProducts, listAdminUsers, listAttemptAnswers, listMarkerQueue, listMarkerStats, listPayments, listProtectedResources, listPublishedCaseStudySections, listPublishedMockExams, listPublishedObjectiveQuestions, listPublishedProducts, listPublishedQualifications, listUserAttempts, listUserEntitlements, listUserNotifications, markNotificationRead, releaseFeedback, saveAnswerDraft, startCaseStudyAttempt, generatePrintablePdf, getPrintableExamPdf, updateAdminContentStatus, updateProductStatus, updateSectionTitle, getPayFastGatewaySettings, setPayFastGatewayMode, updateProductAccessDays, updateProductPrice, createAdminProduct, createAdminMockExam, createAdminObjectiveQuestion, uploadAdminResource, claimFreeProduct, provisionDemoLearner, getDemoLearnerForQaAccess, getUserByEmail, createLocalUser, createManagedUser, removeUser, adminGrantEntitlement, revokeEntitlement, listAdminUserEntitlements, updateUserLastSignedIn, updateAdminProduct, uploadProductImage, updateAdminObjectiveQuestionRationale, createExamBundle, listAdminCoupons, createAdminCoupon, revokeCoupon, updateAdminCoupon, deleteAdminCoupon, validateCoupon, checkoutWithCoupon, getAdminExamPreview, getAdminExamBundleDetail, updateExamBundle, deleteExamBundle, listAdminCatalogue } from "./db";
@@ -105,7 +106,7 @@ export const appRouter = router({
     }),
   }),
   payments: router({
-    createCheckout: protectedProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(({ ctx, input }) => createCheckoutSession({ userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, productId: input.productId, origin: `${ctx.req.protocol}://${ctx.req.get("host")}` })),
+    createCheckout: protectedProcedure.input(z.object({ productId: z.number().int().positive() })).mutation(({ ctx, input }) => createCheckoutSession({ userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, productId: input.productId, origin: publicOrigin(ctx.req) })),
     createPayfastCartCheckout: protectedProcedure.input(z.object({ productIds: z.array(z.number().int().positive()).min(1).max(20), couponCode: z.string().max(40).optional() })).mutation(async ({ ctx, input }) => {
       const db = await getDb(); if (!db) throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "Database unavailable" });
       const selected = await db.select().from(products).where(inArray(products.id, Array.from(new Set(input.productIds))));
@@ -132,7 +133,7 @@ export const appRouter = router({
         }
       }
       const settings = await getPayFastGatewaySettings();
-      const checkout = createPayFastHostedCheckout({ productId: available[0].id, userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, origin: `${ctx.req.protocol}://${ctx.req.get("host")}`, mode: settings.mode as PayFastMode, amount: (amountCents / 100).toFixed(2), itemName: `AFT cart · ${available.length} product${available.length === 1 ? "" : "s"}`, extraFields: { custom_str3: available.map((product) => product.id).join(","), ...(couponCode ? { custom_str4: couponCode } : {}) } });
+      const checkout = createPayFastHostedCheckout({ productId: available[0].id, userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, origin: publicOrigin(ctx.req), mode: settings.mode as PayFastMode, amount: (amountCents / 100).toFixed(2), itemName: `AFT cart · ${available.length} product${available.length === 1 ? "" : "s"}`, extraFields: { custom_str3: available.map((product) => product.id).join(","), ...(couponCode ? { custom_str4: couponCode } : {}) } });
       if (!checkout) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PayFast is not configured for the selected gateway mode" });
       return checkout;
     }),
@@ -151,7 +152,7 @@ export const appRouter = router({
       if (!product || product.status !== "published") throw new TRPCError({ code: "NOT_FOUND", message: "Product unavailable" });
       if (product.priceCents <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "This product does not require payment" });
       const settings = await getPayFastGatewaySettings();
-      const checkout = createPayFastHostedCheckout({ productId: product.id, userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, origin: `${ctx.req.protocol}://${ctx.req.get("host")}`, mode: settings.mode as PayFastMode, amount: (product.priceCents / 100).toFixed(2), itemName: product.title });
+      const checkout = createPayFastHostedCheckout({ productId: product.id, userId: ctx.user.id, email: ctx.user.email, name: ctx.user.name, origin: publicOrigin(ctx.req), mode: settings.mode as PayFastMode, amount: (product.priceCents / 100).toFixed(2), itemName: product.title });
       if (!checkout) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PayFast is not configured for the selected gateway mode" });
       return checkout;
     }),

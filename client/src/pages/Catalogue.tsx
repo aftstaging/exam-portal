@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PublicHeader } from "@/components/PortalHeader";
 import { trpc } from "@/lib/trpc";
+import { withBasePath } from "@/lib/basePath";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { addToCart } from "@/pages/Cart";
@@ -83,7 +84,7 @@ export default function Catalogue({ kind = "exams" }: { kind?: "shop" | "exams" 
                 </div>
               )}
               <div className="mt-5 flex items-center gap-4 border-t border-white/10 pt-4 text-xs font-semibold text-white/55"><span className="inline-flex items-center gap-1"><Clock3 className="h-4 w-4 text-[#00ff88]" />{linkedExam ? `${Math.round(linkedExam.mockExam.totalDurationSeconds / 60)} minutes` : "30 days"}</span><span className="inline-flex items-center gap-1"><ShieldCheck className="h-4 w-4 text-[#00e5ff]" />Account-linked</span></div>
-              <div className="mt-6 flex items-center justify-between gap-3"><span className="text-lg font-black text-white">{isFree ? "Free" : `R${(product.priceCents / 100).toFixed(2)}`}</span><div className="flex items-center gap-3"><Link href={detailHref} className="text-sm font-bold text-[#00e5ff]">Details</Link>{isFree ? <Link href={detailHref}><Button size="sm" className="aft-button">Start exam</Button></Link> : <Button size="sm" className="aft-button" onClick={() => { addToCart(product.id); window.location.href = "/cart"; }}>Add to cart</Button>}</div>              </div>
+              <div className="mt-6 flex items-center justify-between gap-3"><span className="text-lg font-black text-white">{isFree ? "Free" : `R${(product.priceCents / 100).toFixed(2)}`}</span><div className="flex items-center gap-3"><Link href={detailHref} className="text-sm font-bold text-[#00e5ff]">Details</Link>{isFree ? <Link href={detailHref}><Button size="sm" className="aft-button">Start exam</Button></Link> : <Button size="sm" className="aft-button" onClick={() => { addToCart(product.id); window.location.href = withBasePath("/cart"); }}>Add to cart</Button>}</div>              </div>
             </div></CardContent>
           </Card>;
         })}</div>}

@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  joinAuthoredContent,
+  parseAuthoredTable,
+  serializeAuthoredTable,
+  splitAuthoredContent,
+  type AuthoredSegment,
+} from "@shared/authoredTable";
+import { TableEditor, emptyTable } from "./TableEditor";
 import {
   AlignCenter,
   AlignJustify,
@@ -298,22 +306,18 @@ function QuestionEditor({ question, index, onChange, onRemove }: { question: Que
   );
 }
 
-/**
- * Builds the markup for an empty instructions table of the given size.
- *
- * The table is plain `<table>`/`<th>`/`<td>` with no styling attributes: the exam shell and the
- * printable PDF both lay a table out from the element structure alone, so an author only ever
- * edits cell text, and the same markup is what the PDF writer lays out page by page.
- */
-function buildTableMarkup(rows: number, columns: number): string {
-  const header = Array.from({ length: columns }, (_, index) => `<th>Column ${index + 1}</th>`).join("");
-  const body = Array.from({ length: rows }, () => `<tr>${Array.from({ length: columns }, () => "<td></td>").join("")}</tr>`).join("");
-  return `<table>\n<thead>\n<tr>${header}</tr>\n</thead>\n<tbody>\n${body}\n</tbody>\n</table>`;
-}
-
 const TABLE_PICKER_COLUMNS = 5;
 const TABLE_PICKER_ROWS = 4;
 
+/**
+ * An authoring field that mixes prose and tables.
+ *
+ * Tables are shown as a grid, the way a word processor would show them, and everything around them
+ * is ordinary prose in a plain textarea. The value is still one string, so nothing downstream
+ * changes: `serializeAuthoredTable` writes a grid back out as the same `<table>` markup the exam
+ * shell renders and the printable PDF lays out, and `splitAuthoredContent` puts the surrounding
+ * prose back in place around it.
+ */
 function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, ## heading, ● bullet (start a line with - or ●), 1. numbered.", allowTable = false }: {
   value: string;
   onChange: (value: string) => void;
@@ -323,11 +327,35 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
   hint?: string;
   allowTable?: boolean;
 }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
   const [tablePicker, setTablePicker] = useState(false);
 
+  const segments = useMemo<AuthoredSegment[]>(() => {
+    const split = splitAuthoredContent(value);
+    // A field made only of tables would otherwise offer nowhere to type ordinary prose, so an empty
+    // slot is shown at each end for that reason alone.
+    return [
+      ...(split.length === 0 || split[0]!.kind !== "prose" ? [{ kind: "prose" as const, value: "" }] : []),
+      ...split,
+      ...(split.length === 0 || split[split.length - 1]!.kind !== "prose" ? [{ kind: "prose" as const, value: "" }] : []),
+    ];
+  }, [value]);
+  const proseCount = segments.filter((segment) => segment.kind === "prose").length;
+
+  // There is one textarea per prose block, so the formatting buttons need to know which of them the
+  // author is currently typing in. Focus inside a table cell clears this, so the buttons act on the
+  // block the author last chose rather than on a block they have since moved away from.
+  const proseRefs = useRef(new Map<number, HTMLTextAreaElement>());
+  const activeProse = useRef<number | null>(null);
+
+  const write = (next: AuthoredSegment[]) => onChange(joinAuthoredContent(next));
+  const replaceSegment = (index: number, next: AuthoredSegment) =>
+    write(segments.map((segment, position) => (position === index ? next : segment)));
+
   const applyFormat = (prefix: string, suffix = "") => {
-    const el = ref.current;
+    const index = activeProse.current;
+    const segment = index === null ? null : segments[index];
+    if (index === null || !segment || segment.kind !== "prose") return;
+    const el = proseRefs.current.get(index);
     if (!el) return;
     const { selectionStart, selectionEnd, value: current } = el;
     const selected = current.slice(selectionStart, selectionEnd);
@@ -336,7 +364,7 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
       : `${prefix}${suffix ? "text" : "text"}${suffix}`;
     const next = current.slice(0, selectionStart) + wrapped + current.slice(selectionEnd);
     const cursor = selectionStart + prefix.length + (selected ? selected.length + suffix.length : (suffix ? suffix.length : 4));
-    onChange(next);
+    replaceSegment(index, { kind: "prose", value: next });
     requestAnimationFrame(() => {
       el.focus();
       el.setSelectionRange(cursor, cursor);
@@ -344,24 +372,32 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
   };
 
   const insertTable = (rows: number, columns: number) => {
-    const el = ref.current;
     setTablePicker(false);
-    if (!el) return;
-    const { selectionStart, selectionEnd, value: current } = el;
+    const index = activeProse.current;
+    const segment = index === null ? null : segments[index];
+    if (index === null || !segment || segment.kind !== "prose") return;
+    const el = proseRefs.current.get(index);
+    const caret = el ? el.selectionStart : segment.value.length;
     // A table is a block in its own right, so it is dropped onto its own line rather than being
     // spliced into whatever the caret happened to be sitting in the middle of.
-    const before = current.slice(0, selectionStart).replace(/\s+$/, "");
-    const after = current.slice(selectionEnd);
-    const prefix = before ? `${before}\n\n` : "";
-    const suffix = after.trim() ? `\n\n${after.replace(/^\s+/, "")}` : "\n\n";
-    onChange(`${prefix}${buildTableMarkup(rows, columns)}${suffix}`);
-    requestAnimationFrame(() => {
-      el.focus();
-      // Select the first header cell's placeholder so typing the real heading replaces it,
-      // rather than being typed in front of a leftover "Column 1".
-      const start = prefix.length + "<table>\n<thead>\n<tr><th>".length;
-      el.setSelectionRange(start, start + "Column 1".length);
-    });
+    const before = segment.value.slice(0, caret).replace(/\s+$/, "");
+    const after = segment.value.slice(caret).replace(/^\s+/, "");
+    const next = segments.slice();
+    next.splice(
+      index,
+      1,
+      { kind: "prose", value: before ? `${before}\n\n` : "\n\n" },
+      { kind: "table", markup: serializeAuthoredTable(emptyTable(rows, columns)) },
+      { kind: "prose", value: after ? `\n\n${after}` : "\n\n" },
+    );
+    write(next);
+  };
+
+  const removeTable = (index: number) => {
+    const kept = segments.filter((_, position) => position !== index);
+    // Removing a table leaves the blank lines that separated it from its neighbours facing each
+    // other, which would open a gap where the table used to be.
+    write(kept.map((segment) => (segment.kind === "prose" ? { kind: "prose", value: segment.value.replace(/\n{3,}/g, "\n\n") } : segment)));
   };
 
   const toolButton = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0c0524] text-white/80 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]";
@@ -413,14 +449,40 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
                     </div>
                   ))}
                 </div>
-                <p className="mt-2 max-w-56 text-[10px] leading-4 text-white/40">The first row is a heading row. Edit the cell text directly in the field.</p>
+                <p className="mt-2 max-w-56 text-[10px] leading-4 text-white/40">The first row is a heading row. A grid of boxes opens below, so you type into the table instead of its markup.</p>
               </div>
             )}
           </div>
         )}
         <span className="ml-auto text-[10px] italic leading-4 text-white/35">{hint}</span>
       </div>
-      <textarea ref={ref} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={`mt-1 w-full rounded-lg border border-white/10 bg-[#0c0524] text-white ${className}`} />
+      <div className="mt-1 space-y-1">
+        {segments.map((segment, index) =>
+          segment.kind === "prose" ? (
+            <textarea
+              key={index}
+              ref={(element) => {
+                if (element) proseRefs.current.set(index, element);
+                else proseRefs.current.delete(index);
+              }}
+              value={segment.value}
+              placeholder={placeholder}
+              aria-label={proseCount > 1 ? `${label}, text block ${segments.slice(0, index + 1).filter((item) => item.kind === "prose").length} of ${proseCount}` : label}
+              onFocus={() => { activeProse.current = index; }}
+              onChange={(event) => replaceSegment(index, { kind: "prose", value: event.target.value })}
+              className={`w-full rounded-lg border border-white/10 bg-[#0c0524] text-white ${className}`}
+            />
+          ) : (
+            <TableEditor
+              key={index}
+              table={parseAuthoredTable(segment.markup) ?? emptyTable(1, 1)}
+              onCellFocus={() => { activeProse.current = null; }}
+              onChange={(table) => replaceSegment(index, { kind: "table", markup: serializeAuthoredTable(table) })}
+              onRemove={() => removeTable(index)}
+            />
+          ),
+        )}
+      </div>
     </div>
   );
 }
@@ -485,7 +547,7 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
         accept="image/png,image/jpeg,application/pdf"
         value={section.instructionFile}
         onChange={(file) => set({ instructionFile: file })}
-        note="PNG, JPEG or PDF. In the printable exam the sheet is printed straight after this task's instructions. A PDF is listed by name rather than embedded, so a PDF instruction sheet must also be in the protected course materials."
+        note="PNG, JPEG or PDF. In the printable exam the sheet is printed straight after this task's instructions, and a PDF is reproduced page for page."
       />
       <div>
         <label className="text-xs font-semibold text-[#c4b5fd]">Extra notes (optional)</label>

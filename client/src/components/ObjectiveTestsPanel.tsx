@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PublicHeader } from "@/components/PortalHeader";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { withBasePath } from "@/lib/basePath";
 import { calculateExamExpression } from "@shared/examCalculator";
 import { ObjectiveAnswer, objectiveAnswerMatches, parseObjectiveQuestion, scoreObjectiveAnswers, selectObjectiveQuestions } from "@shared/objectiveTest";
 
@@ -315,7 +316,7 @@ function ResultPanel({ questions, answers, score, onReset, onReview }: { questio
     <div className="flex flex-wrap gap-2">
       <Button variant="outline" className="border-[#00e5ff] text-white" onClick={onReview}>Back to answers</Button>
       <Button variant="outline" className="border-[#00ff88] text-white" onClick={onReset}><RotateCcw className="mr-2 h-4 w-4" /> New test</Button>
-      <Button variant="outline" className="border-[#00e5ff] text-white" onClick={() => window.location.href = "/"}>Return to home</Button>
+      <Button variant="outline" className="border-[#00e5ff] text-white" onClick={() => window.location.href = withBasePath("/")}>Return to home</Button>
     </div>
   </div>;
 }
