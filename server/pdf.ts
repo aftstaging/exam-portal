@@ -190,24 +190,73 @@ const CONTENT_BOTTOM = 62;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 const CONTENT_HEIGHT = CONTENT_TOP - CONTENT_BOTTOM;
 
-const BODY_SIZE = 10.5;
-const BODY_LEADING = 15.5;
-const TITLE_SIZE = 23;
-const TITLE_LEADING = 29;
-const H1_SIZE = 15;
-const H1_LEADING = 21;
+/**
+ * One type scale, used for everything the sheet prints.
+ *
+ * The sizes used to be written as `SMALL_SIZE + 1`, `SMALL_SIZE + 1.5` and `BODY_SIZE + 1` at the
+ * call sites, which is how a sheet ended up with nine different sizes on it and the same line of
+ * text — "Time allowed" — printed at 15pt under the title and at 9pt inside a section. Every size
+ * on the page is now one of these steps, so the hierarchy is legible as a hierarchy.
+ */
+const TITLE_SIZE = 22;
+const TITLE_LEADING = 27;
+const H1_SIZE = 13.5;
+const H1_LEADING = 18;
 const H2_SIZE = 11.5;
-const H2_LEADING = 16;
-const SMALL_SIZE = 8;
-const MARKER_GAP = 14;
-const NEST_INDENT = 16;
+const H2_LEADING = 15.5;
+const H3_SIZE = 11;
+const BODY_SIZE = 10.5;
+const BODY_LEADING = 15;
+/** The duration under a title, and the labels of an email header. */
+const META_SIZE = 9.5;
+/** A sheet's leading, and the caption that identifies an attachment. */
+const CAPTION_SIZE = 9;
+const CAPTION_LEADING = 12.5;
+/** Running head and foot. */
+const RUNNING_SIZE = 8;
+/** Baseline grid of the email header rows, and of a caption line. */
+const ROW_LEADING = 13.5;
+const CAPTION_GAP = 5;
+
+/** Gap between a list marker and the text it introduces, whatever the marker is. */
+const MARKER_GAP = 5;
+const NEST_INDENT = 14;
 const CELL_PADDING = 5;
 const LOGO_HEIGHT = 42;
-const MAX_IMAGE_HEIGHT = 320;
-/** Below this much space, an attachment image moves to its own page rather than being squeezed. */
-const MIN_INLINE_IMAGE_HEIGHT = 150;
+
+/**
+ * The frame every attachment image is fitted into.
+ *
+ * Attachments used to be drawn at whatever size they happened to be, so a chart arrived on the
+ * page at 300pt wide beside another that filled the column at 420pt and the sheet read as though
+ * the two documents had been printed by different people. Each image is now fitted to the same box
+ * and centred in the column, so the differences that remain are the shape of the documents rather
+ * than the size of them.
+ */
+const ATTACHMENT_BOX_HEIGHT = 300;
+/**
+ * A source larger than this is not magnified further, because upscaling a screenshot goes soft.
+ *
+ * There is deliberately no floor on the scale. A minimum scale was the reason two attachments of
+ * the same shape reached the paper at different sizes: the larger one could not be scaled down as
+ * far as the frame asked, so the floor overrode the fit and printed it *taller than the box* while
+ * the smaller one fitted exactly. Only the magnification ceiling remains, which cannot put an image
+ * outside the frame.
+ */
+const ATTACHMENT_MAX_SCALE = 1.5;
 /** Layout probe width used to measure a single unwrapped line of table cell text. */
 const PROBE_WIDTH = 10_000;
+/**
+ * How far short of the right margin the sheet keeps its text.
+ *
+ * The slack of a justified line is shared between its gaps, and the sum of the pieces a run was
+ * split into measures a fraction of a point wider than the run was measured as. The same drift
+ * applies to a line wrapped to fill the measure: a line that measured as fitting exactly printed a
+ * hair past the margin, and — having no slack left to share — silently fell out of justification
+ * altogether. Wrapping and justification both stop this far short of the margin, so the flush edge
+ * stays flush and no line is denied its stretch over a rounding error.
+ */
+const JUSTIFY_INSET = 1;
 
 const INK = rgb(0, 0, 0);
 const MUTED = rgb(0.38, 0.38, 0.38);
@@ -308,10 +357,14 @@ type Token = { text: string; bold: boolean; italic?: boolean; underline?: boolea
 /**
  * One physical line: the runs to paint, the x to start at, and an optional list marker.
  *
+ * `markerIndent` is the width of the marker plus the gap after it, measured from the marker itself
+ * rather than assumed, so a bullet hangs the same distance from its text as a number does. A fixed
+ * indent left a bullet floating 10pt clear of the words it introduced.
+ *
  * `justify` marks a line that is not the last of its paragraph, so it is the only kind of line
  * that gets its word spacing stretched out to reach the right margin.
  */
-type VisualLine = { runs: RichRun[]; x: number; marker: string | null; justify?: boolean };
+type VisualLine = { runs: RichRun[]; x: number; marker: string | null; markerIndent: number; justify?: boolean };
 
 /**
  * Returns a copy of `blocks` with every run set to bold, tables included.
@@ -343,6 +396,8 @@ type Group = {
   lines: VisualLine[];
   rows?: VisualLine[][];
   gapAfter: number;
+  /** Space reserved above the group, which is how a heading separates from the text before it. */
+  gapBefore?: number;
   align?: "right" | "center";
   size?: number;
   leading?: number;
@@ -352,14 +407,23 @@ type Group = {
 /** The rules drawn around one laid-out table row. */
 type TableGrid = { edges: number[]; first: boolean; last: boolean };
 
-/** Width of a laid-out line, including any list marker drawn in the indent. */
+/** Width of a laid-out line, including the hanging indent its list marker occupies. */
 function lineWidth(line: VisualLine, fonts: Fonts, size: number): number {
   let width = 0;
   for (const run of line.runs) {
     width += fontFor(run, fonts).widthOfTextAtSize(run.text, size);
   }
-  if (line.marker) width += MARKER_GAP;
-  return width;
+  return width + line.markerIndent;
+}
+
+/**
+ * The distance a list item's text sits from the left margin: its marker, then the gap after it.
+ *
+ * Measured rather than assumed, because a bullet and an ordinal are not the same width and a single
+ * constant put one of them either hard against its text or floating clear of it.
+ */
+function markerIndent(marker: string, fonts: Fonts, size: number): number {
+  return fonts.regular.widthOfTextAtSize(sanitizeText(marker), size) + MARKER_GAP;
 }
 
 /**
@@ -378,7 +442,7 @@ function flattenTableBlocks(table: RichTable, fonts: Fonts, size: number, x: num
       }
       lines.push(...layoutRuns(block.runs, fonts, size, x, x, limitX, block.marker));
     }
-    if (rowIndex < table.rows.length - 1) lines.push({ runs: [{ text: "", bold: false }], x, marker: null });
+    if (rowIndex < table.rows.length - 1) lines.push({ runs: [{ text: "", bold: false }], x, marker: null, markerIndent: 0 });
   });
   return lines;
 }
@@ -501,16 +565,20 @@ function layoutRuns(
   if (!tokens.length) return [];
 
   const spaceWidth = fonts.regular.widthOfTextAtSize(" ", size);
+  // Wrapped short of the measure by the same inset justification stops short by, so a line that
+  // measures as filling the column still has slack to share and still prints inside the margin.
+  const hardLimit = limitX - JUSTIFY_INSET;
   const lines: VisualLine[] = [];
   let current: RichRun[] = [];
   let width = 0;
   let indent = firstX;
   let indentUsed = false;
   let currentMarker = marker;
+  const currentIndent = marker ? markerIndent(marker, fonts, size) : 0;
 
   const commit = () => {
     if (!current.length) return;
-    lines.push({ runs: current, x: indent, marker: indentUsed ? null : currentMarker });
+    lines.push({ runs: current, x: indent, marker: indentUsed ? null : currentMarker, markerIndent: indentUsed ? 0 : currentIndent });
     current = [];
     width = 0;
     indent = contX;
@@ -521,8 +589,9 @@ function layoutRuns(
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index]!;
     // A word wider than the column is split so it can never overflow the margin.
-    if (tokenWidth(token, fonts, size) > limitX - contX) {
-      for (const piece of breakLongToken(token, fonts, size, limitX - contX)) {
+    const column = hardLimit - contX;
+    if (tokenWidth(token, fonts, size) > column) {
+      for (const piece of breakLongToken(token, fonts, size, column)) {
         if (width > 0) commit();
         current = [];
         appendRun(current, { ...piece, text: piece.text });
@@ -534,7 +603,7 @@ function layoutRuns(
       continue;
     }
     const lead = current.length && tokens[index - 1]?.spaceAfter ? spaceWidth : 0;
-    if (current.length && indent + width + lead + tokenWidth(token, fonts, size) > limitX) {
+    if (current.length && indent + width + lead + tokenWidth(token, fonts, size) > hardLimit) {
       // The break itself separates this token from the last one on the previous line, so the
       // gap in front of it is dropped here. Nothing may be cleared from the token's own
       // `spaceAfter`: that gap belongs to the *next* token, and dropping it welds the first two
@@ -569,15 +638,18 @@ function horizontalSpans(edges: number[]): [number, number][] {
 }
 
 /**
- * The measure an authored heading is set at, relative to the body size of the fragment it sits in.
+ * The measure an authored heading is set at.
  *
- * Scaling rather than reusing the fixed `H1_SIZE` constants matters because a fragment is not
- * always set at body size: an email body or a table cell passes a smaller one, and a heading
- * there should still be a modest step up, not the same 15pt the section titles use.
+ * Anchored to the same scale the sheet's own headings use rather than to a multiplier of whatever
+ * size the surrounding fragment happens to be, because the previous multipliers set an `<h2>` in
+ * body text at 12.6pt — a point and a half over the prose, which reads as body text that was made
+ * slightly larger rather than as a heading. A heading inside a table cell is still scaled off the
+ * cell, since a 13.5pt heading in a 60pt column would not fit.
  */
 function headingMetrics(level: number, size: number, leading: number): { size: number; leading: number } {
-  const step = level <= 1 ? 1.4 : level === 2 ? 1.2 : 1.1;
-  return { size: size * step, leading: leading * step };
+  const ceiling = level <= 1 ? H1_SIZE : level === 2 ? H2_SIZE : H3_SIZE;
+  const next = Math.min(size * (level <= 1 ? 1.4 : level === 2 ? 1.25 : 1.12), ceiling);
+  return { size: next, leading: Math.max(leading, next * 1.3) };
 }
 
 /** Lays out every block of a fragment, applying the shared body style. */
@@ -599,7 +671,7 @@ function layoutBlocks(
     const heading = block.kind === "heading";
     const metrics = heading ? headingMetrics(block.level ?? 3, size, leading) : { size, leading };
     const indent = originX + block.depth * NEST_INDENT;
-    const textX = block.marker ? indent + MARKER_GAP : indent;
+    const textX = block.marker ? indent + markerIndent(block.marker, fonts, size) : indent;
     // A heading is set in the bold face so an authored <h2> reads as a heading on paper rather
     // than as a slightly larger paragraph. The change is made here, before measuring, because
     // the bold face is wider and a heading measured in the regular face overflows its measure.
@@ -618,6 +690,10 @@ function layoutBlocks(
       height: lines.length * metrics.leading,
       lines,
       align: align === "center" || align === "right" ? align : undefined,
+      // A heading needs room above it as well as a larger measure: set flush against the paragraph
+      // above, a bold run two points taller reads as an accident in the prose rather than as a
+      // heading, which is what the authored `<h2>` used to look like.
+      gapBefore: heading ? metrics.leading * 0.75 : 0,
       gapAfter: index === blocks.length - 1 ? 0 : gapBetween,
       size: heading ? metrics.size : undefined,
       leading: heading ? metrics.leading : undefined,
@@ -638,7 +714,9 @@ function columnWidths(table: RichTable, fonts: Fonts, size: number, limitX: numb
       const cell = table.headerRow && rowIndex === 0 ? boldedBlocks(row[column] ?? []) : row[column] ?? [];
       for (const block of cell) {
         if (block.table) continue;
-        const lines = layoutRuns(block.runs, fonts, size, 0, 0, PROBE_WIDTH);
+        // The marker is passed so a bulleted cell is measured against the column it is actually
+        // drawn in; measured without its hanging indent it overflows the column by the indent.
+        const lines = layoutRuns(block.runs, fonts, size, 0, 0, PROBE_WIDTH, block.marker);
         let width = 0;
         for (const line of lines) width = Math.max(width, lineWidth(line, fonts, size));
         widest = Math.max(widest, width + CELL_PADDING * 2);
@@ -698,10 +776,10 @@ function layoutTable(
           continue;
         }
         const indent = x + block.depth * NEST_INDENT;
-        const textX = block.marker ? indent + MARKER_GAP : indent;
+        const textX = block.marker ? indent + markerIndent(block.marker, fonts, size) : indent;
         lines.push(...layoutRuns(block.runs, fonts, size, textX, textX, x + cellWidth - CELL_PADDING, block.marker));
       }
-      cellLines.push(lines.length ? lines : [{ runs: [{ text: "", bold: false }], x, marker: null }]);
+      cellLines.push(lines.length ? lines : [{ runs: [{ text: "", bold: false }], x, marker: null, markerIndent: 0 }]);
       tallest = Math.max(tallest, lines.length * leading);
     });
 
@@ -712,7 +790,7 @@ function layoutTable(
       lines: cellLines.flat(),
       // Cells are transposed into one list per visual row so each column shares a baseline.
       rows: Array.from({ length: Math.max(...cellLines.map((lines) => lines.length)) }, (_, line) =>
-        cellLines.map((lines) => lines[line] ?? { runs: [], x: 0, marker: null }),
+        cellLines.map((lines) => lines[line] ?? { runs: [], x: 0, marker: null, markerIndent: 0 }),
       ),
       // Rows abut inside a bordered table; the rules separate them, and a gap here would put a
       // visible channel of white between every pair of rows.
@@ -736,7 +814,7 @@ class Canvas {
   page: PDFPage;
   cursor: number;
 
-  constructor(readonly document: PDFDocument, private readonly fonts: Fonts) {
+  constructor(readonly document: PDFDocument, readonly fonts: Fonts) {
     this.page = document.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
     this.cursor = CONTENT_TOP;
   }
@@ -782,11 +860,12 @@ class Canvas {
   }
 
   drawGroup(group: Group, size: number, leading: number, color = INK): void {
-    this.reserve(group.height);
+    const gapBefore = group.gapBefore ?? 0;
+    this.reserve(group.height + gapBefore);
     const lineSize = group.size ?? size;
     const lineLeading = group.leading ?? leading;
     const lineCount = Math.max(1, Math.round(group.height / lineLeading));
-    const top = this.cursor;
+    const top = this.cursor - gapBefore;
     for (let index = 0; index < lineCount; index += 1) {
       const baseline = top - lineSize - index * lineLeading;
       if (group.rows) {
@@ -797,7 +876,7 @@ class Canvas {
       if (line) this.drawLine(line, baseline, lineSize, color, group.align);
     }
     if (group.grid) this.drawGrid(group.grid, top, top - group.height, lineSize, color);
-    this.cursor -= group.height;
+    this.cursor -= group.height + gapBefore;
     this.cursor -= group.gapAfter;
   }
 
@@ -846,16 +925,14 @@ class Canvas {
    */
   private drawJustified(line: VisualLine, baseline: number, size: number, color: RGB): void {
     const gaps = line.runs.reduce((count, run) => count + (run.text.match(/ /g)?.length ?? 0), 0);
-    const slack = MARGIN_X + CONTENT_WIDTH - (line.x + lineWidth(line, this.fonts, size));
+    const slack = MARGIN_X + CONTENT_WIDTH - JUSTIFY_INSET - (line.x + lineWidth(line, this.fonts, size));
     // A line with no gaps has nothing to stretch, and a line whose slack is far larger than its
     // gaps would open rivers down the page, so both are left ragged.
     if (!gaps || slack <= 0.5 || slack / gaps > size * 0.5) {
       this.paintLine(line, baseline, size, color, line.x);
       return;
     }
-    if (line.marker) {
-      this.page.drawText(sanitizeText(line.marker), { x: Math.max(0, line.x - MARKER_GAP), y: baseline, size, font: this.fonts.regular, color });
-    }
+    if (line.marker) this.drawMarker(line, baseline, size, color);
     const extra = slack / gaps;
     let x = line.x;
     for (const run of line.runs) {
@@ -877,10 +954,16 @@ class Canvas {
     }
   }
 
-  /** Draws a hairline rule, used for table borders and for underline and strike-through. */
-  private rule(x: number, y: number, width: number, thickness: number, color: RGB): void {
+  /**
+   * Draws a hairline rule, used for table borders and for underline and strike-through.
+   *
+   * Drawn as a filled rectangle rather than a stroked line, because a stroke thins out with the
+   * content scale while a filled rectangle stays a hairline at any size. The target page is
+   * overridable so the running matter can be ruled onto finished pages.
+   */
+  private rule(x: number, y: number, width: number, thickness: number, color: RGB, page: PDFPage = this.page): void {
     if (width <= 0) return;
-    this.page.drawRectangle({ x, y, width, height: thickness, color });
+    page.drawRectangle({ x, y, width, height: thickness, color });
   }
 
   /**
@@ -910,7 +993,8 @@ class Canvas {
     }
   }
 
-  private drawLine(line: VisualLine, baseline: number, size: number, color: RGB, align?: "right" | "center"): void {
+  /** Draws one laid-out line at `baseline`, justifying or aligning it as the line asks. */
+  drawLine(line: VisualLine, baseline: number, size: number, color: RGB, align?: "right" | "center"): void {
     if (line.justify) {
       this.drawJustified(line, baseline, size, color);
       return;
@@ -919,11 +1003,23 @@ class Canvas {
     // Measuring a line is only needed to align it, so left-aligned lines skip the pass.
     if (align === "right") x = MARGIN_X + CONTENT_WIDTH - lineWidth(line, this.fonts, size);
     if (align === "center") x = MARGIN_X + (CONTENT_WIDTH - lineWidth(line, this.fonts, size)) / 2;
-    if (line.marker) {
-      // The marker sits in the hanging indent, to the left of the text it introduces.
-      this.page.drawText(sanitizeText(line.marker), { x: Math.max(0, line.x - MARKER_GAP), y: baseline, size, font: this.fonts.regular, color });
-    }
+    if (line.marker) this.drawMarker(line, baseline, size, color);
     this.paintLine(line, baseline, size, color, x);
+  }
+
+  /**
+   * Draws a list marker in the hanging indent, to the left of the text it introduces.
+   *
+   * The marker is placed by its own measured width rather than by a constant, so the gap between it
+   * and the first word is the same whether the marker is a bullet or an ordinal.
+   */
+  private drawMarker(line: VisualLine, baseline: number, size: number, color: RGB): void {
+    this.page.drawText(sanitizeText(line.marker!), { x: Math.max(0, line.x - line.markerIndent), y: baseline, size, font: this.fonts.regular, color });
+  }
+
+  /** Draws a hairline across the full content width at `y`. */
+  hairline(y: number, thickness = 0.5, color = INK): void {
+    this.rule(MARGIN_X, y, CONTENT_WIDTH, thickness, color);
   }
 
   /** Draws a single run of text at an absolute position, used for the title block. */
@@ -934,18 +1030,31 @@ class Canvas {
     return x + font.widthOfTextAtSize(safe, size);
   }
 
-  /** Stamps the running head and page number onto every page. */
+  /**
+   * Stamps the running head and page number onto every page.
+   *
+   * The head is set on a rule and the foot below another, so the running matter reads as furniture
+   * around the content rather than as two more lines of text on the page. Both sit outside the
+   * content box, which is why they are stamped here rather than laid out with everything else: the
+   * page count is only known once drawing has finished.
+   */
   finish(exam: PrintableExam): void {
     const pages = this.document.getPages();
     const font = this.fonts.regular;
     // Truncate before sanitising: a full title can be tens of thousands of characters.
     const head = sanitizeText(exam.title.slice(0, 90));
     const foot = `AFT · ${formatDuration(exam.totalDurationSeconds)}`;
+    const headY = PAGE_HEIGHT - 42;
+    const footY = 40;
     pages.forEach((page, index) => {
       const label = `${examTypeLabel(exam.examType)}  ·  Page ${index + 1} of ${pages.length}`;
-      page.drawText(head, { x: MARGIN_X, y: PAGE_HEIGHT - 42, size: SMALL_SIZE, font, color: MUTED });
-      page.drawText(label, { x: PAGE_WIDTH - MARGIN_X - font.widthOfTextAtSize(label, SMALL_SIZE), y: PAGE_HEIGHT - 42, size: SMALL_SIZE, font, color: MUTED });
-      page.drawText(foot, { x: MARGIN_X, y: 40, size: SMALL_SIZE, font, color: MUTED });
+      page.drawText(head, { x: MARGIN_X, y: headY, size: RUNNING_SIZE, font, color: MUTED });
+      page.drawText(label, { x: PAGE_WIDTH - MARGIN_X - font.widthOfTextAtSize(label, RUNNING_SIZE), y: headY, size: RUNNING_SIZE, font, color: MUTED });
+      page.drawText(foot, { x: MARGIN_X, y: footY, size: RUNNING_SIZE, font, color: MUTED });
+      // The rules go straight onto the page rather than through the cursor, which belongs to the
+      // content flow and is long since finished with by the time this runs.
+      this.rule(MARGIN_X, headY - 8, CONTENT_WIDTH, 0.4, MUTED, page);
+      this.rule(MARGIN_X, footY + 14, CONTENT_WIDTH, 0.4, MUTED, page);
     });
   }
 }
@@ -972,16 +1081,16 @@ async function drawLogo(canvas: Canvas): Promise<void> {
 
 /** Renders the aligned exam type, title and duration block. */
 function drawCoverBlock(canvas: Canvas, exam: PrintableExam, fonts: Fonts): void {
-  canvas.reserve(TITLE_LEADING * 2 + H1_LEADING * 2);
+  canvas.reserve(TITLE_LEADING * 2 + ROW_LEADING + BODY_LEADING);
   const type = examTypeLabel(exam.examType).toUpperCase();
   const duration = formatDuration(exam.totalDurationSeconds);
 
   canvas.space(6);
-  canvas.drawAt(MARGIN_X, canvas.cursor - TITLE_SIZE, type, 11, true, MUTED);
-  canvas.space(TITLE_LEADING * 0.55);
+  canvas.drawAt(MARGIN_X, canvas.cursor - META_SIZE, type, META_SIZE, true, MUTED);
+  canvas.space(TITLE_LEADING * 0.4);
 
-  // The title and the duration share a baseline grid: the title starts at the left margin
-  // and the duration is right-aligned to the same line, so both stay aligned to the columns.
+  // The title starts at the left margin and the duration sits on the same baseline grid beneath
+  // it, so both stay aligned to the columns the body text is set in.
   const titleLines = layoutRuns(
     [{ text: exam.title, bold: true }],
     fonts,
@@ -994,9 +1103,15 @@ function drawCoverBlock(canvas: Canvas, exam: PrintableExam, fonts: Fonts): void
     canvas.reserve(TITLE_LEADING);
     canvas.drawLines([line], TITLE_SIZE, TITLE_LEADING);
   }
-  canvas.space(4);
-  canvas.drawAt(MARGIN_X, canvas.cursor - H1_SIZE, `Time allowed: ${duration}`, H1_SIZE, false, MUTED);
-  canvas.space(H1_LEADING * 0.9);
+  canvas.space(2);
+  // The duration is meta, not a heading: it used to print at the size of a section title, which is
+  // how the same sentence appeared at 15pt here and at 9pt under every section.
+  canvas.drawAt(MARGIN_X, canvas.cursor - META_SIZE, `Time allowed: ${duration}`, META_SIZE, false, MUTED);
+  canvas.space(ROW_LEADING * 0.5);
+  // A rule closes the title block, so the introduction below it reads as a new band of content
+  // rather than as a continuation of the title.
+  canvas.hairline(canvas.cursor);
+  canvas.space(BODY_LEADING * 0.6);
 }
 
 /** Renders a heading, keeping it attached to the first group of the block that follows. */
@@ -1032,7 +1147,13 @@ function drawFragment(
 }
 
 /**
- * Renders the email header: a bold, muted label followed by the value on the same baseline.
+ * Renders an email: a header of `From`/`To`/`Subject` rows, then the message body.
+ *
+ * The rows are stacked on a shared baseline grid, one per line. They used to be drawn on a single
+ * baseline, so the labels and every value were printed on top of one another and the header was
+ * unreadable: `From` and the sender's address crossed out the same 8pt of page as `To` and the
+ * recipient's. The labels are a fixed-width column, so the values line up under one another
+ * whichever order the header arrives in and however long the addresses are.
  *
  * The values stay in the regular face. Setting a whole email block bold flattened every
  * distinction in it, so the header read as one slab of text and the message body lost the
@@ -1046,16 +1167,27 @@ function drawEmail(canvas: Canvas, email: PrintableEmail, fonts: Fonts): void {
   ];
   const present = rows.filter(([, value]) => value);
   if (!present.length) return;
-  const labelSize = SMALL_SIZE + 1.5;
-  const labelWidth = Math.max(...present.map(([label]) => fonts.bold.widthOfTextAtSize(label, labelSize))) + 8;
+
+  // One column, one measure: the widest label decides where every value starts, so the three
+  // values are flush with one another rather than each starting a few points to the left.
+  const labelWidth = Math.max(...present.map(([label]) => fonts.bold.widthOfTextAtSize(label, META_SIZE))) + 10;
+  const valueX = MARGIN_X + labelWidth;
 
   for (const [label, value] of present) {
-    canvas.reserve(BODY_LEADING);
-    const baseline = canvas.cursor - BODY_SIZE;
-    canvas.drawAt(MARGIN_X, baseline, label, labelSize, true, MUTED);
-    canvas.drawAt(MARGIN_X + labelWidth, baseline, value!, BODY_SIZE, false, INK);
+    canvas.reserve(ROW_LEADING);
+    const baseline = canvas.cursor - META_SIZE;
+    canvas.drawAt(MARGIN_X, baseline, label, META_SIZE, true, MUTED);
+    // A long address or subject is wrapped in its own column rather than run past the right
+    // margin, which is what a value longer than the measure used to do.
+    canvas.drawLines(
+      layoutRuns([{ text: value!, bold: false }], fonts, BODY_SIZE, valueX, valueX, MARGIN_X + CONTENT_WIDTH),
+      BODY_SIZE,
+      ROW_LEADING,
+    );
   }
-  canvas.space(BODY_LEADING * 0.4);
+  canvas.space(CAPTION_GAP);
+  canvas.hairline(canvas.cursor);
+  canvas.space(CAPTION_GAP);
   drawFragment(canvas, fonts, email.html, BODY_SIZE, BODY_LEADING, BODY_LEADING * 0.8);
 }
 
@@ -1087,7 +1219,7 @@ export function isPdfBytes(bytes: Uint8Array): boolean {
  * own typography, charts and images survive exactly. A rasterised page would come out soft at print
  * size, which is the opposite of what an attached reference is for.
  */
-async function drawPdfAttachmentPages(canvas: Canvas, attachment: PrintableAttachment): Promise<number> {
+async function drawPdfAttachmentPages(canvas: Canvas, attachment: PrintableAttachment, caption: string | null): Promise<number> {
   const body = attachment.base64 ?? "";
   if (!body) return 0;
   try {
@@ -1095,18 +1227,27 @@ async function drawPdfAttachmentPages(canvas: Canvas, attachment: PrintableAttac
     let added = 0;
     for (const page of source.getPages()) {
       const embedded = await canvas.document.embedPage(page);
+      // The caption goes at the head of the first page, above the sheet it names. Printed before
+      // the page break it was left behind at the foot of the text page, so the sheet arrived with
+      // its name a page behind it and a page that began with a picture nothing introduced.
+      if (added === 0 && caption) {
+        canvas.breakToNewPage();
+        drawAttachmentCaption(canvas, canvas.fonts, caption);
+      } else {
+        canvas.breakToNewPage();
+      }
       // Scaled to sit inside the printable content box, so a source page larger than the sheet or
       // of a different shape is never clipped by it.
-      const scale = Math.min(CONTENT_WIDTH / embedded.width, CONTENT_HEIGHT / embedded.height, 1);
+      const scale = Math.min(CONTENT_WIDTH / embedded.width, (canvas.remaining - 4) / embedded.height, 1);
       const width = embedded.width * scale;
       const height = embedded.height * scale;
-      canvas.breakToNewPage();
       canvas.page.drawPage(embedded, {
         x: MARGIN_X + (CONTENT_WIDTH - width) / 2,
-        y: CONTENT_BOTTOM + (CONTENT_HEIGHT - height) / 2,
+        y: canvas.cursor - height,
         width,
         height,
       });
+      canvas.space(height);
       added += 1;
     }
     // The embedded page occupies the whole content box, so whatever is drawn next has to start on
@@ -1144,12 +1285,47 @@ async function embedAttachmentImage(canvas: Canvas, attachment: PrintableAttachm
 }
 
 /**
+ * Renders the caption that names an attachment.
+ *
+ * Set at the caption size on its own baseline grid, and held to a page: a caption split across a
+ * page break identifies nothing, since the document it names would be on the other side of it.
+ */
+function drawAttachmentCaption(canvas: Canvas, fonts: Fonts, caption: string): void {
+  if (!caption) return;
+  const lines = layoutRuns([{ text: caption, bold: true }], fonts, CAPTION_SIZE, MARGIN_X, MARGIN_X, MARGIN_X + CONTENT_WIDTH);
+  if (!lines.length) return;
+  canvas.reserve(lines.length * CAPTION_LEADING);
+  const top = canvas.cursor;
+  lines.forEach((line, index) => canvas.drawLine(line, top - CAPTION_SIZE - index * CAPTION_LEADING, CAPTION_SIZE, INK));
+  canvas.space(lines.length * CAPTION_LEADING + CAPTION_GAP);
+}
+
+/**
+ * Fits an attachment image into the shared attachment box.
+ *
+ * Every image is fitted to the same frame and centred, so a chart that happens to be small and one
+ * that happens to be large reach the page at comparable sizes. The same document at two different
+ * resolutions therefore reaches the paper at the same size, which is what makes two attachments
+ * look like two sheets of one document rather than two documents printed by different people. The
+ * scale is capped only above: a source larger than the frame is scaled down to fit it, because a
+ * floor that overrode the fit printed images outside the very frame it was meant to protect.
+ */
+function attachmentBox(image: { width: number; height: number }): { width: number; height: number; x: number } {
+  const fit = Math.min(CONTENT_WIDTH / image.width, ATTACHMENT_BOX_HEIGHT / image.height);
+  const scale = Math.min(fit, ATTACHMENT_MAX_SCALE);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  return { width, height, x: MARGIN_X + (CONTENT_WIDTH - width) / 2 };
+}
+
+/**
  * Renders one attachment and reports whether its content made it onto the page.
  *
  * The caption is always printed — it identifies the attachment, and for a file that cannot be
  * reproduced it is the only representation of it. It travels with an image when the image is too
  * tall for the space left and has to move to a fresh page, so no page ends up as a picture with
- * nothing to identify it.
+ * nothing to identify it, and for a PDF it is printed on the page that carries the first of its
+ * pages rather than left behind at the foot of the text.
  */
 async function drawAttachment(
   canvas: Canvas,
@@ -1157,48 +1333,39 @@ async function drawAttachment(
   attachment: PrintableAttachment,
   caption = attachment.title,
 ): Promise<boolean> {
-  const captionSize = SMALL_SIZE + 1;
-  const printCaption = () => drawFragment(canvas, fonts, caption, captionSize, BODY_LEADING, BODY_LEADING * 0.3);
-
   // A PDF is printed page for page. Merely naming it left the sheet with a caption and no reference
   // to read, which is the one thing an attached PDF is there for, so the pages are now embedded.
-  // The caption goes first because it introduces what follows it.
+  // The caption is printed by `drawPdfAttachmentPages`, on the first of those pages.
   if ((attachment.mimeType ?? "").includes("pdf") || (attachment.base64 ?? "").startsWith("JVBER")) {
-    printCaption();
-    if (await drawPdfAttachmentPages(canvas, attachment)) return true;
-    // The bytes could not be parsed, so the caption above is the whole representation of them.
+    if (await drawPdfAttachmentPages(canvas, attachment, caption || null)) return true;
+    // The bytes could not be parsed, so the caption is the whole representation of them.
+    drawAttachmentCaption(canvas, fonts, caption);
     return false;
   }
 
   const image = await embedAttachmentImage(canvas, attachment);
   if (!image) {
-    printCaption();
+    drawAttachmentCaption(canvas, fonts, caption);
     return false;
   }
 
-  // The size an image gets when it is allowed the whole content box.
-  const fullScale = Math.min(CONTENT_WIDTH / image.width, MAX_IMAGE_HEIGHT / image.height, 1);
-  const fullWidth = image.width * fullScale;
-  const fullHeight = image.height * fullScale;
-  const captionHeight = caption ? BODY_LEADING * 1.3 : 0;
-  // Squeezing an image into a sliver of leftover page makes it unreadable, so an image that does
-  // not already fit is moved to a fresh page unless enough usable room remains.
-  const ownPage = fullHeight + captionHeight > canvas.remaining && canvas.remaining < MIN_INLINE_IMAGE_HEIGHT + captionHeight;
-
-  if (ownPage) {
+  const box = attachmentBox(image);
+  const captionHeight = caption ? CAPTION_LEADING + CAPTION_GAP : 0;
+  // An image that does not fit in the space left moves to a fresh page rather than being squeezed
+  // into it. Squeezing was the reason two sheets that were both fitted to the same box reached the
+  // page at different sizes, which is the inconsistency this frame exists to remove: an image is
+  // now either printed at the size the box gives it, or on a page of its own.
+  if (box.height + captionHeight > canvas.remaining) {
     canvas.breakToNewPage();
-    if (caption) printCaption();
-    image.draw(MARGIN_X, canvas.cursor - fullHeight, fullWidth, fullHeight);
-    canvas.space(fullHeight);
+    if (caption) drawAttachmentCaption(canvas, fonts, caption);
+    image.draw(box.x, canvas.cursor - box.height, box.width, box.height);
+    canvas.space(box.height);
     return true;
   }
 
-  printCaption();
-  const scale = Math.min(fullScale, Math.max(0, canvas.remaining) / image.height);
-  const width = image.width * scale;
-  const height = image.height * scale;
-  image.draw(MARGIN_X, canvas.cursor - height, width, height);
-  canvas.space(height);
+  if (caption) drawAttachmentCaption(canvas, fonts, caption);
+  image.draw(box.x, canvas.cursor - box.height, box.width, box.height);
+  canvas.space(box.height);
   return true;
 }
 
@@ -1224,7 +1391,9 @@ export async function generateBrandedPrintablePdf(
   drawCoverBlock(canvas, exam, fonts);
 
   if (exam.intro) {
-    drawFragment(canvas, fonts, exam.intro, BODY_SIZE + 1, BODY_LEADING + 1, BODY_LEADING * 0.6);
+    // At the body size with a little more leading than the body: the cover paragraph is prose, and
+    // setting it a point larger made it read as a different kind of text rather than as a lead-in.
+    drawFragment(canvas, fonts, exam.intro, BODY_SIZE, BODY_LEADING + 1, BODY_LEADING * 0.6);
   }
 
   const attachments = options.attachments ?? [];
@@ -1245,13 +1414,16 @@ export async function generateBrandedPrintablePdf(
     // The heading is held to the first thing under it, then given room to breathe before the text
     // that follows, so a section opens as a block instead of as a heading buried in a paragraph.
     canvas.space(H1_LEADING * 0.3);
-    drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, SMALL_SIZE + 1, BODY_LEADING, BODY_LEADING * 0.5);
+    // Set at the meta size rather than as a scaled offset from whatever the body size happened to be:
+    // a per-section duration is meta, and it belongs on the same measure as the cover's, not one or
+    // two points above or below it depending on which fragment it was drawn with.
+    drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, META_SIZE, BODY_LEADING, BODY_LEADING * 0.5);
     drawFragment(canvas, fonts, section.introduction);
     // The instruction sheet is read with the instructions, so it prints before the extra notes
     // and the task itself rather than being held back with the other attachments.
     for (const title of section.introAttachmentTitles ?? []) {
       canvas.space(BODY_LEADING * 0.3);
-      drawFragment(canvas, fonts, title, SMALL_SIZE + 1, BODY_LEADING, 0);
+      drawFragment(canvas, fonts, title, META_SIZE, BODY_LEADING, 0);
     }
     for (const attachment of section.introAttachments ?? []) {
       await drawAttachment(canvas, fonts, attachment);
@@ -1267,7 +1439,7 @@ export async function generateBrandedPrintablePdf(
       drawEmail(canvas, section.email, fonts);
     }
     for (const title of section.attachmentTitles ?? []) {
-      drawFragment(canvas, fonts, title, SMALL_SIZE + 1, BODY_LEADING, 0);
+      drawFragment(canvas, fonts, title, META_SIZE, BODY_LEADING, 0);
     }
     for (const attachment of section.attachments ?? []) {
       await drawAttachment(canvas, fonts, attachment);

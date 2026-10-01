@@ -26,17 +26,85 @@ async function extractText(bytes: Uint8Array): Promise<string> {
 }
 
 /** Reads back the drawn text with the position and drawn width of each item, for layout assertions. */
-async function extractTextItems(bytes: Uint8Array): Promise<{ text: string; x: number; y: number; width: number }[]> {
+async function extractTextItems(bytes: Uint8Array): Promise<{ text: string; x: number; y: number; width: number; page: number }[]> {
   const doc = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true }).promise;
-  const items: { text: string; x: number; y: number; width: number }[] = [];
+  const items: { text: string; x: number; y: number; width: number; page: number }[] = [];
   for (let number = 1; number <= doc.numPages; number += 1) {
     const content = await (await doc.getPage(number)).getTextContent();
     for (const item of content.items) {
       if (!("str" in item) || !item.str) continue;
-      items.push({ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number, width: (item as { width?: number }).width ?? 0 });
+      items.push({ text: item.str, x: item.transform[4] as number, y: item.transform[5] as number, width: (item as { width?: number }).width ?? 0, page: number });
     }
   }
   return items;
+}
+
+/**
+ * Reports every pair of runs printed through one another.
+ *
+ * Two runs on the same baseline whose horizontal extents intersect are sharing the same strip of
+ * page: the effect the sheet showed wherever a header drew its labels and values onto one line.
+ * Grouped by page as well as baseline, since two pages reuse the same baseline positions.
+ */
+function crossings(items: { text: string; x: number; y: number; width: number; page: number }[]): string[] {
+  const lines = new Map<string, typeof items>();
+  for (const item of items) {
+    const key = `${item.page}|${Math.round(item.y)}`;
+    lines.set(key, [...(lines.get(key) ?? []), item]);
+  }
+  const found: string[] = [];
+  for (const [key, runs] of lines) {
+    const row = [...runs].sort((a, b) => a.x - b.x);
+    for (let index = 1; index < row.length; index += 1) {
+      const previous = row[index - 1]!;
+      const current = row[index]!;
+      // A small negative gap is the difference between the width this test measures and the one
+      // the writer laid out against; anything past it is the two runs genuinely sharing page.
+      if (current.x - (previous.x + previous.width) < -0.5) found.push(`p${key} "${previous.text}" | "${current.text}"`);
+    }
+  }
+  return found;
+}
+
+/** The size each run was drawn at, read back from the text matrix pdfjs reports. */
+async function drawnSizes(bytes: Uint8Array): Promise<number[]> {
+  const doc = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true }).promise;
+  const sizes = new Set<number>();
+  for (let number = 1; number <= doc.numPages; number += 1) {
+    for (const item of (await (await doc.getPage(number)).getTextContent()).items) {
+      if (!("str" in item) || !item.str) continue;
+      sizes.add(Math.round(((item.transform as number[])[0] as number) * 100) / 100);
+    }
+  }
+  return [...sizes].sort((a, b) => b - a);
+}
+
+/**
+ * The width and height each image was drawn at, read from the matrix its `Do` is placed under.
+ *
+ * pdf-lib writes an image as a `cm` scale followed by the `Do`, so the product of the matrices
+ * above each `Do` is the size the picture reached the page at — which is the thing that has to
+ * look the same from one attachment to the next.
+ */
+async function drawnImageSizes(bytes: Uint8Array): Promise<{ width: number; height: number }[]> {
+  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+  const sizes: { width: number; height: number }[] = [];
+  for (const page of document.getPages()) {
+    for (const source of pageContentStreams(document, page.node.Contents())) {
+      const text = Buffer.from(decodePDFRawStream(source).decode()).toString("latin1");
+      for (const draw of text.matchAll(/\/Image[\w.-]*\s+(?:[\d.]+ 0 R\s+)?Do/g)) {
+        const block = text.lastIndexOf("\nq\n", draw.index);
+        let width = 1;
+        let height = 1;
+        for (const matrix of text.slice(block === -1 ? 0 : block, draw.index).matchAll(/([\d.]+) 0 0 ([\d.]+) [\d.-]+ [\d.-]+ cm/g)) {
+          width *= Number(matrix[1]);
+          height *= Number(matrix[2]);
+        }
+        sizes.push({ width: Math.round(width * 10) / 10, height: Math.round(height * 10) / 10 });
+      }
+    }
+  }
+  return sizes;
 }
 
 /**
@@ -346,6 +414,78 @@ describe("branded printable exam PDF", () => {
     expect(find(bold, "budgeted results")).toBeUndefined();
   });
 
+  it("stacks the email header rows instead of printing them through one another", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "CIMA OCS Mock Exam 1", intro: null, totalDurationSeconds: 2700 },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, email: { from: "fd@sofa.co.za", to: "smt@sofa.co.za", subject: "Management accounts", html: "<p>Please include the budgeted results in your answer.</p>" } }],
+    );
+    const items = await extractTextItems(bytes);
+    const baselineOf = (text: string) => items.find((item) => item.text.trim() === text)?.y;
+    // The three rows were reserved but never advanced the cursor, so the labels and all three
+    // values landed on one baseline and printed through each other: the header was unreadable.
+    const rows = [baselineOf("From"), baselineOf("To"), baselineOf("Subject")];
+    expect(rows.every((row) => row !== undefined)).toBe(true);
+    expect(new Set(rows).size).toBe(3);
+    // Nothing on the page may share a baseline while overlapping horizontally.
+    expect(crossings(items)).toEqual([]);
+  });
+
+  it("prints no pair of words through one another across a whole sheet", async () => {
+    // Every band of the sheet at once, because the overlap was never confined to one block: the
+    // email header, the authored lists, the table columns and the attachment captions all drew
+    // against a position that another run was already using.
+    const html =
+      "<p>Please answer all of the following questions in the answer pad provided and show all of your workings clearly.</p>" +
+      "<ul><li><strong>(sub-task (a) = 52%)</strong> Explain the budgeted results.</li><li>Explain the benefits of marginal costing.</li></ul>" +
+      "<table><thead><tr><th>Region</th><th>Deliveries</th><th>Contribution</th></tr></thead><tbody><tr><td>Region 1</td><td>1250</td><td>225.00</td></tr></tbody></table>";
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "CIMA OCS Mock Exam 1", intro: "Answer all four tasks in the time allowed.", totalDurationSeconds: 10800, examType: "case_study" },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, introduction: html, email: { from: "fd@sopa.co.za", to: "candidate@aft-portal.exam", subject: "Management accounts — revised", html } }],
+    );
+    const items = await extractTextItems(bytes);
+    expect(items.length).toBeGreaterThan(30);
+    expect(crossings(items)).toEqual([]);
+  });
+
+  it("prints two attachments of the same shape at the same size", async () => {
+    // The same chart at two resolutions is the clearest case of the defect: attachments used to be
+    // drawn at whatever size fitted the space left on the page, so the smaller file reached the
+    // paper scaled to the leftovers beside a bigger one.
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "CIMA OCS Mock Exam 1", intro: null, totalDurationSeconds: 2700 },
+      [{
+        sectionNumber: 1,
+        title: "Task 1",
+        durationSeconds: 2700,
+        attachmentTitles: ["Reference material: large chart", "Reference material: small chart"],
+        attachments: [
+          { kind: "reference", title: "Reference material: large chart", base64: buildPng(1200, 900), mimeType: "image/png" },
+          { kind: "reference", title: "Reference material: small chart", base64: buildPng(400, 300), mimeType: "image/png" },
+        ],
+      }],
+    );
+    const images = await drawnImageSizes(bytes);
+    // The logo heads the sheet at its own size and is not an attachment, so it is set aside.
+    const attachments = images.filter((image) => image.height !== 42);
+    // One attachment per sheet, so neither is scaled by the room the other happened to leave.
+    expect(attachments).toHaveLength(2);
+    expect(attachments[1]).toEqual(attachments[0]);
+    // Both sit inside the shared frame rather than filling the measure or running past it.
+    expect(attachments[0]!.width).toBeLessThanOrEqual(595 - 56.7 * 2);
+    expect(attachments[0]!.height).toBeLessThanOrEqual(300);
+  });
+
+  it("sets every run on the sheet from one declared step of the type scale", async () => {
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "CIMA OCS Mock Exam 1", intro: "Answer all four tasks in the time allowed.", totalDurationSeconds: 10800, examType: "case_study" },
+      [{ sectionNumber: 1, title: "Task 1", durationSeconds: 2700, introduction: "## Instructions\nAssess the decision context.\n● Identify the misstatement.", email: { from: "fd@sopa.co.za", subject: "Management accounts", html: "<p>Please include the budgeted results.</p>" }, attachments: [{ kind: "reference", title: "Reference material: chart", base64: buildPng(600, 400), mimeType: "image/png" }] }],
+    );
+    // Sizes used to be written as offsets at the call sites — `SMALL_SIZE + 1`, `BODY_SIZE + 1` —
+    // which is how one sheet ended up carrying nine sizes and "Time allowed" at 15pt under the
+    // title and 9pt inside a section. Every size on the page is now a declared step.
+    expect(await drawnSizes(bytes)).toEqual([22, 13.5, 11.5, 10.5, 9.5, 9, 8]);
+  });
+
   it("prints the instruction sheet between the instructions and the task", async () => {
     const png = buildPng(320, 200);
     const bytes = await generateBrandedPrintablePdf(
@@ -437,7 +577,11 @@ describe("branded printable exam PDF", () => {
   });
 
   it("justifies body paragraphs so each line but the last reaches the right margin", async () => {
-    const words = Array.from({ length: 40 }, (_, index) => `word${index}`);
+    // The count is chosen so the paragraph breaks as three lines with a clearly short last one.
+    // A round number like 40 packs the final line to the margin anyway, and a full-but-unstretched
+    // last line is indistinguishable from a stretched one by its right edge, which would leave this
+    // assertion measuring the fixture rather than the justification.
+    const words = Array.from({ length: 33 }, (_, index) => `word${index}`);
     const bytes = await generateBrandedPrintablePdf(
       { title: "Alignment", intro: words.join(" "), totalDurationSeconds: 2700 },
       [],
