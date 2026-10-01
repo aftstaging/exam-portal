@@ -209,6 +209,14 @@ const BODY_SIZE = 10.5;
 const BODY_LEADING = 15;
 /** The duration under a title, and the labels of an email header. */
 const META_SIZE = 9.5;
+/**
+ * Leading of a meta line.
+ *
+ * Meta lines are the shortest type on the sheet, so they are also the ones a rule set near them is
+ * most likely to cut through: a leading measured from the wrong origin lands inside the letterforms
+ * rather than clear of them. A declared leading makes every gap below a meta line a full one.
+ */
+const META_LEADING = 13;
 /** A sheet's leading, and the caption that identifies an attachment. */
 const CAPTION_SIZE = 9;
 const CAPTION_LEADING = 12.5;
@@ -906,11 +914,11 @@ class Canvas {
   }
 
   /** Draws lines one at a time, breaking the page when one no longer fits. */
-  drawLines(lines: VisualLine[], size: number, leading: number, color = INK, gapAfter = 0): void {
+  drawLines(lines: VisualLine[], size: number, leading: number, color = INK, gapAfter = 0, align?: "right" | "center"): void {
     for (const line of lines) {
       if (this.cursor - leading < CONTENT_BOTTOM) this.breakPage();
       const baseline = this.cursor - size;
-      this.drawLine(line, baseline, size, color);
+      this.drawLine(line, baseline, size, color, align);
       this.cursor -= leading;
     }
     this.cursor -= gapAfter;
@@ -1023,11 +1031,29 @@ class Canvas {
   }
 
   /** Draws a single run of text at an absolute position, used for the title block. */
-  drawAt(x: number, baseline: number, text: string, size: number, bold: boolean, color = INK): number {
+  drawAt(x: number, baseline: number, text: string, size: number, bold: boolean, color = INK, align?: "center"): number {
     const font = bold ? this.fonts.bold : this.fonts.regular;
     const safe = sanitizeText(text);
-    this.page.drawText(safe, { x, y: baseline, size, font, color });
-    return x + font.widthOfTextAtSize(safe, size);
+    const width = font.widthOfTextAtSize(safe, size);
+    // Centring is measured against the measure rather than taken on trust from the caller, so the
+    // caller does not have to know the column's width to centre a line in it.
+    const start = align === "center" ? MARGIN_X + (CONTENT_WIDTH - width) / 2 : x;
+    this.page.drawText(safe, { x: start, y: baseline, size, font, color });
+    return start + width;
+  }
+
+  /**
+   * Draws one run at the cursor, centred on the measure, then steps the cursor down by `leading`.
+   *
+   * `drawAt` paints a run at a position the caller names and leaves the cursor where it found it,
+   * so any gap measured after it is counted from a position the text has already left behind. That
+   * is what put the rule closing the title block through the middle of "Time allowed" instead of
+   * under it. Advancing the cursor by the line's own leading here keeps every gap in the block
+   * measured from the line above it.
+   */
+  drawCenteredLine(text: string, size: number, leading: number, bold: boolean, color = INK): void {
+    this.drawAt(MARGIN_X, this.cursor - size, text, size, bold, color, "center");
+    this.cursor -= leading;
   }
 
   /**
@@ -1081,16 +1107,19 @@ async function drawLogo(canvas: Canvas): Promise<void> {
 
 /** Renders the aligned exam type, title and duration block. */
 function drawCoverBlock(canvas: Canvas, exam: PrintableExam, fonts: Fonts): void {
-  canvas.reserve(TITLE_LEADING * 2 + ROW_LEADING + BODY_LEADING);
+  canvas.reserve(TITLE_LEADING * 2 + META_LEADING * 3 + BODY_LEADING * 2);
   const type = examTypeLabel(exam.examType).toUpperCase();
   const duration = formatDuration(exam.totalDurationSeconds);
 
   canvas.space(6);
-  canvas.drawAt(MARGIN_X, canvas.cursor - META_SIZE, type, META_SIZE, true, MUTED);
-  canvas.space(TITLE_LEADING * 0.4);
+  // The type, the title and the duration are the three lines of one title block, and they are
+  // centred as a band rather than each hung from the left margin: the cover then reads as a single
+  // centred unit instead of three unrelated lines, which is how a paper announces itself.
+  canvas.drawCenteredLine(type, META_SIZE, META_LEADING, true, MUTED);
+  // The type is a label on the paper, not a heading on the same level as the name, so the air
+  // between the two is deliberately generous — the name is the subject of the page.
+  canvas.space(TITLE_LEADING * 0.5);
 
-  // The title starts at the left margin and the duration sits on the same baseline grid beneath
-  // it, so both stay aligned to the columns the body text is set in.
   const titleLines = layoutRuns(
     [{ text: exam.title, bold: true }],
     fonts,
@@ -1101,15 +1130,16 @@ function drawCoverBlock(canvas: Canvas, exam: PrintableExam, fonts: Fonts): void
   );
   for (const line of titleLines) {
     canvas.reserve(TITLE_LEADING);
-    canvas.drawLines([line], TITLE_SIZE, TITLE_LEADING);
+    canvas.drawLines([line], TITLE_SIZE, TITLE_LEADING, INK, 0, "center");
   }
-  canvas.space(2);
+  canvas.space(META_LEADING);
   // The duration is meta, not a heading: it used to print at the size of a section title, which is
   // how the same sentence appeared at 15pt here and at 9pt under every section.
-  canvas.drawAt(MARGIN_X, canvas.cursor - META_SIZE, `Time allowed: ${duration}`, META_SIZE, false, MUTED);
-  canvas.space(ROW_LEADING * 0.5);
+  canvas.drawCenteredLine(`Time allowed: ${duration}`, META_SIZE, META_LEADING, false, MUTED);
   // A rule closes the title block, so the introduction below it reads as a new band of content
-  // rather than as a continuation of the title.
+  // rather than as a continuation of the title. It is set half a row below the duration's baseline,
+  // which is the gap a reader expects between a line of text and the rule under it.
+  canvas.space(ROW_LEADING * 0.5);
   canvas.hairline(canvas.cursor);
   canvas.space(BODY_LEADING * 0.6);
 }
