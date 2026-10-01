@@ -14,6 +14,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    // `shared` is collected too: the rich-text parser is shared by the browser renderer and the
+    // PDF writer, so its tests belong beside it rather than being reached only through the server.
+    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "shared/**/*.test.ts", "shared/**/*.spec.ts"],
   },
 });

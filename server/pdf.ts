@@ -1,4 +1,5 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, type RGB } from "pdf-lib";
+import { parseRichHtml as parseSharedRichHtml, type RichAlign, type RichBlockKind as SharedBlockKind } from "@shared/richText";
 import { AFT_LOGO_BASE64 } from "./aftLogo";
 
 export type PrintableExam = {
@@ -29,242 +30,156 @@ export type PrintableSection = {
 export type PrintableEmail = { from?: string | null; to?: string | null; subject?: string | null; html?: string | null };
 export type PrintableAttachment = { kind: string; title: string; base64?: string | null; mimeType?: string | null };
 
-/** A contiguous stretch of text that shares one emphasis state. */
-type RichRun = { text: string; bold: boolean };
+/**
+ * A contiguous stretch of text that shares one emphasis state.
+ *
+ * Italic, underline and strike-through are carried through to the page: a face is embedded for
+ * each, so unlike the previous two-face setup an underlined word in an authored question prints
+ * underlined instead of as plain text.
+ */
+type RichRun = { text: string; bold: boolean; italic?: boolean; underline?: boolean; strike?: boolean };
 
 /** One renderable block: `marker` is the list marker drawn in the hanging indent, `depth` the nesting level. */
-type RichBlock = { marker: string | null; depth: number; runs: RichRun[]; table?: RichTable };
-
-/** A borderless HTML table: rows of cells, each cell holding its own nested blocks. */
-type RichTable = { rows: RichBlock[][][]; headerRow: boolean };
-
-const NAMED_ENTITIES: Record<string, string> = {
-  nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'", "#160": " ", hellip: "...",
-  mdash: "-", ndash: "-", lsquo: "'", rsquo: "'", ldquo: '"', rdquo: '"', bull: "\u2022", middot: "\u00b7",
+type RichBlock = {
+  marker: string | null;
+  depth: number;
+  runs: RichRun[];
+  /** Author alignment. `left` is the default, so an unset value means left. */
+  align?: RichAlign;
+  kind?: SharedBlockKind;
+  level?: number;
+  table?: RichTable;
 };
 
-function decodeEntities(text: string): string {
-  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z][a-z0-9]*);/gi, (match, entity: string) => {
-    const key = entity.toLowerCase();
-    if (NAMED_ENTITIES[key] !== undefined) return NAMED_ENTITIES[key];
-    const codePoint = key.startsWith("#x")
-      ? Number.parseInt(key.slice(2), 16)
-      : key.startsWith("#")
-        ? Number.parseInt(key.slice(1), 10)
-        : Number.NaN;
-    if (!Number.isFinite(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return match;
-    try {
-      return String.fromCodePoint(codePoint);
-    } catch {
-      return match;
+/** An HTML table: rows of cells, each cell holding its own nested blocks. */
+type RichTable = { rows: RichBlock[][][]; headerRow: boolean };
+
+/**
+ * Parses author-supplied content into the block model this file draws.
+ *
+ * The grammar lives in `shared/richText` and is shared with the on-screen renderer, so a
+ * paragraph, list or table means the same thing in both. This adapter only re-shapes the result
+ * for the layout code below, and adds the one thing the page needs and the screen does not: runs
+ * are trimmed of surrounding whitespace and separated by exactly one space at draw time, which is
+ * what keeps a word split across an emphasis boundary (`total<b>cost</b>ing`) joined on the page
+ * instead of acquiring a space in the middle of it.
+ */
+export function parseRichHtml(html: string | null | undefined): RichBlock[] {
+  return adaptBlocks(parseSharedRichHtml(html));
+}
+
+function adaptBlocks(blocks: ReturnType<typeof parseSharedRichHtml>): RichBlock[] {
+  const out: RichBlock[] = [];
+  for (const block of blocks) {
+    // A horizontal rule carries no text the page can draw, so it is dropped here rather than
+    // laid out as an empty line.
+    if (block.kind === "rule") continue;
+    if (block.table) {
+      out.push({
+        marker: null,
+        depth: 0,
+        runs: [],
+        align: block.align,
+        kind: "table",
+        table: { rows: block.table.rows.map((row) => row.map((cell) => adaptBlocks(cell))), headerRow: block.table.headerRow },
+      });
+      continue;
     }
-  });
+    // A hard line break ends a line on the page but not a paragraph on screen, so the split
+    // happens here rather than in the shared parser: the exam shell renders the newline as a
+    // <br> inside one paragraph, and the sheet draws each piece as its own measured line.
+    for (const piece of splitOnHardBreaks(block)) {
+      const runs = spacedRuns(piece.runs);
+      if (!runs.length) continue;
+      out.push({
+        marker: piece.marker,
+        depth: block.depth,
+        runs,
+        align: block.align,
+        kind: block.kind,
+        level: block.level,
+      });
+    }
+  }
+  return out;
 }
 
 /**
- * Collapses the collected text parts into whitespace-normalised runs, merging neighbours
- * that share an emphasis state.
+ * Splits a block's runs at every hard line break.
+ *
+ * The marker is given to the first piece only, matching the rule that a list marker belongs to
+ * the line it opens rather than being repeated down the item.
+ */
+function splitOnHardBreaks(block: { runs: RichRun[]; marker: string | null }): { runs: RichRun[]; marker: string | null }[] {
+  if (!block.runs.some((run) => run.text.includes("\n"))) return [{ runs: block.runs, marker: block.marker }];
+  const pieces: { runs: RichRun[]; marker: string | null }[] = [];
+  let current: RichRun[] = [];
+  let marker = block.marker;
+  for (const run of block.runs) {
+    const segments = run.text.split("\n");
+    segments.forEach((segment, index) => {
+      if (index > 0) {
+        pieces.push({ runs: current, marker });
+        current = [];
+        marker = null;
+      }
+      if (segment) current.push({ ...run, text: segment });
+    });
+  }
+  pieces.push({ runs: current, marker });
+  return pieces;
+}
+
+/**
+ * Collapses the collected runs into whole words, merging neighbours that share an emphasis state.
  *
  * Runs are stored without leading or trailing whitespace, so a single space is re-inserted
  * between runs at draw time. Words split across an emphasis boundary (`total<b>cost</b>ing`)
  * therefore stay joined in the output even though they are separate runs.
  */
-function partsToRuns(parts: { text: string; bold: boolean }[]): RichRun[] {
-  const runs: RichRun[] = [];
+function spacedRuns(runs: RichRun[]): RichRun[] {
+  const out: RichRun[] = [];
   // Tracks whether a whitespace run preceded the current token: a continuation inside a
   // single word is rejoined without a space, while a genuinely new word gets one.
   let space = false;
   let emitted = false;
 
-  for (const part of parts) {
-    for (const piece of part.text.split(/(\s+)/)) {
+  for (const run of runs) {
+    for (const piece of run.text.split(/(\s+)/)) {
       if (!piece) continue;
       if (/^\s+$/.test(piece)) {
         space = emitted;
         continue;
       }
-      const previous = runs[runs.length - 1];
-      if (previous && previous.bold === part.bold) previous.text += `${space ? " " : ""}${piece}`;
-      else runs.push({ text: piece, bold: part.bold });
+      const previous = out[out.length - 1];
+      if (previous && sameStyle(previous, run)) previous.text += `${space ? " " : ""}${piece}`;
+      // A run that carries no emphasis beyond bold is written with only `text` and `bold`, so
+      // an unemphasised run is indistinguishable from the shape the layout code has always
+      // used and no optional flag is carried around for nothing.
+      else out.push(emphasis(run) ? { ...run, text: `${space ? " " : ""}${piece}` } : { text: `${space ? " " : ""}${piece}`, bold: run.bold });
       emitted = true;
       space = false;
     }
   }
-  return runs;
+  return out;
 }
 
-const TAG_PATTERN = /<(\/)?([a-z][a-z0-9]*)((?:"[^"]*"|'[^']*'|[^>])*)>/gi;
-
-/**
- * Scans author-supplied HTML into a flat block stream, preserving bullet/numbered lists
- * (with nesting depth) and inline emphasis.
- *
- * Tables are not handled here: `parseRichHtml` lifts them out before scanning and splices
- * them back afterwards, which keeps this scanner a simple linear pass.
- *
- * Only the regular and bold faces are embedded, so italic and underline runs render in the
- * regular face.
- */
-function scanBlocks(source: string): RichBlock[] {
-  const blocks: RichBlock[] = [];
-  let parts: { text: string; bold: boolean }[] = [];
-  let boldDepth = 0;
-  let listDepth = 0;
-  const orderedStack: boolean[] = [];
-  const counters: number[] = [];
-  let pendingMarker: string | null = null;
-
-  const flush = (marker: string | null, depth: number) => {
-    const runs = partsToRuns(parts);
-    parts = [];
-    // The marker belongs to the block it opens; consuming it here stops a soft break such as
-    // `<li>text<br>more</li>` from repeating the bullet on the continuation line.
-    pendingMarker = null;
-    if (runs.length) blocks.push({ marker, depth, runs });
-  };
-
-  let cursor = 0;
-  let match: RegExpExecArray | null;
-  TAG_PATTERN.lastIndex = 0;
-  while ((match = TAG_PATTERN.exec(source))) {
-    if (match.index > cursor) {
-      parts.push({ text: decodeEntities(source.slice(cursor, match.index)), bold: boldDepth > 0 });
-    }
-    cursor = match.index + match[0].length;
-
-    const closing = match[1] === "/";
-    const tag = match[2].toLowerCase();
-    const attributes = match[3] ?? "";
-    const selfClosing = /\/\s*$/.test(attributes);
-
-    switch (tag) {
-      case "strong":
-      case "b":
-        if (!selfClosing) boldDepth = Math.max(0, boldDepth + (closing ? -1 : 1));
-        break;
-      case "br":
-        flush(pendingMarker, listDepth);
-        break;
-      case "p":
-      case "div":
-      case "blockquote":
-      case "tr":
-      case "table":
-      case "h1":
-      case "h2":
-      case "h3":
-      case "h4":
-      case "h5":
-      case "h6":
-        if (!selfClosing && closing) flush(pendingMarker, listDepth);
-        break;
-      case "ul":
-      case "ol":
-        if (selfClosing) break;
-        if (closing) {
-          flush(pendingMarker, listDepth);
-          pendingMarker = null;
-          listDepth = Math.max(0, listDepth - 1);
-          orderedStack.pop();
-          counters.pop();
-        } else {
-          listDepth += 1;
-          orderedStack.push(tag === "ol");
-          counters.push(0);
-        }
-        break;
-      case "li":
-        if (selfClosing) break;
-        if (closing) {
-          flush(pendingMarker, listDepth);
-          pendingMarker = null;
-        } else {
-          flush(pendingMarker, listDepth);
-          const level = Math.max(0, listDepth - 1);
-          if (orderedStack[level]) {
-            counters[level] = (counters[level] ?? 0) + 1;
-            pendingMarker = `${counters[level]}.`;
-          } else {
-            pendingMarker = listDepth > 0 ? "\u2022" : null;
-          }
-        }
-        break;
-      default:
-        break;
-    }
-  }
-  if (cursor < source.length) parts.push({ text: decodeEntities(source.slice(cursor)), bold: boldDepth > 0 });
-  flush(pendingMarker, listDepth);
-  return blocks;
+/** True when the run asks for more than the bold face. */
+function emphasis(run: RichRun): boolean {
+  return !!(run.italic || run.underline || run.strike);
 }
 
-/** Splits a table's inner HTML into rows of cells, recording whether the first row is a `<th>` row. */
-function splitTableRows(inner: string): { rows: string[][]; headerRow: boolean } {
-  const rows: string[][] = [];
-  let headerRow = false;
-  const rowPattern = /<tr\b[^>]*>([\s\S]*?)<\/tr\s*>/gi;
-  const cellPattern = /<(th|td)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi;
-  let row: RegExpExecArray | null;
-  let rowIndex = 0;
-  while ((row = rowPattern.exec(inner))) {
-    const cells: string[] = [];
-    let sawHeader = false;
-    cellPattern.lastIndex = 0;
-    let cell: RegExpExecArray | null;
-    while ((cell = cellPattern.exec(row[1]!))) {
-      if (cell[1]!.toLowerCase() === "th") sawHeader = true;
-      cells.push(cell[2]!);
-    }
-    if (rowIndex === 0 && sawHeader) headerRow = true;
-    // A row whose cells the pattern missed (malformed markup) still needs to occupy a line.
-    if (!cells.length) cells.push(row[1]!);
-    rows.push(cells);
-    rowIndex += 1;
-  }
-  return { rows, headerRow };
-}
-
-/**
- * Parses author-supplied HTML into renderable blocks, preserving list structure, inline
- * emphasis and tables. Tables are lifted out of the markup first and spliced back at their
- * authored position, so prose and tables interleave in source order.
- */
-export function parseRichHtml(html: string | null | undefined): RichBlock[] {
-  if (!html) return [];
-  const source = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ");
-
-  const tables: RichTable[] = [];
-  const withPlaceholders = source.replace(/<table\b[^>]*>([\s\S]*?)<\/table\s*>/gi, (_match, inner: string) => {
-    const { rows, headerRow } = splitTableRows(inner);
-    tables.push({
-      rows: rows.map((cells) => cells.map((cell) => scanBlocks(cell.replace(/<br\s*\/?>/gi, "\n")))),
-      headerRow,
-    });
-    // A table is a block, so the placeholder is fenced with explicit block breaks. Without them the
-    // scanner keeps accumulating runs until the next closing tag, which merges the prose in front
-    // of the table into the placeholder's own block: the text that follows the table still prints,
-    // but the table itself is printed as the literal placeholder text instead of being laid out.
-    // The breaks are emitted as tags rather than newlines because the scanner breaks blocks on a
-    // closing tag, not on a line ending, and a redundant `</p>` flushes nothing.
-    return `</p><p>AFT_TABLE_${tables.length - 1}</p><p>`;
-  });
-
-  return scanBlocks(withPlaceholders).map((block) => {
-    const placeholder = /^AFT_TABLE_(\d+)$/.exec(block.runs[0]?.text ?? "");
-    if (!placeholder) return block;
-    const table = tables[Number(placeholder[1])];
-    return table ? { marker: null, depth: 0, runs: [], table } : block;
-  });
+/** Two runs may be merged only when every emphasis flag matches, not just bold. */
+function sameStyle(a: RichRun, b: RichRun): boolean {
+  return a.bold === b.bold && !!a.italic === !!b.italic && !!a.underline === !!b.underline && !!a.strike === !!b.strike;
 }
 
 /* ------------------------------------------------------------------ *
  * Page geometry
  *
- * The sheet is a monochrome A4 page with no drawn rules or table borders, matching
- * the reference document. Width is an integer so page size comparisons are exact.
+ * The sheet is a monochrome A4 page with no decorative rules, matching the reference document;
+ * the only lines drawn are the borders of an authored table, which is what makes a data table
+ * legible as a table on paper. Width is an integer so page size comparisons are exact.
  * ------------------------------------------------------------------ */
 
 const PAGE_WIDTH = 595;
@@ -368,10 +283,27 @@ function examTypeLabel(examType: PrintableExam["examType"]): string {
  * items and table rows intact.
  * ------------------------------------------------------------------ */
 
-type Fonts = { regular: PDFFont; bold: PDFFont };
+type Fonts = {
+  regular: PDFFont;
+  bold: PDFFont;
+  italic: PDFFont;
+  boldItalic: PDFFont;
+};
+
+/**
+ * Picks the face for a run.
+ *
+ * The four standard faces are tiny — a WinAnsi Helvetica is a few kilobytes — and the italic
+ * face in particular is what turns an emphasised word on the page into an emphasised word
+ * rather than an indistinguishable one.
+ */
+function fontFor(run: RichRun, fonts: Fonts): PDFFont {
+  if (run.bold) return run.italic ? fonts.boldItalic : fonts.bold;
+  return run.italic ? fonts.italic : fonts.regular;
+}
 
 /** A word-sized chunk of text plus whether a space separates it from the previous chunk. */
-type Token = { text: string; bold: boolean; spaceAfter: boolean };
+type Token = { text: string; bold: boolean; italic?: boolean; underline?: boolean; strike?: boolean; spaceAfter: boolean };
 
 /**
  * One physical line: the runs to paint, the x to start at, and an optional list marker.
@@ -402,15 +334,29 @@ function boldedBlocks(blocks: RichBlock[]): RichBlock[] {
  *
  * `rows` keeps the cells of one table row on a shared baseline; `lines` is the flat form used
  * by paragraphs. `drawGroup` prefers `rows` so every column of a table row is painted.
+ * `size`/`leading` override the fragment's for a block that sets its own, which is how an
+ * authored heading keeps its larger measure without dragging the body text up with it.
+ * `grid` describes the rules to draw around a table row.
  */
-type Group = { height: number; lines: VisualLine[]; rows?: VisualLine[][]; gapAfter: number; align?: "right" | "center" };
+type Group = {
+  height: number;
+  lines: VisualLine[];
+  rows?: VisualLine[][];
+  gapAfter: number;
+  align?: "right" | "center";
+  size?: number;
+  leading?: number;
+  grid?: TableGrid;
+};
+
+/** The rules drawn around one laid-out table row. */
+type TableGrid = { edges: number[]; first: boolean; last: boolean };
 
 /** Width of a laid-out line, including any list marker drawn in the indent. */
 function lineWidth(line: VisualLine, fonts: Fonts, size: number): number {
   let width = 0;
   for (const run of line.runs) {
-    const font = run.bold ? fonts.bold : fonts.regular;
-    width += font.widthOfTextAtSize(run.text, size);
+    width += fontFor(run, fonts).widthOfTextAtSize(run.text, size);
   }
   if (line.marker) width += MARKER_GAP;
   return width;
@@ -439,27 +385,27 @@ function flattenTableBlocks(table: RichTable, fonts: Fonts, size: number, x: num
 
 function splitRuns(runs: RichRun[]): Token[] {
   const tokens: Token[] = [];
-  runs.forEach((run, runIndex) => {
+  runs.forEach((run) => {
     for (const piece of run.text.split(/(\s+)/)) {
       if (!piece) continue;
       if (/^\s+$/.test(piece)) {
         if (tokens.length) tokens[tokens.length - 1]!.spaceAfter = true;
-      } else {
-        // Runs carry no surrounding whitespace, so consecutive runs are separated by a space.
-        if (runIndex > 0 && tokens.length && !tokens[tokens.length - 1]!.spaceAfter) {
-          tokens[tokens.length - 1]!.spaceAfter = true;
-        }
-        // Sanitising can remove a token entirely; an empty one would occupy a line for nothing.
-        const safe = sanitizeText(piece);
-        if (safe) tokens.push({ text: safe, bold: run.bold, spaceAfter: false });
+        continue;
       }
+      // The gap between two words is read from the run text itself, where the author put it, and
+      // is never inferred from the fact that one run ended and another began. An earlier version
+      // assumed runs carried no surrounding whitespace and inserted a space at every run
+      // boundary to compensate, which printed "total cost ing" for a field reading
+      // "total<b>cost</b>ing" — the very markup that means one word.
+      const safe = sanitizeText(piece);
+      if (safe) tokens.push({ text: safe, bold: run.bold, italic: run.italic, underline: run.underline, strike: run.strike, spaceAfter: false });
     }
   });
   return tokens;
 }
 
 function tokenWidth(token: Token, fonts: Fonts, size: number): number {
-  return (token.bold ? fonts.bold : fonts.regular).widthOfTextAtSize(token.text, size);
+  return fontFor(token, fonts).widthOfTextAtSize(token.text, size);
 }
 
 /** Minimum characters measured in one pass when estimating how wide a long word is. */
@@ -474,8 +420,11 @@ const WIDTH_PROBE_CHARS = 64;
  * per-glyph call each, which dominates generation time on such input.
  */
 function breakLongToken(token: Token, fonts: Fonts, size: number, available: number): Token[] {
-  const font = token.bold ? fonts.bold : fonts.regular;
+  const font = fontFor(token, fonts);
   const text = token.text;
+  // A split word keeps the emphasis of the whole it came from, so a long bold word stays bold
+  // across every chunk instead of reverting to the regular face mid-word.
+  const style = { bold: token.bold, italic: token.italic, underline: token.underline, strike: token.strike };
   const pieces: Token[] = [];
 
   // Seed the chunk size from an averaged sample, then let the fit checks below correct it.
@@ -491,7 +440,7 @@ function breakLongToken(token: Token, fonts: Fonts, size: number, available: num
     // a pathological mix of wide and zero-width glyphs could otherwise provoke.
     guard += 1;
     if (guard > text.length * 4) {
-      pieces.push({ text: text.slice(index), bold: token.bold, spaceAfter: false });
+      pieces.push({ ...style, text: text.slice(index), spaceAfter: false });
       break;
     }
     let slice = text.slice(index, index + chunkSize);
@@ -505,13 +454,13 @@ function breakLongToken(token: Token, fonts: Fonts, size: number, available: num
     if (index + slice.length < text.length) {
       const grown = text.slice(index, index + slice.length + 1);
       if (font.widthOfTextAtSize(grown, size) > available) {
-        pieces.push({ text: slice, bold: token.bold, spaceAfter: false });
+        pieces.push({ ...style, text: slice, spaceAfter: false });
         index += slice.length;
         continue;
       }
       slice = grown;
     }
-    pieces.push({ text: slice, bold: token.bold, spaceAfter: false });
+    pieces.push({ ...style, text: slice, spaceAfter: false });
     index += slice.length;
     // Recover the estimated size if this chunk came in well under the limit.
     if (width > 0 && width < available * 0.7) {
@@ -524,8 +473,10 @@ function breakLongToken(token: Token, fonts: Fonts, size: number, available: num
 /** Appends a run to a line, merging it into the previous run when emphasis matches. */
 function appendRun(lines: RichRun[], run: RichRun): void {
   const last = lines[lines.length - 1];
-  if (last && last.bold === run.bold) last.text += run.text;
-  else lines.push({ text: run.text, bold: run.bold });
+  if (last && sameStyle(last, run)) last.text += run.text;
+  // The run is spread rather than rebuilt field by field: naming only `bold` here would drop
+  // the underline and italic of every non-bold run on the page.
+  else lines.push({ ...run });
 }
 
 /**
@@ -574,7 +525,7 @@ function layoutRuns(
       for (const piece of breakLongToken(token, fonts, size, limitX - contX)) {
         if (width > 0) commit();
         current = [];
-        appendRun(current, { text: piece.text, bold: piece.bold });
+        appendRun(current, { ...piece, text: piece.text });
         width = tokenWidth(piece, fonts, size);
         indent = contX;
         indentUsed = true;
@@ -598,7 +549,7 @@ function layoutRuns(
     const spacing = current.length && previous?.spaceAfter ? " " : "";
     // The separator is appended to the previous run rather than pushed as its own, so a line
     // of uniformly styled text stays a single run instead of one per word.
-    appendRun(current, { text: `${spacing}${token.text}`, bold: token.bold });
+    appendRun(current, { text: `${spacing}${token.text}`, bold: token.bold, italic: token.italic, underline: token.underline, strike: token.strike });
     width += (spacing ? spaceWidth : 0) + tokenWidth(token, fonts, size);
   }
   commit();
@@ -606,6 +557,27 @@ function layoutRuns(
   // reader where the paragraph ended.
   if (justify) lines.forEach((line, index) => { if (index < lines.length - 1) line.justify = true; });
   return lines;
+}
+
+/** Consecutive horizontal spans across a row of column edges, used to draw table rules. */
+function horizontalSpans(edges: number[]): [number, number][] {
+  const spans: [number, number][] = [];
+  for (let index = 0; index < edges.length - 1; index += 1) {
+    spans.push([edges[index]!, edges[index + 1]!]);
+  }
+  return spans;
+}
+
+/**
+ * The measure an authored heading is set at, relative to the body size of the fragment it sits in.
+ *
+ * Scaling rather than reusing the fixed `H1_SIZE` constants matters because a fragment is not
+ * always set at body size: an email body or a table cell passes a smaller one, and a heading
+ * there should still be a modest step up, not the same 15pt the section titles use.
+ */
+function headingMetrics(level: number, size: number, leading: number): { size: number; leading: number } {
+  const step = level <= 1 ? 1.4 : level === 2 ? 1.2 : 1.1;
+  return { size: size * step, leading: leading * step };
 }
 
 /** Lays out every block of a fragment, applying the shared body style. */
@@ -624,16 +596,31 @@ function layoutBlocks(
       groups.push(...layoutTable(block.table, fonts, size, leading, originX, limitX));
       return;
     }
+    const heading = block.kind === "heading";
+    const metrics = heading ? headingMetrics(block.level ?? 3, size, leading) : { size, leading };
     const indent = originX + block.depth * NEST_INDENT;
     const textX = block.marker ? indent + MARKER_GAP : indent;
-    // Body prose is the only thing justified. Table cells are laid out by `layoutTable`, which
-    // calls `layoutRuns` without the flag, so a stretched table cell is not possible here.
-    const lines = layoutRuns(block.runs, fonts, size, textX, textX, limitX, block.marker, true);
+    // A heading is set in the bold face so an authored <h2> reads as a heading on paper rather
+    // than as a slightly larger paragraph. The change is made here, before measuring, because
+    // the bold face is wider and a heading measured in the regular face overflows its measure.
+    const runs = heading ? block.runs.map((run) => ({ ...run, bold: true })) : block.runs;
+    // Body prose is justified, which is what a word processor does to a paragraph and what the
+    // sheet has always done. An author who picks centre or right gets that alignment instead,
+    // and an author who explicitly picks left gets a ragged right margin: stretching a centred
+    // heading or a right-aligned list reads as a mistake, not as alignment. Table cells are laid
+    // out by `layoutTable`, which never asks for justification, so a stretched cell is not
+    // possible here.
+    const align = block.align;
+    const justify = !heading && (align === undefined || align === "justify");
+    const lines = layoutRuns(runs, fonts, metrics.size, textX, textX, limitX, block.marker, justify);
     if (!lines.length) return;
     groups.push({
-      height: lines.length * leading,
+      height: lines.length * metrics.leading,
       lines,
+      align: align === "center" || align === "right" ? align : undefined,
       gapAfter: index === blocks.length - 1 ? 0 : gapBetween,
+      size: heading ? metrics.size : undefined,
+      leading: heading ? metrics.leading : undefined,
     });
   });
   return groups;
@@ -669,7 +656,13 @@ function columnWidths(table: RichTable, fonts: Fonts, size: number, limitX: numb
   return natural.map((width) => (width / total) * available);
 }
 
-/** Lays out a borderless table: each row is one group, so rows never split across pages. */
+/**
+ * Lays out a bordered table: each row is one group, so rows never split across pages.
+ *
+ * The column edges are handed to the drawing stage as a `grid` rather than drawn here, because
+ * a rule can only be drawn once the row's page and vertical extent are known, and those are
+ * decided by `Canvas` at paint time.
+ */
 function layoutTable(
   table: RichTable,
   fonts: Fonts,
@@ -680,6 +673,12 @@ function layoutTable(
 ): Group[] {
   const widths = columnWidths(table, fonts, size, limitX, originX);
   const groups: Group[] = [];
+  // The edges are the column boundaries: the left margin, each column division, and the right
+  // margin. They are derived from the same widths the text was measured against, so a rule
+  // always lands on the gap between two columns rather than inside one.
+  const edges = [originX];
+  for (const width of widths) edges.push(edges[edges.length - 1]! + width);
+  if (Math.abs(edges[edges.length - 1]! - limitX) > 0.5) edges.push(limitX);
 
   table.rows.forEach((row, rowIndex) => {
     const cellLines: VisualLine[][] = [];
@@ -707,13 +706,18 @@ function layoutTable(
     });
 
     groups.push({
-      height: tallest + CELL_PADDING,
+      // The trailing `CELL_PADDING` on the height is the padding below the last line of the
+      // tallest cell; the text is inset from the top rule by the same amount via the baseline.
+      height: tallest + CELL_PADDING * 2,
       lines: cellLines.flat(),
       // Cells are transposed into one list per visual row so each column shares a baseline.
       rows: Array.from({ length: Math.max(...cellLines.map((lines) => lines.length)) }, (_, line) =>
         cellLines.map((lines) => lines[line] ?? { runs: [], x: 0, marker: null }),
       ),
-      gapAfter: rowIndex === table.rows.length - 1 ? 0 : leading * 0.35,
+      // Rows abut inside a bordered table; the rules separate them, and a gap here would put a
+      // visible channel of white between every pair of rows.
+      gapAfter: 0,
+      grid: { edges, first: rowIndex === 0, last: rowIndex === table.rows.length - 1 },
     });
   });
   return groups;
@@ -779,18 +783,47 @@ class Canvas {
 
   drawGroup(group: Group, size: number, leading: number, color = INK): void {
     this.reserve(group.height);
-    const lineCount = Math.max(1, Math.round(group.height / leading));
+    const lineSize = group.size ?? size;
+    const lineLeading = group.leading ?? leading;
+    const lineCount = Math.max(1, Math.round(group.height / lineLeading));
+    const top = this.cursor;
     for (let index = 0; index < lineCount; index += 1) {
-      const baseline = this.cursor - size - index * leading;
+      const baseline = top - lineSize - index * lineLeading;
       if (group.rows) {
-        for (const line of group.rows[index] ?? []) this.drawLine(line, baseline, size, color, group.align);
+        for (const line of group.rows[index] ?? []) this.drawLine(line, baseline, lineSize, color, group.align);
         continue;
       }
       const line = group.lines[index];
-      if (line) this.drawLine(line, baseline, size, color, group.align);
+      if (line) this.drawLine(line, baseline, lineSize, color, group.align);
     }
+    if (group.grid) this.drawGrid(group.grid, top, top - group.height, lineSize, color);
     this.cursor -= group.height;
     this.cursor -= group.gapAfter;
+  }
+
+  /**
+   * Draws the rules that make a table read as a table.
+   *
+   * A table whose cells are separated only by whitespace is indistinguishable from a paragraph
+   * of short lines once it is on paper, which is how an authored data table ended up looking
+   * like a list. The rules are drawn as hairline rectangles rather than stroked lines because
+   * `drawLine` on this canvas is reserved for text, and a hairline stays hairline at any
+   * content scale.
+   *
+   * Each row is a separate group, so the top rule is drawn for every row and the bottom rule
+   * only for the last: drawing both on every row would put a pair of rules in each gap between
+   * rows and read as a double border.
+   */
+  private drawGrid(grid: TableGrid, top: number, bottom: number, size: number, color: RGB): void {
+    const thickness = Math.max(0.5, size * 0.06);
+    const half = thickness / 2;
+    for (const x of grid.edges) {
+      // The outer edges are drawn on the group's own box; the vertical runs the full row height
+      // so a cell that wraps onto three lines is boxed on all three.
+      this.rule(x - half, bottom, thickness, top - bottom, color);
+    }
+    if (grid.first) for (const [x0, x1] of horizontalSpans(grid.edges)) this.rule(x0, top - half, x1 - x0, thickness, color);
+    if (grid.last) for (const [x0, x1] of horizontalSpans(grid.edges)) this.rule(x0, bottom - half, x1 - x0, thickness, color);
   }
 
   /** Draws lines one at a time, breaking the page when one no longer fits. */
@@ -826,7 +859,7 @@ class Canvas {
     const extra = slack / gaps;
     let x = line.x;
     for (const run of line.runs) {
-      const font = run.bold ? this.fonts.bold : this.fonts.regular;
+      const font = fontFor(run, this.fonts);
       const pieces = run.text.split(" ");
       for (let index = 0; index < pieces.length; index += 1) {
         // The space is painted as part of the piece that precedes it so the font matches, then
@@ -834,19 +867,46 @@ class Canvas {
         const last = index === pieces.length - 1;
         const text = last ? pieces[index]! : `${pieces[index]} `;
         if (text) this.page.drawText(text, { x, y: baseline, size, font, color });
-        x += font.widthOfTextAtSize(text, size);
+        const width = font.widthOfTextAtSize(text, size);
+        // The rule is drawn on the text only, never on the trailing space, so a justified
+        // underlined paragraph shows a gap at each stretched word rather than a continuous bar.
+        if (text.trim()) this.decorate(run, x, font.widthOfTextAtSize(text.trimEnd(), size), baseline, size, color);
+        x += width;
         if (!last) x += extra;
       }
     }
+  }
+
+  /** Draws a hairline rule, used for table borders and for underline and strike-through. */
+  private rule(x: number, y: number, width: number, thickness: number, color: RGB): void {
+    if (width <= 0) return;
+    this.page.drawRectangle({ x, y, width, height: thickness, color });
+  }
+
+  /**
+   * Draws the decorative strokes an emphasis implies.
+   *
+   * Underline and strike-through cannot come from a font here: the embedded standard faces carry
+   * no underline, and drawing a glyph from another face just to get the rule underneath it would
+   * mismatch the text above. A rectangle under the run's own measured width is exact, and is
+   * drawn per run so a bold word is underlined in the bold face's width rather than the regular
+   * face's, which is what keeps the rule inside the column a long word was measured against.
+   */
+  private decorate(run: RichRun, x: number, width: number, baseline: number, size: number, color: RGB): void {
+    const thickness = Math.max(0.4, size * 0.055);
+    if (run.underline) this.rule(x, baseline - size * 0.13, width, thickness, color);
+    if (run.strike) this.rule(x, baseline + size * 0.26, width, thickness, color);
   }
 
   /** Paints a line's runs left to right from `startX`, advancing by each run's own width. */
   private paintLine(line: VisualLine, baseline: number, size: number, color: RGB, startX: number): void {
     let x = startX;
     for (const run of line.runs) {
-      const font = run.bold ? this.fonts.bold : this.fonts.regular;
+      const font = fontFor(run, this.fonts);
       if (run.text) this.page.drawText(run.text, { x, y: baseline, size, font, color });
-      x += font.widthOfTextAtSize(run.text, size);
+      const width = font.widthOfTextAtSize(run.text, size);
+      this.decorate(run, x, width, baseline, size, color);
+      x += width;
     }
   }
 
@@ -1155,6 +1215,8 @@ export async function generateBrandedPrintablePdf(
   const fonts: Fonts = {
     regular: await document.embedFont(StandardFonts.Helvetica),
     bold: await document.embedFont(StandardFonts.HelveticaBold),
+    italic: await document.embedFont(StandardFonts.HelveticaOblique),
+    boldItalic: await document.embedFont(StandardFonts.HelveticaBoldOblique),
   };
   const canvas = new Canvas(document, fonts);
 

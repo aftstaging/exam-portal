@@ -598,11 +598,16 @@ describe("parseRichHtml", () => {
     const blocks = parseRichHtml("<p>Please see <strong>(sub-task (a) = 52%)</strong> for detail.</p>");
     expect(blocks).toHaveLength(1);
     expect(blocks[0].marker).toBeNull();
+        // The shared parser keeps the gap next to the word it was typed against. The PDF adapter
+    // then re-homes it onto the front of the following token, so the sheet draws
+    // "Please see (sub-task (a) = 52%) for detail." — where before, the gap was gone from the
+    // model and the words printed hard together.
     expect(blocks[0].runs).toEqual([
       { text: "Please see", bold: false },
-      { text: "(sub-task (a) = 52%)", bold: true },
-      { text: "for detail.", bold: false },
+      { text: " (sub-task (a) = 52%)", bold: true },
+      { text: " for detail.", bold: false },
     ]);
+    expect(blocks[0].runs.map((run) => run.text).join("")).toBe("Please see (sub-task (a) = 52%) for detail.");
   });
 
   it("does not insert a space where the markup had none", () => {
@@ -618,10 +623,10 @@ describe("parseRichHtml", () => {
     const blocks = parseRichHtml("<p>Please include:</p><ul><li>Explain the differences.</li><li>Explain the benefits.</li></ul>");
     expect(blocks).toHaveLength(3);
     expect(blocks[0].runs.map((run) => run.text).join(" ")).toBe("Please include:");
-    expect(blocks[1].marker).toBe("\u2022");
-    expect(blocks[1].depth).toBe(1);
+        expect(blocks[1].marker).toBe("\u2022");
+    expect(blocks[1].depth).toBe(0);
     expect(blocks[2].marker).toBe("\u2022");
-    expect(blocks[2].depth).toBe(1);
+    expect(blocks[2].depth).toBe(0);
   });
 
   it("numbers ordered lists and resets nested counters", () => {
@@ -629,10 +634,11 @@ describe("parseRichHtml", () => {
     expect(blocks.map((block) => block.marker)).toEqual(["1.", "2.", "1."]);
   });
 
-  it("tracks nesting depth for nested lists", () => {
+      it("tracks nesting depth for nested lists", () => {
     const blocks = parseRichHtml("<ul><li>Outer<ul><li>Inner</li></ul></li></ul>");
-    const depths = blocks.map((block) => block.depth);
-    expect(Math.max(...depths)).toBe(2);
+    // A top-level bullet is depth 0, so the drawn indent starts at the left margin. Counting
+    // the lists an item sits inside made the whole list start one step in.
+    expect(blocks.map((block) => block.depth)).toEqual([0, 1]);
   });
 
   it("decodes common HTML entities", () => {
