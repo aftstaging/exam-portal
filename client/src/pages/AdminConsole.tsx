@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   Ticket,
   Trash2,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -382,6 +384,220 @@ function UsersTab() {
             </div>
           ) : (
             <p className="py-8 text-center text-sm text-white/45">No {role}s yet.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+type SupervisionRow = {
+  id: number;
+  status: "active" | "ended";
+  notes: string | null;
+  createdAt: Date | string;
+  endedAt: Date | string | null;
+  student: { id: number; name: string | null; email: string | null } | null;
+  instructor: { id: number; name: string | null; email: string | null } | null;
+};
+
+function SupervisionTab() {
+  const usersQuery = trpc.admin.users.useQuery(undefined, { retry: false });
+  const instructorsQuery = trpc.supervision.instructors.useQuery(undefined, { retry: false });
+  const overviewQuery = trpc.supervision.overview.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
+  const [studentId, setStudentId] = useState("");
+  const [instructorId, setInstructorId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [showEnded, setShowEnded] = useState(false);
+  const assign = trpc.supervision.assign.useMutation({
+    onSuccess: (result) => {
+      toast.success(result.reassigned ? "Learner reassigned to the new supervisor" : "Learner assigned for supervision");
+      utils.supervision.overview.invalidate();
+      utils.supervision.instructors.invalidate();
+      utils.supervision.myLearners.invalidate();
+      setNotes("");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const end = trpc.supervision.end.useMutation({
+    onSuccess: () => {
+      toast.success("Supervision ended");
+      utils.supervision.overview.invalidate();
+      utils.supervision.instructors.invalidate();
+      utils.supervision.myLearners.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const enrolledStudents = (usersQuery.data ?? []).filter((user) => user.role === "user" && user.enrolled);
+  const instructors = instructorsQuery.data ?? [];
+  const rows = (overviewQuery.data ?? []) as SupervisionRow[];
+  const activeCount = rows.filter((row) => row.status === "active").length;
+  const visible = showEnded ? rows : rows.filter((row) => row.status === "active");
+
+  return (
+    <div className="space-y-7">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-white"><UserPlus className="h-5 w-5 text-[#00ff88]" /> Assign an enrolled learner to an instructor</CardTitle>
+          <p className="text-sm leading-6 text-white/50">
+            Supervisors see the learner on their “My learners” list. Only learners with an active enrolment or subscription can be assigned.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-[1.3fr_1.3fr_1.4fr_auto]">
+            <select
+              value={studentId}
+              onChange={(event) => setStudentId(event.target.value)}
+              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              aria-label="Select learner"
+            >
+              <option value="">Select learner…</option>
+              {enrolledStudents.map((student) => (
+                <option key={student.id} value={student.id}>{student.name ?? student.email} · {student.email}</option>
+              ))}
+            </select>
+            <select
+              value={instructorId}
+              onChange={(event) => setInstructorId(event.target.value)}
+              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              aria-label="Select instructor"
+            >
+              <option value="">Select instructor…</option>
+              {instructors.map((instructor) => (
+                <option key={instructor.id} value={instructor.id}>{instructor.name ?? instructor.email} · {instructor.superviseeCount} learner{instructor.superviseeCount === 1 ? "" : "s"}</option>
+              ))}
+            </select>
+            <Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Supervision note (optional)" className="h-11 border-white/10 bg-[#0c0524] text-white" disabled={assign.isPending} />
+            <Button
+              className="aft-button"
+              disabled={assign.isPending || !studentId || !instructorId}
+              onClick={() => assign.mutate({ studentId: Number(studentId), instructorId: Number(instructorId), notes: notes.trim() || undefined })}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Assign
+            </Button>
+          </div>
+          {usersQuery.isLoading || instructorsQuery.isLoading ? null : !enrolledStudents.length ? (
+            <p className="mt-3 text-xs text-white/40">No learner currently has active access. Allocate an exam first in the Entitlements tab.</p>
+          ) : !instructors.length ? (
+            <p className="mt-3 text-xs text-white/40">No instructor accounts exist yet. Create one in the Users tab first.</p>
+          ) : (
+            <p className="mt-3 text-xs text-white/40">Reassigning a learner ends their current supervision and starts a new one — the history is kept.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-white"><Users className="h-5 w-5 text-[#00e5ff]" /> Supervision assignments</CardTitle>
+          <div className="flex items-center gap-3">
+            <Badge className="bg-[#102b36] text-[#00ff88]">{activeCount} active</Badge>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-white/60" onClick={() => setShowEnded((value) => !value)}>
+              {showEnded ? "Hide ended" : "Show ended"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {overviewQuery.isLoading ? (
+            <div className="h-24 animate-pulse rounded-xl bg-[#18093c]" />
+          ) : visible.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-white/45">
+                    <th className="pb-3 pr-4 font-semibold">Learner</th>
+                    <th className="pb-3 pr-4 font-semibold">Supervisor</th>
+                    <th className="pb-3 pr-4 font-semibold">Assigned</th>
+                    <th className="pb-3 pr-4 font-semibold">Note</th>
+                    <th className="pb-3 pr-4 font-semibold">Status</th>
+                    <th className="pb-3 font-semibold" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((row) => (
+                    <tr key={row.id} className="border-b border-white/5">
+                      <td className="py-3 pr-4">
+                        <div className="text-white">{row.student?.name ?? "—"}</div>
+                        <div className="text-xs text-[#c4b5fd]">{row.student?.email ?? "—"}</div>
+                      </td>
+                      <td className="py-3 pr-4">
+                        <div className="text-white">{row.instructor?.name ?? "—"}</div>
+                        <div className="text-xs text-white/45">{row.instructor?.email ?? "—"}</div>
+                      </td>
+                      <td className="py-3 pr-4 text-white/55">{shortDate(row.createdAt)}</td>
+                      <td className="max-w-[220px] py-3 pr-4 text-white/55">{row.notes ?? "—"}</td>
+                      <td className="py-3 pr-4"><StatusBadge status={row.status} /></td>
+                      <td className="py-3 text-right">
+                        {row.status === "active" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]"
+                            disabled={end.isPending}
+                            onClick={() => end.mutate({ supervisionId: row.id })}
+                          >
+                            End
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-white/45">No supervision assignments yet.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MyLearnersTab() {
+  const learnersQuery = trpc.supervision.myLearners.useQuery(undefined, { retry: false });
+  const learners = learnersQuery.data ?? [];
+  return (
+    <div className="mt-8">
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-white"><GraduationCap className="h-5 w-5 text-[#00ff88]" /> My learners</CardTitle>
+          <Badge className="bg-[#102b36] text-[#00ff88]">{learners.length} assigned</Badge>
+        </CardHeader>
+        <CardContent>
+          {learnersQuery.isLoading ? (
+            <div className="h-24 animate-pulse rounded-xl bg-[#18093c]" />
+          ) : learners.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-white/45">
+                    <th className="pb-3 pr-4 font-semibold">Learner</th>
+                    <th className="pb-3 pr-4 font-semibold">Email</th>
+                    <th className="pb-3 pr-4 font-semibold">Active access</th>
+                    <th className="pb-3 pr-4 font-semibold">Attempts</th>
+                    <th className="pb-3 pr-4 font-semibold">Last sign in</th>
+                    <th className="pb-3 pr-4 font-semibold">Supervising since</th>
+                    <th className="pb-3 font-semibold">Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {learners.map((entry) => (
+                    <tr key={entry.supervisionId} className="border-b border-white/5">
+                      <td className="py-3 pr-4 text-white">{entry.student.name ?? "—"}</td>
+                      <td className="py-3 pr-4 text-[#c4b5fd]">{entry.student.email}</td>
+                      <td className="py-3 pr-4 text-white/55">{entry.student.activeEntitlementCount}</td>
+                      <td className="py-3 pr-4 text-white/55">{entry.student.attemptCount}</td>
+                      <td className="py-3 pr-4 text-white/55">{shortDate(entry.student.lastSignedIn)}</td>
+                      <td className="py-3 pr-4 text-white/55">{shortDate(entry.assignedAt)}</td>
+                      <td className="py-3 text-white/55">{entry.notes ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-white/45">No learners have been assigned to you yet.</p>
           )}
         </CardContent>
       </Card>
@@ -1003,6 +1219,7 @@ function ResourceForm({ refresh, products }: { refresh: () => void; products: { 
 
 type QueueItem = {
   marking: { id: number; attemptId: number; markerId: number | null; status: string; awardedPoints: number; totalPoints: number; feedback: string | null; rubricSnapshot: string | null };
+  marker: { id: number; name: string | null; email: string | null } | null;
   submission: { id: number; status: string; submittedAt: Date | string };
   attempt: { id: number; userId: number; mockExamId: number; status: string; optOutOfMarking: boolean };
   learner: { id: number; name: string | null; email: string | null };
@@ -1010,14 +1227,44 @@ type QueueItem = {
   answers: { sectionId: number; title: string; body: string; wordCount: number }[];
 };
 
+function MarkingAssignmentControl({ instructors, disabled, onAssign }: { instructors: { id: number; name: string | null; email: string | null }[]; disabled: boolean; onAssign: (markerId: number) => void }) {
+  const [markerId, setMarkerId] = useState("");
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={markerId}
+        onChange={(event) => setMarkerId(event.target.value)}
+        disabled={disabled}
+        className="h-8 rounded-lg border border-white/10 bg-[#0c0524] px-2 text-xs text-white"
+        aria-label="Assign marking to an instructor"
+      >
+        <option value="">Assign to instructor…</option>
+        {instructors.map((instructor) => (
+          <option key={instructor.id} value={instructor.id}>{instructor.name ?? instructor.email}</option>
+        ))}
+      </select>
+      <Button size="sm" variant="outline" className="h-8 border-[#00ff88] px-3 text-xs text-[#00ff88]" disabled={disabled || !markerId} onClick={() => onAssign(Number(markerId))}>
+        Assign
+      </Button>
+    </div>
+  );
+}
+
 function MarkingTab() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const utils = trpc.useUtils();
   const [reviewingId, setReviewingId] = useState<number | null>(null);
   const queueQuery = trpc.marking.queue.useQuery(undefined, { retry: false });
+  const instructorsQuery = trpc.supervision.instructors.useQuery(undefined, { retry: false, enabled: isAdmin });
+  const instructors = instructorsQuery.data ?? [];
   const assign = trpc.marking.assign.useMutation({
-    onSuccess: () => { toast.success("Marking assigned to you"); utils.marking.queue.invalidate(); utils.marking.stats.invalidate(); },
+    onSuccess: (_result, variables) => {
+      const target = variables.markerId === user?.id ? null : instructors.find((instructor) => instructor.id === variables.markerId);
+      toast.success(target ? `Marking assigned to ${target.name ?? target.email}` : "Marking assigned to you");
+      utils.marking.queue.invalidate();
+      utils.marking.stats.invalidate();
+    },
     onError: (error) => toast.error(error.message),
   });
   const queue = (queueQuery.data ?? []) as QueueItem[];
@@ -1034,7 +1281,7 @@ function MarkingTab() {
             <div className="h-24 animate-pulse rounded-xl bg-[#18093c]" />
           ) : queue.length ? (
             <ul className="space-y-2">
-              {queue.map(({ marking, learner, exam, attempt }) => {
+              {queue.map(({ marking, marker, learner, exam, attempt }) => {
                 const mine = marking.markerId === user?.id;
                 const reviewable = mine && (marking.status === "assigned" || marking.status === "in_progress");
                 return (
@@ -1047,12 +1294,19 @@ function MarkingTab() {
                       </div>
                       <div className="flex items-center gap-2">
                         {isAdmin && marking.status === "unassigned" && (
-                          <Button size="sm" variant="outline" className="h-8 border-[#00ff88] px-3 text-xs text-[#00ff88]" disabled={assign.isPending} onClick={() => user && assign.mutate({ markingId: marking.id, markerId: user.id })}>
-                            Assign to me
-                          </Button>
+                          <>
+                            <MarkingAssignmentControl
+                              instructors={instructors}
+                              disabled={assign.isPending}
+                              onAssign={(markerId) => assign.mutate({ markingId: marking.id, markerId })}
+                            />
+                            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs text-white/60" disabled={assign.isPending} onClick={() => user && assign.mutate({ markingId: marking.id, markerId: user.id })}>
+                              Assign to me
+                            </Button>
+                          </>
                         )}
                         {!isAdmin && marking.status === "unassigned" && <span className="text-xs text-white/35">Awaiting an administrator to assign</span>}
-                        {!mine && marking.markerId && <span className="text-xs text-white/35">Assigned to another marker</span>}
+                        {!mine && marking.markerId && <span className="text-xs text-white/35">Assigned to {marker?.name ?? marker?.email ?? "another marker"}</span>}
                         {reviewable && (
                           <Button size="sm" variant="outline" className="h-8 border-[#00e5ff] px-3 text-xs text-[#00e5ff]" onClick={() => setReviewingId(reviewingId === marking.id ? null : marking.id)}>
                             {reviewingId === marking.id ? "Close" : "Review and mark"}
@@ -1556,7 +1810,7 @@ export default function AdminConsole({ mode }: { mode: "admin" | "instructor" })
   }
 
   const isAdmin = user.role === "admin";
-  const tabs = isAdmin ? ["Overview", "Payments", "Coupons", "Users", "Entitlements", "Content", "Marking queue", "Performance"] : ["Content", "Marking queue", "Performance"];
+  const tabs = isAdmin ? ["Overview", "Payments", "Coupons", "Users", "Entitlements", "Supervision", "Content", "Marking queue", "Performance"] : ["Content", "My learners", "Marking queue", "Performance"];
 
   return (
     <div className="min-h-screen bg-[#0c0524]">
@@ -1609,6 +1863,8 @@ export default function AdminConsole({ mode }: { mode: "admin" | "instructor" })
           {tab === "Coupons" && <CouponsTab />}
           {tab === "Users" && <UsersTab />}
           {tab === "Entitlements" && <EntitlementsTab />}
+          {tab === "Supervision" && <SupervisionTab />}
+          {tab === "My learners" && <MyLearnersTab />}
           {tab === "Content" && <ContentTab />}
           {tab === "Marking queue" && <MarkingTab />}
           {tab === "Performance" && <PerformanceTab />}

@@ -6,6 +6,7 @@ import { storageGetBytes, storageGetSignedUrl, storagePut } from "./storage";
 import { generateBrandedPrintablePdf, isJpegBytes, isPngBytes } from "./pdf";
 import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
+import { countActiveEntitlements, isEnrolled } from "@shared/supervision";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
 import { DEMO_LEARNER_EMAIL, DEMO_LEARNER_NAME, DEMO_LEARNER_OPEN_ID } from "@shared/const";
 import {
@@ -22,6 +23,7 @@ import {
   markings,
   feedbackStates,
   submissions,
+  supervisions,
   notifications,
   auditEvents,
   coupons,
@@ -771,8 +773,12 @@ export async function listMarkerQueue(input: { userId: number; role: "user" | "i
   const attemptIds = rows.map((row) => row.attempt.id);
   const examIds = rows.reduce((ids: number[], row) => (ids.includes(row.attempt.mockExamId) ? ids : [...ids, row.attempt.mockExamId]), []);
   const [answerRows, sectionRows] = await Promise.all([db.select().from(answers).where(inArray(answers.attemptId, attemptIds)), db.select().from(caseStudySections).where(inArray(caseStudySections.mockExamId, examIds))]);
+  const markerIds = Array.from(new Set(rows.map((row) => row.marking.markerId).filter((id): id is number => id != null)));
+  const markerRows = markerIds.length ? await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(inArray(users.id, markerIds)) : [];
+  const markerById = new Map(markerRows.map((marker) => [marker.id, marker]));
   return rows.map(({ marking, submission, attempt, learner, exam }) => ({
     marking,
+    marker: marking.markerId ? markerById.get(marking.markerId) ?? null : null,
     submission,
     attempt: { ...attempt, optOutOfMarking: Boolean(attempt.optOutOfMarking) },
     learner: { id: learner.id, name: learner.name, email: learner.email },
@@ -1698,12 +1704,27 @@ export async function listAdminUsers() {
   const userIds = rows.map((row) => row.id);
   if (!userIds.length) return [];
   const [entitlementRows, attemptRows] = await Promise.all([
-    db.select({ userId: entitlements.userId, value: count() }).from(entitlements).where(inArray(entitlements.userId, userIds)).groupBy(entitlements.userId),
+    db.select({ userId: entitlements.userId, status: entitlements.status, startsAt: entitlements.startsAt, expiresAt: entitlements.expiresAt }).from(entitlements).where(inArray(entitlements.userId, userIds)),
     db.select({ userId: attempts.userId, value: count() }).from(attempts).where(inArray(attempts.userId, userIds)).groupBy(attempts.userId),
   ]);
-  const entitlementCounts = new Map(entitlementRows.map((row) => [row.userId, Number(row.value)]));
+  const entitlementCounts = new Map<number, number>();
+  const activeEntitlementCounts = new Map<number, number>();
+  const entitlementsByUser = new Map<number, typeof entitlementRows>();
+  for (const row of entitlementRows) {
+    entitlementCounts.set(row.userId, (entitlementCounts.get(row.userId) ?? 0) + 1);
+    const bucket = entitlementsByUser.get(row.userId) ?? [];
+    bucket.push(row);
+    entitlementsByUser.set(row.userId, bucket);
+  }
+  for (const [userId, list] of Array.from(entitlementsByUser)) activeEntitlementCounts.set(userId, countActiveEntitlements(list));
   const attemptCounts = new Map(attemptRows.map((row) => [row.userId, Number(row.value)]));
-  return rows.map(({ passwordHash, ...user }) => ({ ...user, entitlementCount: entitlementCounts.get(user.id) ?? 0, attemptCount: attemptCounts.get(user.id) ?? 0 }));
+  return rows.map(({ passwordHash, ...user }) => ({
+    ...user,
+    entitlementCount: entitlementCounts.get(user.id) ?? 0,
+    activeEntitlementCount: activeEntitlementCounts.get(user.id) ?? 0,
+    enrolled: (activeEntitlementCounts.get(user.id) ?? 0) > 0,
+    attemptCount: attemptCounts.get(user.id) ?? 0,
+  }));
 }
 
 export async function createManagedUser(input: { email: string; name?: string; passwordHash: string; role: "user" | "instructor" }) {
@@ -1735,6 +1756,8 @@ export async function removeUser(adminUserId: number, targetUserId: number) {
     await db.delete(submissions).where(inArray(submissions.attemptId, attemptIds));
   }
   await db.delete(attempts).where(eq(attempts.userId, targetUserId));
+  await db.delete(supervisions).where(eq(supervisions.studentId, targetUserId));
+  await db.delete(supervisions).where(eq(supervisions.instructorId, targetUserId));
   await db.delete(entitlements).where(eq(entitlements.userId, targetUserId));
   await db.delete(payments).where(eq(payments.userId, targetUserId));
   await db.delete(notifications).where(eq(notifications.userId, targetUserId));
@@ -1800,6 +1823,95 @@ export async function listAdminUserEntitlements(userId: number) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ entitlement: entitlements, product: products }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(eq(entitlements.userId, userId)).orderBy(desc(entitlements.createdAt));
   return rows.map((row) => ({ ...row, entitlement: { ...row.entitlement, status: hasActiveEntitlement(row.entitlement) ? "active" as const : row.entitlement.status === "revoked" ? "revoked" as const : "expired" as const } }));
+}
+
+export async function listSupervisions() {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(supervisions).orderBy(desc(supervisions.createdAt)).limit(500);
+  if (!rows.length) return [];
+  const peopleIds = Array.from(new Set(rows.flatMap((row) => [row.studentId, row.instructorId])));
+  const people = await db.select({ id: users.id, name: users.name, email: users.email, role: users.role }).from(users).where(inArray(users.id, peopleIds));
+  const byId = new Map(people.map((person) => [person.id, person]));
+  return rows
+    .map((row) => ({ ...row, student: byId.get(row.studentId) ?? null, instructor: byId.get(row.instructorId) ?? null }))
+    .sort((a, b) => (a.status === b.status ? 0 : a.status === "active" ? -1 : 1));
+}
+
+export async function listInstructors() {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: users.id, name: users.name, email: users.email, createdAt: users.createdAt }).from(users).where(eq(users.role, "instructor")).orderBy(asc(users.name));
+  if (!rows.length) return [];
+  const ids = rows.map((row) => row.id);
+  const active = await db.select({ instructorId: supervisions.instructorId, value: count() }).from(supervisions).where(and(inArray(supervisions.instructorId, ids), eq(supervisions.status, "active"))).groupBy(supervisions.instructorId);
+  const counts = new Map(active.map((row) => [row.instructorId, Number(row.value)]));
+  return rows.map((row) => ({ ...row, superviseeCount: counts.get(row.id) ?? 0 }));
+}
+
+export async function assignSupervision(input: { adminUserId: number; studentId: number; instructorId: number; notes?: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const student = await getUserById(input.studentId);
+  if (!student) throw new Error("Learner account not found");
+  if (student.role !== "user") throw new Error("Only registered learner accounts can be supervised");
+  const instructor = await getUserById(input.instructorId);
+  if (!instructor) throw new Error("Instructor account not found");
+  if (instructor.role !== "instructor") throw new Error("Learners can only be assigned to an instructor");
+  const studentEntitlements = await db.select({ status: entitlements.status, startsAt: entitlements.startsAt, expiresAt: entitlements.expiresAt }).from(entitlements).where(eq(entitlements.userId, input.studentId));
+  if (!isEnrolled(studentEntitlements)) throw new Error("Learners need an active enrolment or subscription before they can be assigned to an instructor");
+  const notes = input.notes?.trim() || null;
+  const existing = (await db.select().from(supervisions).where(and(eq(supervisions.studentId, input.studentId), eq(supervisions.status, "active"))).limit(1))[0];
+  if (existing && existing.instructorId === input.instructorId) {
+    await db.update(supervisions).set({ notes }).where(eq(supervisions.id, existing.id));
+    return { success: true, supervisionId: existing.id, reassigned: false };
+  }
+  if (existing) await db.update(supervisions).set({ status: "ended", endedAt: new Date() }).where(eq(supervisions.id, existing.id));
+  const created = await db.insert(supervisions).values({ studentId: input.studentId, instructorId: input.instructorId, status: "active", notes, assignedBy: input.adminUserId }).$returningId();
+  const supervisionId = created[0]?.id ?? 0;
+  await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "supervision", entityId: supervisionId, action: existing ? "reassigned" : "assigned", metadata: JSON.stringify({ studentId: input.studentId, instructorId: input.instructorId, previousInstructorId: existing?.instructorId ?? null }) });
+  await db.insert(notifications).values({ userId: input.instructorId, type: "account", subject: "New learner assigned for supervision", body: `${student.name ?? student.email ?? "A learner"} has been assigned to you for supervision.` });
+  await db.insert(notifications).values({ userId: input.studentId, type: "account", subject: "Your supervising instructor has been set", body: `${instructor.name ?? instructor.email ?? "An instructor"} is now your supervising instructor.` });
+  return { success: true, supervisionId, reassigned: Boolean(existing) };
+}
+
+export async function endSupervision(input: { adminUserId: number; supervisionId: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const row = (await db.select().from(supervisions).where(eq(supervisions.id, input.supervisionId)).limit(1))[0];
+  if (!row) throw new Error("Supervision assignment not found");
+  if (row.status !== "active") throw new Error("This supervision assignment has already ended");
+  await db.update(supervisions).set({ status: "ended", endedAt: new Date() }).where(eq(supervisions.id, input.supervisionId));
+  await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "supervision", entityId: input.supervisionId, action: "ended", metadata: JSON.stringify({ studentId: row.studentId, instructorId: row.instructorId }) });
+  await db.insert(notifications).values({ userId: row.instructorId, type: "account", subject: "Learner supervision ended", body: "A learner has been removed from your supervision list." });
+  return { success: true };
+}
+
+export async function listInstructorSupervisees(instructorId: number) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ supervision: supervisions, student: users }).from(supervisions).innerJoin(users, eq(supervisions.studentId, users.id)).where(and(eq(supervisions.instructorId, instructorId), eq(supervisions.status, "active"))).orderBy(asc(users.name));
+  if (!rows.length) return [];
+  const studentIds = rows.map((row) => row.student.id);
+  const [entitlementRows, attemptRows] = await Promise.all([
+    db.select({ userId: entitlements.userId, status: entitlements.status, startsAt: entitlements.startsAt, expiresAt: entitlements.expiresAt }).from(entitlements).where(inArray(entitlements.userId, studentIds)),
+    db.select({ userId: attempts.userId, value: count() }).from(attempts).where(inArray(attempts.userId, studentIds)).groupBy(attempts.userId),
+  ]);
+  const entitlementsByUser = new Map<number, typeof entitlementRows>();
+  for (const row of entitlementRows) {
+    const bucket = entitlementsByUser.get(row.userId) ?? [];
+    bucket.push(row);
+    entitlementsByUser.set(row.userId, bucket);
+  }
+  const attemptCounts = new Map(attemptRows.map((row) => [row.userId, Number(row.value)]));
+  return rows.map(({ supervision, student }) => ({
+    supervisionId: supervision.id,
+    notes: supervision.notes,
+    assignedAt: supervision.createdAt,
+    student: {
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      activeEntitlementCount: countActiveEntitlements(entitlementsByUser.get(student.id) ?? []),
+      attemptCount: attemptCounts.get(student.id) ?? 0,
+      lastSignedIn: student.lastSignedIn,
+    },
+  }));
 }
 
 export async function listAdminCoupons() {

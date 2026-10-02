@@ -32,4 +32,13 @@ describe("protected tRPC procedure contracts", () => {
     await expect(caller.exams.saveAnswer({ attemptId: 0, sectionId: 1, body: "", wordCount: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     await expect(caller.resources.download({ resourceId: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
+
+  it("rejects non-admin supervision management and anonymous learner lists", async () => {
+    const staff = { id: 7, role: "instructor" } as TrpcContext["user"];
+    const staffCaller = callerFor(staff);
+    await expect(staffCaller.supervision.overview()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(staffCaller.supervision.assign({ studentId: 1, instructorId: 2 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(staffCaller.supervision.end({ supervisionId: 3 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(callerFor(null).supervision.myLearners()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });
