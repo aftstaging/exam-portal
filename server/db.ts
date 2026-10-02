@@ -231,7 +231,19 @@ export async function getAttemptContext(userId: number, attemptId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const rows = await db.select({ attempt: attempts, mockExam: mockExams, product: products }).from(attempts).innerJoin(mockExams, eq(attempts.mockExamId, mockExams.id)).innerJoin(products, eq(mockExams.productId, products.id)).where(and(eq(attempts.id, attemptId), eq(attempts.userId, userId))).limit(1);
   if (!rows[0]) throw new Error("Attempt not found");
-  return { mockExamId: rows[0].mockExam.id, productId: rows[0].product.id, status: rows[0].attempt.status };
+  // The answers come back with the context because the shell can mount against an attempt that
+  // already carries drafts, and the pad would otherwise paint empty. Returning them here rather than
+  // behind a second query avoids a frame where the pad and its timers render against an empty answer
+  // set, which is what made a started task look blank.
+  const saved = await db.select({ sectionId: answers.sectionId, body: answers.body }).from(answers).where(eq(answers.attemptId, attemptId));
+  return {
+    mockExamId: rows[0].mockExam.id,
+    productId: rows[0].product.id,
+    status: rows[0].attempt.status,
+    // An array rather than an object keyed by section number: object keys are strings once the
+    // response is serialised, which would quietly stop `answers[currentSection]` from matching.
+    answers: saved.map((row) => ({ sectionId: row.sectionId, body: row.body ?? "" })),
+  };
 }
 
 export async function saveAnswerDraft(input: { userId: number; attemptId: number; sectionId: number; body: string; wordCount: number }) {

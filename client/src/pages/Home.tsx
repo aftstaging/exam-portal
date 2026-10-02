@@ -279,6 +279,30 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
   // whatever sentence was being typed.
   const answerPad = useRef<HTMLDivElement | null>(null);
   const padSection = useRef(0);
+  // The pad mounts before the attempt context query has resolved, so it paints empty and stays that
+  // way: seeding `answers` from the query is what puts a saved draft back on screen when the shell
+  // mounts against an attempt that already has one. Hydration is keyed on the attempt id rather than
+  // run on every render of the query result, which would overwrite whatever the learner has typed
+  // since the answer was last autosaved.
+  const hydratedAttempt = useRef(0);
+  useEffect(() => {
+    const restored = attemptContextQuery.data?.answers;
+    if (!restored || hydratedAttempt.current === attemptId) return;
+    hydratedAttempt.current = attemptId;
+    setAnswers((current) => {
+      const next = { ...current };
+      for (const item of restored) next[item.sectionId] = item.body;
+      return next;
+    });
+    setSavedSections((current) => {
+      const next = { ...current };
+      for (const item of restored) next[item.sectionId] = true;
+      return next;
+    });
+    // Cleared so the effect below repaints the pad: it has already run once by now, against an
+    // empty answer, and would otherwise consider this task filled and leave the screen blank.
+    padSection.current = 0;
+  }, [attemptContextQuery.data?.answers, attemptId]);
   useEffect(() => {
     const element = answerPad.current;
     if (!element || padSection.current === currentSection) return;
