@@ -28,6 +28,16 @@ describe("authored tables", () => {
       expect(authoredCellText("<i>optional</i>")).toBe("*optional*");
     });
 
+    // Underline and strikethrough are offered by the studio's toolbar, so a cell has to be able to
+    // show them. Without this the generic tag strip below would flatten them to plain text the
+    // moment the author edited that cell, silently losing what they had applied.
+    it("converts underline and strikethrough into markers too", () => {
+      expect(authoredCellText("<u>required</u>")).toBe("__required__");
+      expect(authoredCellText("<s>discontinued</s>")).toBe("~~discontinued~~");
+      expect(authoredCellText("<strike>discontinued</strike>")).toBe("~~discontinued~~");
+      expect(authoredCellText("<del>discontinued</del>")).toBe("~~discontinued~~");
+    });
+
     it("flattens a line break to a space, because a cell is edited on one line", () => {
       expect(authoredCellText("first<br>second")).toBe("first second");
       expect(authoredCellText("first<br/>second")).toBe("first second");
@@ -101,6 +111,19 @@ describe("authored tables", () => {
       expect(markup).toContain("<em>italic</em>");
     });
 
+    it("converts the underline and strikethrough markers as well", () => {
+      const markup = serializeAuthoredTable({ headerRow: false, rows: [["__required__ and ~~discontinued~~"]] });
+      expect(markup).toContain("<u>required</u>");
+      expect(markup).toContain("<s>discontinued</s>");
+    });
+
+    it("leaves a pair of delimiters with nothing between them as literal text", () => {
+      const markup = serializeAuthoredTable({ headerRow: false, rows: [["a __ b ~~ c"]] });
+      expect(markup).toContain("a __ b ~~ c");
+      expect(markup).not.toContain("<u>");
+      expect(markup).not.toContain("<s>");
+    });
+
     it("escapes authored text so a cell cannot inject markup", () => {
       const markup = serializeAuthoredTable({ headerRow: false, rows: [["<script>x</script> & more"]] });
       expect(markup).toContain("&lt;script&gt;");
@@ -117,6 +140,14 @@ describe("authored tables", () => {
         ["**Alpha**", "5 & 6"],
         ["Beta <b>", "*3*"],
       ],
+    };
+    expect(parseAuthoredTable(serializeAuthoredTable(table))).toEqual(table);
+  });
+
+  it("round-trips every emphasis the studio can apply to a cell", () => {
+    const table: AuthoredTable = {
+      headerRow: false,
+      rows: [["**bold** *italic* __underline__ ~~struck~~"]],
     };
     expect(parseAuthoredTable(serializeAuthoredTable(table))).toEqual(table);
   });

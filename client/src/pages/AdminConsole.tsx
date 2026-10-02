@@ -1359,7 +1359,7 @@ function MarkingReleaseForm({ item, onReleased }: { item: QueueItem; onReleased:
               <span>Task {answer.sectionId} · {answer.title}</span>
               <span className="text-xs text-white/45">{answer.wordCount} words</span>
             </summary>
-            <pre className="whitespace-pre-wrap rounded-b-lg border-t border-white/10 px-4 py-3 text-sm leading-6 text-[#c4b5fd]">{answer.body || "—"}</pre>
+            <div className="rounded-b-lg border-t border-white/10 px-4 py-3 text-sm leading-6 text-[#c4b5fd]">{answer.body?.trim() ? <StructuredText text={answer.body} /> : "—"}</div>
           </details>
         ))}
       </div>

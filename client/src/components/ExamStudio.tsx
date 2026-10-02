@@ -35,6 +35,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Strikethrough,
   TimerReset,
   Table2,
   Trash2,
@@ -318,7 +319,7 @@ const TABLE_PICKER_ROWS = 4;
  * shell renders and the printable PDF lays out, and `splitAuthoredContent` puts the surrounding
  * prose back in place around it.
  */
-function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, ## heading, ● bullet (start a line with - or ●), 1. numbered.", allowTable = false }: {
+function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, __underline__, ~~strikethrough~~, ## heading, ● bullet (start a line with - or ●), 1. numbered.", allowTable = false }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -408,6 +409,8 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
         <label className="mr-1 text-xs font-semibold text-[#c4b5fd]">{label}</label>
         <button type="button" className={toolButton} title="Bold (**text**)" aria-label="Bold" onClick={() => applyFormat("**", "**")}><Bold className="h-4 w-4" /></button>
         <button type="button" className={toolButton} title="Italic (*text*)" aria-label="Italic" onClick={() => applyFormat("*", "*")}><Italic className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} title="Underline (__text__)" aria-label="Underline" onClick={() => applyFormat("__", "__")}><Underline className="h-4 w-4" /></button>
+        <button type="button" className={toolButton} title="Strikethrough (~~text~~)" aria-label="Strikethrough" onClick={() => applyFormat("~~", "~~")}><Strikethrough className="h-4 w-4" /></button>
         <button type="button" className={toolButton} title="Heading (## text)" aria-label="Heading" onClick={() => applyFormat("## ", "")}><Menu className="h-4 w-4" /></button>
         <button type="button" className={toolButton} title="Bullet list (● item)" aria-label="Bullet list" onClick={() => applyFormat("● ", "")}><List className="h-4 w-4" /></button>
         <button type="button" className={toolButton} title="Numbered list (1. item)" aria-label="Numbered list" onClick={() => applyFormat("1. ", "")}><ListOrdered className="h-4 w-4" /></button>

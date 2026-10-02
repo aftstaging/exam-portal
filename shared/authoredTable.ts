@@ -23,21 +23,39 @@ const TABLE_OPEN = /<table\b[^>]*>([\s\S]*?)<\/table\s*>/i;
 const TABLE_ROW = /<tr\b[^>]*>([\s\S]*?)<\/tr\s*>/gi;
 const TABLE_CELL = /<(th|td)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi;
 
-/** Matches a single inline emphasis marker run, in the same precedence order `StructuredText` uses. */
-const INLINE_MARKERS = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+/**
+ * Matches a single inline emphasis marker run, in the same precedence order `StructuredText` uses.
+ *
+ * Every emphasis the studio offers is listed here, not just bold and italic, because the round trip
+ * has to be lossless in both directions: a marker this cannot read back would silently become plain
+ * text the first time an author touched that cell in the grid.
+ */
+const INLINE_MARKERS = /(\*\*[^*]+\*\*|\*[^*]+\*|__[^_\n]+__|~~[^~\n]+~~)/g;
+
+/** The marker for each emphasis the cell grid can round-trip, longest delimiter first. */
+const CELL_EMPHASIS: { marker: string; tag: string }[] = [
+  { marker: "**", tag: "strong" },
+  { marker: "*", tag: "em" },
+  { marker: "__", tag: "u" },
+  { marker: "~~", tag: "s" },
+];
 
 /**
  * Turns a cell's stored HTML into the plain text an author edits.
  *
  * Inline tags become the emphasis markers the rest of the authoring UI uses, so a cell that was
- * authored as `<strong>Total</strong>` reads as `**Total**` rather than losing its emphasis. A line
- * break becomes a space because a cell is edited on one line.
+ * authored as `<strong>Total</strong>` reads as `**Total**` rather than losing its emphasis. Every
+ * emphasis the studio can apply is converted, not only bold and italic: an underline the cell
+ * cannot show would be flattened to plain text by the generic tag strip below and lost the moment
+ * the author edited the cell. A line break becomes a space because a cell is edited on one line.
  */
 export function authoredCellText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, " ")
     .replace(/<\/?(strong|b)\b[^>]*>/gi, "**")
     .replace(/<\/?(em|i)\b[^>]*>/gi, "*")
+    .replace(/<\/?u\b[^>]*>/gi, "__")
+    .replace(/<\/?(s|strike|del)\b[^>]*>/gi, "~~")
     .replace(/<[^>]+>/g, "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -57,11 +75,12 @@ export function authoredCellHtml(text: string): string {
   return escaped
     .split(INLINE_MARKERS)
     .map((token) => {
-      if (token.length > 4 && token.startsWith("**") && token.endsWith("**")) {
-        return `<strong>${token.slice(2, -2)}</strong>`;
-      }
-      if (token.length > 2 && token.startsWith("*") && token.endsWith("*")) {
-        return `<em>${token.slice(1, -1)}</em>`;
+      for (const { marker, tag } of CELL_EMPHASIS) {
+        // A run needs a character between its delimiters to be emphasis rather than two stray ones.
+        if (token.length <= marker.length * 2) continue;
+        if (token.startsWith(marker) && token.endsWith(marker)) {
+          return `<${tag}>${token.slice(marker.length, -marker.length)}</${tag}>`;
+        }
       }
       return token;
     })

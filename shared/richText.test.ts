@@ -3,6 +3,7 @@ import {
   normalizeAuthoredHtml,
   parseRichHtml,
   richTextToPlainText,
+  richTextWordCount,
   sanitizeAuthoredHtml,
   type RichBlock,
 } from "./richText";
@@ -278,6 +279,15 @@ describe("sanitizeAuthoredHtml", () => {
     }
   });
 
+  // A learner's answer pad emits the short tag names, because that is what a browser's own bold,
+  // italic, underline and strikethrough commands produce. Filtering them out here would discard the
+  // emphasis the learner applied the moment they saved.
+  it("keeps the short tag names a browser's formatting commands emit", () => {
+    for (const tag of ["b", "i", "u", "strike"]) {
+      expect(sanitizeAuthoredHtml(`<${tag}>x</${tag}>`)).toContain(`<${tag}`);
+    }
+  });
+
   it("keeps a safe link and drops an unsafe one", () => {
     expect(sanitizeAuthoredHtml('<a href="https://example.com">x</a>')).toContain("https://example.com");
     expect(sanitizeAuthoredHtml('<a href="javascript:alert(1)">x</a>')).not.toContain("javascript");
@@ -290,5 +300,25 @@ describe("richTextToPlainText", () => {
     expect(text).toContain("Region");
     expect(text).toContain("North");
     expect(text).not.toContain("<");
+  });
+});
+
+describe("richTextWordCount", () => {
+  it("counts the words a learner wrote", () => {
+    expect(richTextWordCount("the quick brown fox")).toBe(4);
+  });
+
+  it("counts nothing in an empty or markup-only answer", () => {
+    expect(richTextWordCount("")).toBe(0);
+    expect(richTextWordCount(null)).toBe(0);
+    expect(richTextWordCount("<br>")).toBe(0);
+  });
+
+  // The emphasis a learner applies must not inflate the count against their word allowance, which is
+  // why the count is taken from the visible words rather than from the stored markup.
+  it("does not count the emphasis markup as words", () => {
+    expect(richTextWordCount("<strong>two</strong> <em>words</em>")).toBe(2);
+    expect(richTextWordCount("<u>two</u> <s>words</s>")).toBe(2);
+    expect(richTextWordCount("<ul><li>one</li><li>two</li></ul>")).toBe(2);
   });
 });

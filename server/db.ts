@@ -6,6 +6,7 @@ import { storageGetBytes, storageGetSignedUrl, storagePut } from "./storage";
 import { generateBrandedPrintablePdf, isJpegBytes, isPngBytes } from "./pdf";
 import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
+import { richTextWordCount, sanitizeAuthoredHtml } from "@shared/richText";
 import { countActiveEntitlements, isEnrolled } from "@shared/supervision";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
 import { DEMO_LEARNER_EMAIL, DEMO_LEARNER_NAME, DEMO_LEARNER_OPEN_ID } from "@shared/const";
@@ -237,12 +238,20 @@ export async function saveAnswerDraft(input: { userId: number; attemptId: number
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const attempt = await db.select().from(attempts).where(and(eq(attempts.id, input.attemptId), eq(attempts.userId, input.userId))).limit(1);
   if (!attempt[0] || !isAttemptEditable(attempt[0].status)) throw new Error("Attempt is not editable");
+  // A learner answers in a rich text pad, so the stored answer carries the emphasis they applied.
+  // It is filtered against the same allowlist the authored exam content uses: the answer is redrawn
+  // from its markup on the review and marking screens, and this is the boundary that decides what
+  // markup is allowed to be there at all.
+  const body = sanitizeAuthoredHtml(input.body);
+  // The count is derived from the text that is actually being stored rather than taken from the
+  // request, so a stale client count cannot disagree with the answer it sits next to.
+  const wordCount = richTextWordCount(body);
   const existing = await db.select().from(answers).where(and(eq(answers.attemptId, input.attemptId), eq(answers.sectionId, input.sectionId))).limit(1);
   if (existing[0]) {
-    await db.update(answers).set({ body: input.body, wordCount: input.wordCount, savedAt: new Date(), version: existing[0].version + 1 }).where(eq(answers.id, existing[0].id));
+    await db.update(answers).set({ body, wordCount, savedAt: new Date(), version: existing[0].version + 1 }).where(eq(answers.id, existing[0].id));
     return { id: existing[0].id, version: existing[0].version + 1, savedAt: new Date() };
   }
-  const created = await db.insert(answers).values({ attemptId: input.attemptId, sectionId: input.sectionId, body: input.body, wordCount: input.wordCount }).$returningId();
+  const created = await db.insert(answers).values({ attemptId: input.attemptId, sectionId: input.sectionId, body, wordCount }).$returningId();
   return { id: created[0]?.id, version: 1, savedAt: new Date() };
 }
 
