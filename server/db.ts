@@ -5,7 +5,7 @@ import { ENV } from "./_core/env";
 import { storageGetBytes, storageGetSignedUrl, storagePut } from "./storage";
 import { generateBrandedPrintablePdf, isJpegBytes, isPngBytes } from "./pdf";
 import { buildZipBuffer, sanitizeZipName } from "./zip";
-import { hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
+import { accountRemovalBlocker, hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
 import { richTextWordCount, sanitizeAuthoredHtml } from "@shared/richText";
 import { countActiveEntitlements, isEnrolled } from "@shared/supervision";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
@@ -1763,28 +1763,61 @@ export async function createManagedUser(input: { email: string; name?: string; p
   return created;
 }
 
-export async function removeUser(adminUserId: number, targetUserId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  if (adminUserId === targetUserId) throw new Error("You cannot remove your own account");
-  const target = await getUserById(targetUserId);
-  if (!target) throw new Error("Account not found");
-  if (isAdminRole(target.role)) throw new Error("Administrator accounts cannot be removed through this workflow");
-  const attemptIds = (await db.select({ id: attempts.id }).from(attempts).where(eq(attempts.userId, targetUserId))).map((row) => row.id);
+export type RemovedUser = { id: number; email: string | null; role: string };
+export type SkippedUser = { id: number; email: string | null; reason: string };
+
+/**
+ * Cascades a single account away. The guard checks live in the caller so the
+ * single and bulk paths share one definition of what may be deleted.
+ */
+async function cascadeRemoveUser(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, adminUserId: number, target: RemovedUser) {
+  const attemptIds = (await db.select({ id: attempts.id }).from(attempts).where(eq(attempts.userId, target.id))).map((row) => row.id);
   if (attemptIds.length) {
     await db.delete(answers).where(inArray(answers.attemptId, attemptIds));
     await db.delete(feedbackStates).where(inArray(feedbackStates.attemptId, attemptIds));
     await db.delete(markings).where(inArray(markings.attemptId, attemptIds));
     await db.delete(submissions).where(inArray(submissions.attemptId, attemptIds));
   }
-  await db.delete(attempts).where(eq(attempts.userId, targetUserId));
-  await db.delete(supervisions).where(eq(supervisions.studentId, targetUserId));
-  await db.delete(supervisions).where(eq(supervisions.instructorId, targetUserId));
-  await db.delete(entitlements).where(eq(entitlements.userId, targetUserId));
-  await db.delete(payments).where(eq(payments.userId, targetUserId));
-  await db.delete(notifications).where(eq(notifications.userId, targetUserId));
-  await db.delete(users).where(eq(users.id, targetUserId));
-  await db.insert(auditEvents).values({ userId: adminUserId, entityType: "user", entityId: targetUserId, action: "removed", metadata: JSON.stringify({ role: target.role, email: target.email }) });
+  await db.delete(attempts).where(eq(attempts.userId, target.id));
+  await db.delete(supervisions).where(eq(supervisions.studentId, target.id));
+  await db.delete(supervisions).where(eq(supervisions.instructorId, target.id));
+  await db.delete(entitlements).where(eq(entitlements.userId, target.id));
+  await db.delete(payments).where(eq(payments.userId, target.id));
+  await db.delete(notifications).where(eq(notifications.userId, target.id));
+  await db.delete(users).where(eq(users.id, target.id));
+  await db.insert(auditEvents).values({ userId: adminUserId, entityType: "user", entityId: target.id, action: "removed", metadata: JSON.stringify({ role: target.role, email: target.email }) });
+}
+
+export async function removeUser(adminUserId: number, targetUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const target = await getUserById(targetUserId);
+  const blocker = accountRemovalBlocker(adminUserId, target);
+  if (blocker) throw new Error(blocker);
+  await cascadeRemoveUser(db, adminUserId, target!);
   return { success: true };
+}
+
+/**
+ * Removes several accounts in one call. Guard failures skip the individual row
+ * instead of aborting the batch, so one administrator row or one stale id cannot
+ * leave the admin wondering which half of the selection was deleted.
+ */
+export async function removeUsers(adminUserId: number, targetUserIds: number[]) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const uniqueIds = Array.from(new Set(targetUserIds));
+  if (!uniqueIds.length) return { removed: [] as RemovedUser[], skipped: [] as SkippedUser[] };
+  const rows = await db.select({ id: users.id, email: users.email, role: users.role }).from(users).where(inArray(users.id, uniqueIds));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const removed: RemovedUser[] = [];
+  const skipped: SkippedUser[] = [];
+  for (const id of uniqueIds) {
+    const target = byId.get(id);
+    const blocker = accountRemovalBlocker(adminUserId, target);
+    if (blocker) { skipped.push({ id, email: target?.email ?? null, reason: blocker }); continue; }
+    await cascadeRemoveUser(db, adminUserId, target!);
+    removed.push({ id, email: target!.email, role: target!.role });
+  }
+  return { removed, skipped };
 }
 
 export async function recordPayment(input: { userId: number; productId: number; provider: "payfast" | "stripe" | "admin"; reference?: string; amountCents: number; currency?: string; status?: "pending" | "completed" | "cancelled" | "refunded"; metadata?: Record<string, unknown> }) {

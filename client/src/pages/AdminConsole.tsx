@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight,
@@ -17,6 +17,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Search,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -26,7 +27,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -36,6 +54,15 @@ import { startLogin } from "@/const";
 import ExamStudio from "@/components/ExamStudio";
 import { StructuredText } from "@/components/StructuredText";
 import { calculateRubricScore, RUBRIC_CRITERIA } from "@shared/rubric";
+import { accountRemovalBlocker } from "@shared/integrity";
+import {
+  PAGE_SIZE_OPTIONS,
+  pageWindow,
+  paginate,
+  pruneSelection,
+  selectPage,
+  toggleSelection,
+} from "@shared/pagination";
 
 const zar = (cents: number) => (cents / 100).toLocaleString("en-ZA", { style: "currency", currency: "ZAR" });
 const shortDate = (value?: Date | string | null) => (value ? new Date(value).toLocaleDateString() : "—");
@@ -267,7 +294,13 @@ function UsersTab() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const usersQuery = trpc.admin.users.useQuery(undefined, { retry: false });
+  const { user: signedIn } = useAuth();
+  const adminId = signedIn?.id ?? -1;
   const utils = trpc.useUtils();
   const createStudent = trpc.admin.createStudent.useMutation({
     onSuccess: () => {
@@ -293,9 +326,66 @@ function UsersTab() {
     },
     onError: (error) => toast.error(error.message),
   });
+  const removeUsers = trpc.admin.removeUsers.useMutation({
+    onSuccess: (result) => {
+      const removed = result.removed.length;
+      if (removed) {
+        toast.success(`${removed} account${removed === 1 ? "" : "s"} removed`);
+        utils.admin.users.invalidate();
+        utils.admin.overview.invalidate();
+      }
+      if (result.skipped.length) {
+        toast.error(`Skipped ${result.skipped.length}: ${result.skipped.map((entry) => `${entry.email || entry.id} (${entry.reason})`).join("; ")}`);
+      }
+      setSelectedIds([]);
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const users = usersQuery.data ?? [];
-  const visible = users.filter((user) => (role === "instructor" ? user.role === "instructor" : user.role === "user"));
+  const matchingRole = users.filter((user) => (role === "instructor" ? user.role === "instructor" : user.role === "user"));
+  const listIds = matchingRole.map((user) => user.id).join(",");
+  const term = search.trim().toLowerCase();
+  const visible = term
+    ? matchingRole.filter((user) => `${user.name ?? ""} ${user.email ?? ""}`.toLowerCase().includes(term))
+    : matchingRole;
   const create = role === "instructor" ? createInstructor : createStudent;
+  const roleLabel = role === "instructor" ? "instructors" : "students";
+
+  const slice = paginate(visible, page, pageSize);
+  const pageIds = slice.items.map((user) => user.id);
+  const selectedOnPage = pageIds.filter((id) => selectedIds.includes(id)).length;
+  const allOnPageSelected = pageIds.length > 0 && selectedOnPage === pageIds.length;
+  const someOnPageSelected = selectedOnPage > 0 && !allOnPageSelected;
+  const pageNumbers = pageWindow(slice.page, slice.totalPages);
+  const isDeleting = removeUser.isPending || removeUsers.isPending;
+
+  // The selection is meaningless once the list it was drawn from changes, and a
+  // stale page number would show an empty table after a filter or a deletion.
+  useEffect(() => {
+    setSelectedIds([]);
+    setPage(1);
+  }, [role, term]);
+  useEffect(() => {
+    setPage(1);
+  }, [pageSize]);
+  useEffect(() => {
+    if (page > slice.totalPages) setPage(slice.totalPages);
+  }, [page, slice.totalPages]);
+  // Keyed on the ids rather than the filtered array, which is rebuilt every
+  // render: depending on that identity would re-arm this effect forever.
+  useEffect(() => {
+    setSelectedIds((current) => {
+      const pruned = pruneSelection(current, matchingRole.map((user) => user.id));
+      return pruned.length === current.length ? current : pruned;
+    });
+  }, [listIds]);
+
+  const startBulkRemoval = () => {
+    if (!selectedIds.length) return;
+    const accounts = selectedIds.length === 1 ? "this account" : `these ${selectedIds.length} accounts`;
+    if (!window.confirm(`Remove ${accounts}? Their entitlements, attempts, payments, supervisions, and notifications are deleted.`)) return;
+    removeUsers.mutate({ userIds: selectedIds });
+  };
 
   return (
     <div className="space-y-7">
@@ -333,57 +423,191 @@ function UsersTab() {
       </Card>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between">
+        <CardHeader className="flex-row items-center justify-between gap-3">
           <CardTitle className="text-white">{role === "instructor" ? "Instructors" : "Students"}</CardTitle>
-          <Badge className="bg-[#102b36] text-[#00ff88]">{visible.length} account{visible.length === 1 ? "" : "s"}</Badge>
+          <div className="relative w-full max-w-xs">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={`Search ${roleLabel} by name or email`}
+              aria-label={`Search ${roleLabel} by name or email`}
+              className="border-white/10 bg-[#0c0524] pl-9 text-white"
+            />
+          </div>
+          <Badge className="shrink-0 bg-[#102b36] text-[#00ff88]">
+            {visible.length === matchingRole.length
+              ? `${matchingRole.length} account${matchingRole.length === 1 ? "" : "s"}`
+              : `${visible.length} of ${matchingRole.length} accounts`}
+          </Badge>
         </CardHeader>
         <CardContent>
           {usersQuery.isLoading ? (
             <div className="h-24 animate-pulse rounded-xl bg-[#18093c]" />
-          ) : visible.length ? (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-white/45">
-                    <th className="pb-3 pr-4 font-semibold">Name</th>
-                    <th className="pb-3 pr-4 font-semibold">Email</th>
-                    <th className="pb-3 pr-4 font-semibold">Created</th>
-                    <th className="pb-3 pr-4 font-semibold">Products</th>
-                    <th className="pb-3 pr-4 font-semibold">Attempts</th>
-                    <th className="pb-3 pr-4 font-semibold">Last sign in</th>
-                    <th className="pb-3 font-semibold" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((user) => (
-                    <tr key={user.id} className="border-b border-white/5">
-                      <td className="py-3 pr-4 text-white">{user.name ?? "—"}</td>
-                      <td className="py-3 pr-4 text-[#c4b5fd]">{user.email}</td>
-                      <td className="py-3 pr-4 text-white/55">{shortDate(user.createdAt)}</td>
-                      <td className="py-3 pr-4 text-white/55">{user.entitlementCount}</td>
-                      <td className="py-3 pr-4 text-white/55">{user.attemptCount}</td>
-                      <td className="py-3 pr-4 text-white/55">{shortDate(user.lastSignedIn)}</td>
-                      <td className="py-3 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]"
-                          disabled={removeUser.isPending}
-                          onClick={() => {
-                            if (!window.confirm(`Remove ${user.email}? Their entitlements, attempts, and notifications are deleted.`)) return;
-                            removeUser.mutate({ userId: user.id });
+          ) : matchingRole.length ? (
+            <>
+              {selectedIds.length ? (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#00e5ff]/30 bg-[#00e5ff]/5 px-4 py-3">
+                  <span className="text-sm font-semibold text-white">
+                    {selectedIds.length} selected
+                    <span className="ml-2 font-normal text-white/55">Selections carry across pages.</span>
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 border-white/20 px-3 text-[11px] text-white"
+                      disabled={isDeleting}
+                      onClick={() => setSelectedIds([])}
+                    >
+                      Clear selection
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-8 border-[#ff8278] bg-[#ff8278]/15 px-3 text-[11px] text-[#ff8278] hover:bg-[#ff8278]/25"
+                      disabled={isDeleting}
+                      onClick={startBulkRemoval}
+                    >
+                      <Trash2 className="mr-1 h-3 w-3" />
+                      Remove {selectedIds.length}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              {visible.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-white/45">
+                        <th className="w-10 pb-3 pr-2 font-semibold">
+                          <Checkbox
+                            checked={allOnPageSelected ? true : someOnPageSelected ? "indeterminate" : false}
+                            disabled={!pageIds.length || isDeleting}
+                            onCheckedChange={(checked) => setSelectedIds((current) => selectPage(current, pageIds, checked === true))}
+                            aria-label="Select all accounts on this page"
+                          />
+                        </th>
+                        <th className="pb-3 pr-4 font-semibold">Name</th>
+                        <th className="pb-3 pr-4 font-semibold">Email</th>
+                        <th className="pb-3 pr-4 font-semibold">Created</th>
+                        <th className="pb-3 pr-4 font-semibold">Products</th>
+                        <th className="pb-3 pr-4 font-semibold">Attempts</th>
+                        <th className="pb-3 pr-4 font-semibold">Last sign in</th>
+                        <th className="pb-3 font-semibold" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {slice.items.map((user) => {
+                        const blocker = accountRemovalBlocker(adminId, user);
+                        const rowSelected = selectedIds.includes(user.id);
+                        return (
+                          <tr key={user.id} className={`border-b border-white/5 ${rowSelected ? "bg-[#00e5ff]/5" : ""}`}>
+                            <td className="py-3 pr-2">
+                              <Checkbox
+                                checked={rowSelected}
+                                disabled={Boolean(blocker) || isDeleting}
+                                onCheckedChange={() => setSelectedIds((current) => toggleSelection(current, user.id))}
+                                aria-label={`Select ${user.email ?? user.name ?? user.id}`}
+                              />
+                            </td>
+                            <td className="py-3 pr-4 text-white">{user.name ?? "—"}</td>
+                            <td className="py-3 pr-4 text-[#c4b5fd]">{user.email}</td>
+                            <td className="py-3 pr-4 text-white/55">{shortDate(user.createdAt)}</td>
+                            <td className="py-3 pr-4 text-white/55">{user.entitlementCount}</td>
+                            <td className="py-3 pr-4 text-white/55">{user.attemptCount}</td>
+                            <td className="py-3 pr-4 text-white/55">{shortDate(user.lastSignedIn)}</td>
+                            <td className="py-3 text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 border-[#ff8278]/50 px-2 text-[11px] text-[#ff8278]"
+                                disabled={isDeleting || Boolean(blocker)}
+                                title={blocker ?? undefined}
+                                onClick={() => {
+                                  if (!window.confirm(`Remove ${user.email}? Their entitlements, attempts, payments, supervisions, and notifications are deleted.`)) return;
+                                  removeUser.mutate({ userId: user.id });
+                                }}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" /> Remove
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-white/45">No {roleLabel} match "{search.trim()}".</p>
+              )}
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-4">
+                <p className="text-xs text-white/55">
+                  {slice.totalItems
+                    ? `Showing ${slice.startIndex}–${slice.endIndex} of ${slice.totalItems}`
+                    : `No ${roleLabel} to show`}
+                </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/55">Rows per page</span>
+                    <Select value={String(pageSize)} onValueChange={(value) => setPageSize(Number(value))}>
+                      <SelectTrigger size="sm" className="h-8 w-[74px] border-white/10 bg-[#0c0524] text-white" aria-label="Rows per page">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAGE_SIZE_OPTIONS.map((option) => (
+                          <SelectItem key={option} value={String(option)}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Pagination className="mx-0 justify-end">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          className="text-white hover:text-white"
+                          aria-disabled={slice.page <= 1}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            if (slice.page > 1) setPage(slice.page - 1);
                           }}
-                        >
-                          <Trash2 className="mr-1 h-3 w-3" /> Remove
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        />
+                      </PaginationItem>
+                      {pageNumbers.map((entry, index) =>
+                        entry === "gap" ? (
+                          <PaginationItem key={`gap-${index}`}>
+                            <PaginationEllipsis className="text-white/45" />
+                          </PaginationItem>
+                        ) : (
+                          <PaginationItem key={entry}>
+                            <PaginationLink
+                              isActive={entry === slice.page}
+                              className="border-white/10 text-white"
+                              onClick={() => setPage(entry)}
+                            >
+                              {entry}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ),
+                      )}
+                      <PaginationItem>
+                        <PaginationNext
+                          className="text-white hover:text-white"
+                          aria-disabled={slice.page >= slice.totalPages}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            if (slice.page < slice.totalPages) setPage(slice.page + 1);
+                          }}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            </>
           ) : (
-            <p className="py-8 text-center text-sm text-white/45">No {role}s yet.</p>
+            <p className="py-8 text-center text-sm text-white/45">No {roleLabel} yet.</p>
           )}
         </CardContent>
       </Card>
@@ -610,6 +834,7 @@ function EntitlementsTab() {
   const productsQuery = trpc.catalogue.products.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
   const [studentId, setStudentId] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
   const [productId, setProductId] = useState("");
   const [accessDays, setAccessDays] = useState("");
   const students = (usersQuery.data ?? []).filter((user) => user.role === "user");
@@ -635,6 +860,15 @@ function EntitlementsTab() {
   });
   const selected = students.find((student) => String(student.id) === studentId);
   const rows = learnerEntitlementsQuery.data ?? [];
+  const studentTerm = studentSearch.trim().toLowerCase();
+  const matchingStudents = studentTerm
+    ? students.filter((student) => `${student.name ?? ""} ${student.email ?? ""}`.toLowerCase().includes(studentTerm))
+    : students;
+  // A search narrows the options but must never orphan the current pick, or the
+  // select would stop showing who is already selected.
+  const studentOptions = selected && !matchingStudents.some((student) => student.id === selected.id)
+    ? [selected, ...matchingStudents]
+    : matchingStudents;
 
   return (
     <div className="space-y-7">
@@ -646,6 +880,17 @@ function EntitlementsTab() {
           </p>
         </CardHeader>
         <CardContent>
+          <div className="relative mb-3">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <Input
+              value={studentSearch}
+              onChange={(event) => setStudentSearch(event.target.value)}
+              type="search"
+              placeholder="Search students by name or email…"
+              aria-label="Search students by name or email"
+              className="border-white/10 bg-[#0c0524] pl-9 text-white"
+            />
+          </div>
           <div className="grid gap-3 md:grid-cols-[1.2fr_1.4fr_120px_auto]">
             <select
               value={studentId}
@@ -653,8 +898,14 @@ function EntitlementsTab() {
               className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Select student"
             >
-              <option value="">Select student…</option>
-              {students.map((student) => (
+              <option value="">
+                {studentOptions.length
+                  ? `Select student… (${studentOptions.length} ${studentOptions.length === 1 ? "match" : "matches"})`
+                  : studentTerm
+                    ? "No matching students"
+                    : "Select student…"}
+              </option>
+              {studentOptions.map((student) => (
                 <option key={student.id} value={student.id}>{student.name ?? student.email} · {student.email}</option>
               ))}
             </select>
