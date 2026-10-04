@@ -288,6 +288,15 @@ describe("sanitizeAuthoredHtml", () => {
     }
   });
 
+  // A learner's answer pad emits the short tag names, because that is what a browser's own bold,
+  // italic, underline and strikethrough commands produce. Filtering them out here would discard the
+  // emphasis the learner applied the moment they saved.
+  it("keeps the short tag names a browser's formatting commands emit", () => {
+    for (const tag of ["b", "i", "u", "strike"]) {
+      expect(sanitizeAuthoredHtml(`<${tag}>x</${tag}>`)).toContain(`<${tag}`);
+    }
+  });
+
   it("keeps a safe link and drops an unsafe one", () => {
     expect(sanitizeAuthoredHtml('<a href="https://example.com">x</a>')).toContain("https://example.com");
     expect(sanitizeAuthoredHtml('<a href="javascript:alert(1)">x</a>')).not.toContain("javascript");

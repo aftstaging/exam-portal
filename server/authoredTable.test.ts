@@ -152,6 +152,14 @@ describe("authored tables", () => {
     expect(parseAuthoredTable(serializeAuthoredTable(table))).toEqual(table);
   });
 
+  it("round-trips every emphasis the studio can apply to a cell", () => {
+    const table: AuthoredTable = {
+      headerRow: false,
+      rows: [["**bold** *italic* __underline__ ~~struck~~"]],
+    };
+    expect(parseAuthoredTable(serializeAuthoredTable(table))).toEqual(table);
+  });
+
   it("round-trips markup that already exists in a saved exam", () => {
     const markup = "<table>\n<thead>\n<tr><th>Q</th><th>M</th></tr>\n</thead>\n<tbody>\n<tr><td>One</td><td>2</td></tr>\n</tbody>\n</table>";
     const table = parseAuthoredTable(markup)!;

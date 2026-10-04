@@ -1,0 +1,18 @@
+diff a/shared/richText.ts b/shared/richText.ts	(rejected hunks)
+@@ -751,4 +751,16 @@ export function hasRichMarkup(source: string | null | undefined): boolean {
+   return /<(table|ul|ol|strong|b|em|i|u|p|div|h[1-6]|br|hr|span|s)\b/i.test(source ?? "");
+ }
+ 
++/**
++ * The number of words a learner actually wrote.
++ *
++ * Counted from the visible text rather than the stored markup, so emphasis tags and table cells are
++ * not counted as words. This is the number shown against an exam answer and stored beside it, so it
++ * has to mean the same thing everywhere it is used.
++ */
++export function richTextWordCount(source: string | null | undefined): number {
++  const text = richTextToPlainText(source);
++  return text ? text.split(/\s+/).length : 0;
++}
++
+ export { escapeHtml, escapeForRegex, ENTITIES, VOID_TAGS, ALLOWED_TAGS };

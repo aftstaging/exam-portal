@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { deflateSync } from "node:zlib";
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, StandardFonts, decodePDFRawStream } from "pdf-lib";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { generateBrandedPrintablePdf, parseRichHtml } from "./pdf";
+import { generateBrandedPrintablePdf, inlinePrintablePayload, parseRichHtml } from "./pdf";
 
 /**
  * Pulls the drawn text back out of a generated PDF.
@@ -309,6 +309,17 @@ describe("branded printable exam PDF", () => {
     expect(bytes.slice(0, 5).toString()).toBe("%PDF-");
   });
 
+  it("recognizes supported image and PDF attachment payloads", async () => {
+    const source = await PDFDocument.create();
+    source.addPage();
+    const pdfBase64 = Buffer.from(await source.save()).toString("base64");
+    const pngBase64 = buildPng(2, 2);
+
+    expect(inlinePrintablePayload(`data:application/pdf;base64,${pdfBase64}`)).toEqual({ base64: pdfBase64, mimeType: "application/pdf" });
+    expect(inlinePrintablePayload(pngBase64)).toEqual({ base64: pngBase64, mimeType: "image/png" });
+    expect(inlinePrintablePayload("data:application/octet-stream;base64,SGVsbG8=")).toBeNull();
+  });
+
   it("interprets the full exam document including intro, emails, and attachments", async () => {
     const bytes = await generateBrandedPrintablePdf(
       { title: "Cartn Mock Exam 4", intro: "Imported case-study mock designed for the Management Case Study.", totalDurationSeconds: 10800 },
@@ -591,15 +602,14 @@ describe("branded printable exam PDF", () => {
     );
     const text = await extractText(bytes);
     expect(text).toContain("Instruction sheet: task-one-sheet.png");
-    // The sheet is read with the instructions, so it has to sit between them and the task. Holding
-    // it back with the other attachments left it under the email at the foot of the section, which
-    // a candidate reading top to bottom reaches only after trying the task.
+    // The instruction sheet stays with the task instructions; the separate task-question prompt is
+    // no longer printed as a second brief page.
     expect(text.indexOf("Read the instruction sheet")).toBeLessThan(text.indexOf("Instruction sheet: task-one-sheet.png"));
-    expect(text.indexOf("Instruction sheet: task-one-sheet.png")).toBeLessThan(text.indexOf("Evaluate the contribution"));
+    expect(text).not.toContain("Evaluate the contribution of each region.");
     expect((await drawnImageWidths(bytes)).length).toBeGreaterThan(1);
   });
 
-  it("lists an instruction sheet supplied as a PDF, which cannot be embedded in the sheet", async () => {
+  it("lists a PDF instruction sheet and omits the separate task question", async () => {
     const bytes = await generateBrandedPrintablePdf(
       { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
       [
@@ -614,10 +624,10 @@ describe("branded printable exam PDF", () => {
       ],
     );
     const text = await extractText(bytes);
-    // A title-only reference has no file to reproduce, so it is named in place rather than being
-    // silently dropped, which is what would happen if only the embeddable path were kept.
+    // A title-only reference has no file to reproduce, so it is named in place. The separately
+    // stored task-question prompt is no longer part of the printable brief.
     expect(text).toContain("Instruction sheet: task-one-sheet.pdf");
-    expect(text.indexOf("Instruction sheet: task-one-sheet.pdf")).toBeLessThan(text.indexOf("Evaluate the contribution"));
+    expect(text).not.toContain("Evaluate the contribution of each region.");
   });
 
   it("reproduces a PDF instruction sheet on the page instead of only naming it", async () => {
@@ -645,6 +655,30 @@ describe("branded printable exam PDF", () => {
     expect(text).toContain("Instruction sheet: region-data.pdf");
     // The whole point of the attachment: its own words are on the sheet, not just its name.
     expect(text).toContain("Contribution by region");
+  });
+
+  it("embeds every page of an attached reference PDF in the printable exam", async () => {
+    const source = await PDFDocument.create();
+    const font = await source.embedFont(StandardFonts.Helvetica);
+    source.addPage([595, 842]).drawText("Route diagram · page one", { x: 56, y: 760, size: 14, font });
+    source.addPage([595, 842]).drawText("Reference schedule · page two", { x: 56, y: 760, size: 14, font });
+    const base64 = Buffer.from(await source.save()).toString("base64");
+
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [{
+        sectionNumber: 1,
+        title: "Delivery economics",
+        durationSeconds: 2700,
+        attachments: [{ kind: "reference", title: "Reference material: route model.pdf", base64, mimeType: "application/pdf" }],
+      }],
+    );
+    const document = await PDFDocument.load(bytes);
+    const text = await extractText(bytes);
+    expect(document.getPageCount()).toBeGreaterThan(2);
+    expect(text).toContain("Reference material: route model.pdf");
+    expect(text).toContain("Route diagram · page one");
+    expect(text).toContain("Reference schedule · page two");
   });
 
   it("falls back to the caption when PDF attachment bytes cannot be parsed", async () => {

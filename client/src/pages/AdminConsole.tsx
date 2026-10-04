@@ -1007,11 +1007,11 @@ function EntitlementsTab() {
 function ContentTab() {
   const { user } = useAuth();
   const canPublish = user?.role === "admin";
-  const [section, setSection] = useState<"Products" | "Exams" | "Sections" | "Question bank" | "Resources" | "Catalogue">("Products");
+  const [section, setSection] = useState<"Products" | "Exams" | "Question bank" | "Resources" | "Catalogue">("Products");
   const productsQuery = trpc.admin.products.useQuery(undefined, { retry: false });
   const contentQuery = trpc.admin.contentOverview.useQuery(undefined, { retry: false });
-  const contentKind = section === "Exams" || section === "Catalogue" ? "mock_exams" : section === "Sections" ? "sections" : section === "Question bank" ? "objective_questions" : "resources";
-  const contentItemsQuery = trpc.admin.contentItems.useQuery({ kind: contentKind }, { retry: false, enabled: section === "Exams" || section === "Catalogue" || section === "Sections" || section === "Question bank" || section === "Resources" });
+  const contentKind = section === "Exams" || section === "Catalogue" ? "mock_exams" : section === "Question bank" ? "objective_questions" : "resources";
+  const contentItemsQuery = trpc.admin.contentItems.useQuery({ kind: contentKind }, { retry: false, enabled: section === "Exams" || section === "Catalogue" || section === "Question bank" || section === "Resources" });
   const utils = trpc.useUtils();
   const contentStatus = trpc.admin.updateContentStatus.useMutation({
     onSuccess: () => { toast.success("Content status updated"); utils.admin.contentItems.invalidate(); utils.admin.contentOverview.invalidate(); },
@@ -1021,14 +1021,19 @@ function ContentTab() {
     onSuccess: () => { toast.success("Product status updated"); utils.admin.products.invalidate(); utils.admin.overview.invalidate(); },
     onError: (error) => toast.error(error.message),
   });
-  const sectionTitle = trpc.admin.updateSectionTitle.useMutation({
-    onSuccess: () => { toast.success("Section title updated"); utils.admin.contentItems.invalidate(); },
-    onError: (error) => toast.error(error.message),
-  });
   const generatePdf = trpc.admin.generatePrintablePdf.useMutation({
     onError: (error) => toast.error(error.message),
   });
   const items = contentItemsQuery.data ?? [];
+  const [questionPage, setQuestionPage] = useState(1);
+  const [questionPageSize, setQuestionPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
+  const questionPageSlice = paginate<(typeof items)[number]>(items, questionPage, questionPageSize);
+  useEffect(() => {
+    setQuestionPage(1);
+  }, [section, questionPageSize]);
+  useEffect(() => {
+    if (questionPage !== questionPageSlice.page) setQuestionPage(questionPageSlice.page);
+  }, [questionPage, questionPageSlice.page]);
 
   const [previewId, setPreviewId] = useState<number | null>(null);
   const previewQuery = trpc.admin.examPreview.useQuery({ mockExamId: previewId ?? 0 }, { enabled: previewId !== null });
@@ -1048,7 +1053,7 @@ function ContentTab() {
     onError: (error) => toast.error(error.message),
   });
 
-  const nav = ["Products", "Exams", "Sections", "Question bank", "Resources", "Catalogue"];
+  const nav = ["Products", "Exams", "Question bank", "Resources", "Catalogue"] as const;
   const EXAMS_PER_PAGE = 10;
   const [examPage, setExamPage] = useState(0);
 
@@ -1151,27 +1156,31 @@ function ContentTab() {
         </>
       )}
 
-      {section === "Sections" && (
-        <Card className="mt-6">
-          <CardContent className="pt-6">
-            {items.length ? items.map((item) => (
-              <SectionRow key={item.id} item={item} onSave={(title) => sectionTitle.mutate({ sectionId: item.id, title })} />
-            )) : <p className="py-8 text-center text-sm text-white/45">No case-study sections yet.</p>}
-          </CardContent>
-        </Card>
-      )}
-
       {section === "Question bank" && (
         <>
           <QuestionForm refresh={() => { utils.admin.contentItems.invalidate(); contentQuery.refetch(); }} examItems={[]} />
           <Card className="mt-6">
             <CardContent className="pt-6">
-              {items.length ? items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
-                  <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs text-white/45">{item.detail}</div></div>
-                  <StatusAction status={item.status} disabled={!canPublish} onPublish={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "archived" })} />
-                </div>
-              )) : <p className="py-8 text-center text-sm text-white/45">No questions yet.</p>}
+              {items.length ? (
+                <>
+                  {questionPageSlice.items.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
+                      <div><div className="font-semibold text-white">{item.title}</div><div className="text-xs text-white/45">{item.detail}</div></div>
+                      <StatusAction status={item.status} disabled={!canPublish} onPublish={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "published" })} onArchive={() => contentStatus.mutate({ kind: "objective_questions", id: item.id, status: "archived" })} />
+                    </div>
+                  ))}
+                  <ContentPagination
+                    page={questionPageSlice.page}
+                    pageSize={questionPageSize}
+                    totalItems={questionPageSlice.totalItems}
+                    totalPages={questionPageSlice.totalPages}
+                    startIndex={questionPageSlice.startIndex}
+                    endIndex={questionPageSlice.endIndex}
+                    onPageChange={setQuestionPage}
+                    onPageSizeChange={setQuestionPageSize}
+                  />
+                </>
+              ) : <p className="py-8 text-center text-sm text-white/45">No questions yet.</p>}
             </CardContent>
           </Card>
         </>
@@ -1196,6 +1205,62 @@ function ContentTab() {
   );
 }
 
+function ContentPagination({ page, pageSize, totalItems, totalPages, startIndex, endIndex, onPageChange, onPageSizeChange }: {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  startIndex: number;
+  endIndex: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const pageNumbers = pageWindow(page, totalPages);
+  return (
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-4">
+      <p className="text-xs text-white/55">Showing {startIndex}–{endIndex} of {totalItems}</p>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white/55">Rows per page</span>
+          <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
+            <SelectTrigger size="sm" className="h-8 w-[74px] border-white/10 bg-[#0c0524] text-white" aria-label="Rows per page">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((option) => <SelectItem key={option} value={String(option)}>{option}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <Pagination className="mx-0 justify-end">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                className="text-white hover:text-white"
+                aria-disabled={page <= 1}
+                onClick={(event) => { event.preventDefault(); if (page > 1) onPageChange(page - 1); }}
+              />
+            </PaginationItem>
+            {pageNumbers.map((entry, index) => entry === "gap" ? (
+              <PaginationItem key={`gap-${index}`}><PaginationEllipsis className="text-white/45" /></PaginationItem>
+            ) : (
+              <PaginationItem key={entry}>
+                <PaginationLink isActive={entry === page} className="border-white/10 text-white" onClick={() => onPageChange(entry)}>{entry}</PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                className="text-white hover:text-white"
+                aria-disabled={page >= totalPages}
+                onClick={(event) => { event.preventDefault(); if (page < totalPages) onPageChange(page + 1); }}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      </div>
+    </div>
+  );
+}
+
 function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { productId: number; status: "draft" | "published" | "archived" }) => void }; canPublish: boolean }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<"case_study" | "objective_test" | "marking" | "resource">("objective_test");
@@ -1214,6 +1279,15 @@ function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { p
   // products are passed via props from the parent query result; fetch fresh here for simplicity
   const productsQuery = trpc.admin.products.useQuery(undefined, { retry: false });
   const productsRows = productsQuery.data ?? [];
+  const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
+  const productsPageSlice = paginate(productsRows, productPage, productPageSize);
+  useEffect(() => {
+    setProductPage(1);
+  }, [productPageSize]);
+  useEffect(() => {
+    if (productPage !== productsPageSlice.page) setProductPage(productsPageSlice.page);
+  }, [productPage, productsPageSlice.page]);
 
   return (
     <div className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
@@ -1252,7 +1326,7 @@ function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { p
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {productsRows.map(({ product }) => (
+            {productsPageSlice.items.map(({ product }) => (
               <div key={product.id} className="rounded-xl border border-white/10 bg-[#18093c]/40 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="min-w-0 truncate text-sm font-semibold text-white">{product.title}</span>
@@ -1277,7 +1351,20 @@ function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { p
                 {editingId === product.id && <ProductEditor product={product} onSaved={() => { setEditingId(null); productsQuery.refetch(); }} />}
               </div>
             ))}
+            {!productsRows.length && <p className="py-8 text-center text-sm text-white/45">No products yet.</p>}
           </div>
+          {productsRows.length > 0 && (
+            <ContentPagination
+              page={productsPageSlice.page}
+              pageSize={productPageSize}
+              totalItems={productsPageSlice.totalItems}
+              totalPages={productsPageSlice.totalPages}
+              startIndex={productsPageSlice.startIndex}
+              endIndex={productsPageSlice.endIndex}
+              onPageChange={setProductPage}
+              onPageSizeChange={setProductPageSize}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
@@ -1352,21 +1439,6 @@ function ProductEditor({ product, onSaved }: { product: { id: number; title: str
       </div>
       <Button className="aft-button w-full" disabled={updateProduct.isPending || !title.trim()} onClick={() => updateProduct.mutate({ productId: product.id, title, category, description, featuredImageUrl: imageUrl || undefined, priceCents: Math.round(Number(price || 0) * 100), accessDays: Number(accessDays) || 30 })}>
         Save product
-      </Button>
-    </div>
-  );
-}
-
-function SectionRow({ item, onSave }: { item: { id: number; title: string; detail: string; status: string }; onSave: (title: string) => void }) {
-  const [value, setValue] = useState(item.title);
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-white/5 py-3 last:border-0">
-      <div className="min-w-0 flex-1">
-        <div className="text-xs text-white/45">{item.detail}</div>
-        <Input value={value} onChange={(event) => setValue(event.target.value)} className="mt-1 h-9 border-white/10 bg-[#0c0524] text-white" aria-label={`Title for ${item.detail}`} />
-      </div>
-      <Button size="sm" variant="outline" className="h-8 border-[#00ff88] px-3 text-xs text-[#00ff88]" disabled={!value.trim() || value.trim() === item.title} onClick={() => onSave(value.trim())}>
-        Save title
       </Button>
     </div>
   );
@@ -2003,7 +2075,6 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                       <div className="flex items-center justify-between gap-3"><span className="font-bold text-white">{section.title}</span><Badge className="bg-[#102b36] text-[#00ff88]">{section.durationSeconds / 60} min</Badge></div>
                       {section.introduction && <StructuredText className="mt-3 text-sm leading-6 text-[#c4b5fd]" text={`**Introduction:** ${section.introduction ?? ""}`} />}
                       {section.scenario && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Extra notes:** ${section.scenario ?? ""}`} />}
-                      {section.question && <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={`**Question:** ${section.question ?? ""}`} />}
                       {section.email && (section.email.from || section.email.to || section.email.subject || section.email.html) && (
                         <div className="mt-3 overflow-hidden rounded-xl border border-white/10">
                           <div className="bg-[#102b36] px-4 py-2 text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Email attachment · Task {section.sectionNumber}</div>

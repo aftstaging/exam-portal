@@ -1,0 +1,29 @@
+diff a/drizzle/schema.ts b/drizzle/schema.ts	(rejected hunks)
+@@ -55,6 +55,21 @@ export const entitlements = mysqlTable("entitlements", {
+   createdAt: timestamp("createdAt").defaultNow().notNull(),
+ });
+ 
++// Links an enrolled/subscribed learner to the instructor who supervises them.
++// A learner has at most one active row at a time; reassigning ends the previous
++// row so the full supervision history is preserved for auditing.
++export const supervisions = mysqlTable("supervisions", {
++  id: int("id").autoincrement().primaryKey(),
++  studentId: int("studentId").notNull(),
++  instructorId: int("instructorId").notNull(),
++  status: mysqlEnum("status", ["active", "ended"]).default("active").notNull(),
++  notes: text("notes"),
++  assignedBy: int("assignedBy"),
++  createdAt: timestamp("createdAt").defaultNow().notNull(),
++  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
++  endedAt: timestamp("endedAt"),
++});
++
+ export const resources = mysqlTable("resources", {
+   id: int("id").autoincrement().primaryKey(),
+   productId: int("productId"),
+@@ -241,3 +256,5 @@ export type Attempt = typeof attempts.$inferSelect;
+ export type Answer = typeof answers.$inferSelect;
+ export type Coupon = typeof coupons.$inferSelect;
+ export type CouponRedemption = typeof couponRedemptions.$inferSelect;
++export type Supervision = typeof supervisions.$inferSelect;
++export type InsertSupervision = typeof supervisions.$inferInsert;

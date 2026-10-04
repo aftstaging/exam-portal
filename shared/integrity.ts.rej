@@ -1,0 +1,20 @@
+diff a/shared/integrity.ts b/shared/integrity.ts	(rejected hunks)
+@@ -22,3 +22,18 @@ export function hasActiveEntitlement(
+ export function isAdminRole(role: string | undefined): boolean {
+   return role === "admin";
+ }
++
++/**
++ * Explains why an account may not be removed, or returns null when it may be.
++ * Shared so the single-row and bulk removal paths agree on the rules and the
++ * reason can be shown to the administrator.
++ */
++export function accountRemovalBlocker(
++  adminUserId: number,
++  target: { id: number; role: string | null | undefined } | null | undefined,
++): string | null {
++  if (!target) return "Account not found";
++  if (target.id === adminUserId) return "You cannot remove your own account";
++  if (isAdminRole(target.role ?? undefined)) return "Administrator accounts cannot be removed through this workflow";
++  return null;
++}

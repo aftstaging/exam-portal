@@ -1,0 +1,10 @@
+diff a/client/src/components/TableEditor.tsx b/client/src/components/TableEditor.tsx	(rejected hunks)
+@@ -165,7 +165,7 @@ export function TableEditor({ table, onChange, onRemove, onCellFocus }: {
+ 
+       <p className="border-t border-white/10 px-2 py-1 text-[10px] leading-4 text-white/40">
+         Click a box and type. The arrows beside a row move it, the bin beside a row or a column
+-        removes it, and **bold** or *italic* works inside a box.
++        removes it, and **bold**, *italic*, __underline__ or ~~strikethrough~~ works inside a box.
+       </p>
+     </div>
+   );

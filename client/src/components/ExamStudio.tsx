@@ -652,9 +652,6 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
         <label className="text-xs font-semibold text-[#c4b5fd]">Extra notes (optional)</label>
         <Input value={section.extraNotes} onChange={(event) => set({ extraNotes: event.target.value })} placeholder="Advance information / notes specific to this task…" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label={`Extra notes ${index + 1}`} />
       </div>
-      <div>
-        <FormattingTextarea label="Task / question" value={section.question} onChange={(value) => set({ question: value })} placeholder="The task candidates must answer…" className="min-h-16" />
-      </div>
       <div className="grid gap-3 lg:grid-cols-2">
       <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0c0524]/60">
         <div className="flex items-center justify-between border-b border-white/10 bg-[#102b36]/40 px-3 py-2">
@@ -761,7 +758,8 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
               <CardHeader className="border-b border-white/10 px-8 py-7">
                 <Badge className="w-fit bg-[#102b36] text-[#00e5ff]">{examType === "case_study" ? "Case study" : "Objective test"} · draft</Badge>
                 <CardTitle className="mt-3 text-3xl text-white">{title || "Untitled exam"}</CardTitle>
-                <p className="max-w-2xl text-[#c4b5fd]">This is how the exam presents to learners once published. {intro ? intro : "No introduction has been configured yet."}</p>
+                <p className="max-w-2xl text-[#c4b5fd]">This is how the exam presents to learners once published.</p>
+                {intro ? <StructuredText className="mt-3 max-w-3xl text-base leading-7 text-[#c4b5fd]" text={intro} /> : <p className="mt-3 max-w-2xl text-sm text-white/45">No introduction has been configured yet.</p>}
               </CardHeader>
               <CardContent className="px-8 py-7">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -788,19 +786,13 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                             <div><p className="eyebrow">Task {index + 1} of {sortedSections.length}</p><h1 className="mt-2 text-2xl font-bold text-white">{section.title || `Task ${index + 1}`}</h1></div>
                             <Badge className="shrink-0 bg-[#102b36] text-[#00ff88]">{section.duration || "45"} minutes</Badge>
                           </div>
-                          {(section.introduction || section.question || section.extraNotes) && (
-                            <StructuredText className="mt-5 text-base leading-8 text-[#c4b5fd]" text={section.introduction || section.question || section.extraNotes} />
+                          {section.introduction && (
+                            <StructuredText className="mt-5 text-base leading-8 text-[#c4b5fd]" text={section.introduction} />
                           )}
-                          {section.extraNotes && (section.introduction || section.question) && (
+                          {section.extraNotes && (
                             <div className="mt-4 rounded-xl border border-[#00e5ff]/30 bg-[#18093c] p-5">
                               <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00e5ff]">Extra notes</div>
                               <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.extraNotes} />
-                            </div>
-                          )}
-                          {section.question && section.extraNotes && (
-                            <div className="mt-4 rounded-xl border border-[#00ff88]/40 bg-[#102b36] p-5">
-                              <div className="text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">Task</div>
-                              <StructuredText className="mt-2 text-sm leading-6 text-[#c4b5fd]" text={section.question} />
                             </div>
                           )}
                           {(section.emailFrom || section.emailTo || section.emailSubject || section.emailText) && (
@@ -1414,7 +1406,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
               <section>
                 <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> Sections / tasks & timing</div>
                 <p className="mb-3 text-xs leading-5 text-white/50">
-                  Add each case-study task in order. Each section has its own title, time limit, instructions, optional extra notes, task wording, email attachment (composed manually or attached as an image / PDF) and reference material (like the example Cartn Mock Exams with four 45-minute tasks). Pre-seen and formulae + tables stay exam-wide below.
+                  Add each case-study task in order. Each section has its own title, time limit, formatted introduction/instructions, optional extra notes, email attachment (composed manually or attached as an image / PDF) and reference material. Pre-seen and formulae + tables stay exam-wide below.
                 </p>
                 <div className="space-y-4">
                   {sections.map((section, index) => (

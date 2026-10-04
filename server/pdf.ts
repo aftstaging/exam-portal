@@ -1239,6 +1239,16 @@ export function isPdfBytes(bytes: Uint8Array): boolean {
   return bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
 }
 
+/** Normalizes supported attachment data URLs/raw base64 for the printable-PDF writer. */
+export function inlinePrintablePayload(source: string): { base64: string; mimeType: string } | null {
+  const match = /^data:([^;,]+)?(?:;[^,]*)?,([\s\S]*)$/.exec(source);
+  const base64 = match ? match[2] ?? "" : source;
+  if (!base64) return null;
+  const header = Buffer.from(base64.slice(0, 16), "base64");
+  const mimeType = isPdfBytes(header) ? "application/pdf" : isPngBytes(header) ? "image/png" : isJpegBytes(header) ? "image/jpeg" : null;
+  return mimeType ? { base64, mimeType } : null;
+}
+
 /**
  * Prints a PDF attachment into the document as real pages and reports how many were added.
  *
@@ -1401,7 +1411,7 @@ async function drawAttachment(
 
 /**
  * Builds the printable exam PDF: an AFT-branded title block followed by one section per
- * task, with structured email panels, borderless tables and embedded attachment images.
+ * task, with structured email panels, borderless tables, embedded PDF pages and images.
  */
 export async function generateBrandedPrintablePdf(
   exam: PrintableExam,
@@ -1450,7 +1460,7 @@ export async function generateBrandedPrintablePdf(
     drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, META_SIZE, BODY_LEADING, BODY_LEADING * 0.5);
     drawFragment(canvas, fonts, section.introduction);
     // The instruction sheet is read with the instructions, so it prints before the extra notes
-    // and the task itself rather than being held back with the other attachments.
+    // rather than being held back with the other attachments.
     for (const title of section.introAttachmentTitles ?? []) {
       canvas.space(BODY_LEADING * 0.3);
       drawFragment(canvas, fonts, title, META_SIZE, BODY_LEADING, 0);
@@ -1460,10 +1470,6 @@ export async function generateBrandedPrintablePdf(
       canvas.space(BODY_LEADING * 0.3);
     }
     drawFragment(canvas, fonts, section.scenario);
-    if (section.question) {
-      canvas.space(BODY_LEADING * 0.3);
-      drawFragment(canvas, fonts, section.question);
-    }
     if (section.email) {
       canvas.space(BODY_LEADING * 0.3);
       drawEmail(canvas, section.email, fonts);

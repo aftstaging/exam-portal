@@ -418,9 +418,9 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
       ...section,
       email,
       attachmentTitles: rest.titles,
-      attachments: rest.images,
+      attachments: rest.attachments,
       introAttachmentTitles: intro.titles,
-      introAttachments: intro.images,
+      introAttachments: intro.attachments,
     };
   }));
 
