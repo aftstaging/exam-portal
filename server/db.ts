@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
 import { storageGetBytes, storageGetSignedUrl, storagePut } from "./storage";
-import { generateBrandedPrintablePdf, isJpegBytes, isPngBytes } from "./pdf";
+import { generateBrandedPrintablePdf, isJpegBytes, isPdfBytes, isPngBytes } from "./pdf";
 import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { accountRemovalBlocker, hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
 import { richTextWordCount, sanitizeAuthoredHtml } from "@shared/richText";
@@ -316,25 +316,36 @@ export async function submitAttempt(input: { userId: number; attemptId: number; 
 type PrintableResource = { kind: string; title: string; fileKey: string | null; fileUrl: string | null };
 
 /**
- * Keys that name a document rather than a picture, so their bytes are never worth downloading.
+ * Keys that name a document the PDF writer cannot place, so their bytes are never worth
+ * downloading. A `.pdf` key is deliberately absent from this list: those pages are printed into the
+ * exam rather than named on it, so they are worth fetching.
  * Anything else is fetched and judged on its content: uploads land under generated keys that do
  * not always keep the original extension, and a stored content type is not always the real one.
  */
-const DOCUMENT_FILE = /\.(pdf|docx?|txt|xlsx?|pptx?|csv|rtf|odt|zip)$/i;
+const DOCUMENT_FILE = /\.(docx?|txt|xlsx?|pptx?|csv|rtf|odt|zip)$/i;
 
 /**
- * Loads an attachment as image bytes when the stored file really is a PNG or JPEG.
+ * Loads an attachment as PDF or image bytes when the stored file really is one.
+ *
+ * A PDF is loaded for the same reason a picture is: listing it by title left the sheet with a
+ * caption and nothing to read, which is the one thing an attached PDF is there for.
  *
  * Failures are not fatal: a resource that cannot be read, or that turns out to be a document the
  * PDF writer cannot place, is still listed by title.
  */
-async function loadPrintableImage(entry: PrintableResource): Promise<{ kind: string; title: string; base64?: string; mimeType?: string }> {
+async function loadPrintableResource(entry: PrintableResource): Promise<{ kind: string; title: string; base64?: string; mimeType?: string }> {
   const fallback = { kind: entry.kind, title: entry.title };
   if (!entry.fileKey || DOCUMENT_FILE.test(entry.fileKey)) return fallback;
   try {
     const { body, contentType } = await storageGetBytes(entry.fileKey);
     if (!body.length) return fallback;
-    const mimeType = isPngBytes(body) ? "image/png" : isJpegBytes(body) ? "image/jpeg" : contentType ?? undefined;
+    const mimeType = isPdfBytes(body)
+      ? "application/pdf"
+      : isPngBytes(body)
+        ? "image/png"
+        : isJpegBytes(body)
+          ? "image/jpeg"
+          : contentType ?? undefined;
     if (!mimeType) return fallback;
     return { ...fallback, base64: body.toString("base64"), mimeType };
   } catch {
@@ -343,15 +354,15 @@ async function loadPrintableImage(entry: PrintableResource): Promise<{ kind: str
 }
 
 /**
- * Turns an uploaded file's data URL into printable image bytes, or null when it is not a picture
- * the PDF writer can place — a PDF or Word attachment, for instance, stays a listed caption.
+ * Turns an uploaded file's data URL into printable bytes, or null when it is not something the PDF
+ * writer can place — a Word attachment, for instance, stays a listed caption.
  */
-function inlineImagePayload(base64: string): { base64: string; mimeType: string } | null {
+function inlineAttachmentPayload(base64: string): { base64: string; mimeType: string } | null {
   const match = /^data:([^;,]+)?(?:;[^,]*)?,([\s\S]*)$/.exec(base64);
   const payload = match ? match[2] ?? "" : base64;
   if (!payload) return null;
   const head = Buffer.from(payload.slice(0, 16), "base64");
-  const mimeType = isPngBytes(head) ? "image/png" : isJpegBytes(head) ? "image/jpeg" : null;
+  const mimeType = isPdfBytes(head) ? "application/pdf" : isPngBytes(head) ? "image/png" : isJpegBytes(head) ? "image/jpeg" : null;
   return mimeType ? { base64: payload, mimeType } : null;
 }
 
@@ -370,7 +381,7 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
     universalResources
       .filter((entry) => entry.title && entry.kind in attachmentRank)
       .sort((a, b) => (attachmentRank[a.kind] ?? 9) - (attachmentRank[b.kind] ?? 9))
-      .map((entry) => loadPrintableImage(entry)),
+      .map((entry) => loadPrintableResource(entry)),
   );
 
   // Per-task email / reference / instruction-sheet attachments for each case-study section.
@@ -387,12 +398,12 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
         .split(` · Task ${section.sectionNumber}`)
         .join("");
     // The instruction sheet prints with the task's instructions, so it is split out of the other
-    // per-task files: an image of the sheet is placed on the page, and a PDF of one is listed by
-    // caption, because a PDF page cannot be nested inside another PDF page.
+    // per-task files: whether it is a picture or a PDF, its own content is placed on the page, and
+    // only a file the writer cannot place at all is listed as a plain caption.
     const instructionRows = taskRows.filter((entry) => entry.kind === "instructions");
     const otherRows = taskRows.filter((entry) => entry !== metaRow && entry.kind !== "instructions");
     const printable = async (rows: typeof taskRows) => {
-      const loaded = await Promise.all(rows.map((entry) => loadPrintableImage(entry)));
+      const loaded = await Promise.all(rows.map((entry) => loadPrintableResource(entry)));
       return {
         // A printable image prints its own caption directly above it, so only the files that
         // cannot be placed on the page are listed as plain captions — otherwise every image is
@@ -1361,7 +1372,7 @@ export async function createExamBundle(input: ExamBundleInput) {
         ] as const) {
           if (!file?.base64) continue;
           const title = `${label}: ${file.fileName || "attachment"}`;
-          const payload = inlineImagePayload(file.base64);
+          const payload = inlineAttachmentPayload(file.base64);
           if (payload) attachments.push({ kind, title, base64: payload.base64, mimeType: payload.mimeType });
           else attachmentTitles.push(title);
         }
