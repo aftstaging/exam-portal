@@ -1347,7 +1347,6 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
                 <Input type="number" min="1" value={duration} onChange={(event) => setDuration(event.target.value)} placeholder="Minutes" className="border-white/10 bg-[#0c0524] pl-9 text-white" aria-label="Time (minutes)" />
               </div>
             </div>
-            <FormattingTextarea label="Exam introduction / instructions" value={intro} onChange={setIntro} placeholder="Exam introduction / instructions" className="mt-1 min-h-20" allowTable />
           </section>
 
           {/* Active module banner - switches when the exam type changes */}
