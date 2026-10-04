@@ -49,10 +49,12 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { withBasePath } from "@/lib/basePath";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import ExamStudio from "@/components/ExamStudio";
 import { StructuredText } from "@/components/StructuredText";
+import { DocumentEditor } from "@/components/DocumentEditor";
 import { calculateRubricScore, RUBRIC_CRITERIA } from "@shared/rubric";
 import { accountRemovalBlocker } from "@shared/integrity";
 import {
@@ -79,7 +81,7 @@ function useDebouncedValue<T>(value: T, delay = 250): T {
 function BrandMark() {
   return (
     <span className="inline-flex items-center" aria-label="Accountants for Tomorrow">
-      <img src="/assets/aft_logo_white.png" alt="Accountants for Tomorrow" className="h-10 w-auto object-contain" />
+      <img src={withBasePath("/assets/aft_logo_white.png")} alt="Accountants for Tomorrow" className="h-10 w-auto object-contain" />
     </span>
   );
 }
@@ -688,7 +690,7 @@ function SupervisionTab() {
             <select
               value={studentId}
               onChange={(event) => setStudentId(event.target.value)}
-              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Select learner"
             >
               <option value="">Select learner…</option>
@@ -699,7 +701,7 @@ function SupervisionTab() {
             <select
               value={instructorId}
               onChange={(event) => setInstructorId(event.target.value)}
-              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Select instructor"
             >
               <option value="">Select instructor…</option>
@@ -908,11 +910,11 @@ function EntitlementsTab() {
               className="border-white/10 bg-[#0c0524] pl-9 text-white"
             />
           </div>
-          <div className="grid gap-3 md:grid-cols-[1.2fr_1.4fr_120px_auto]">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(110px,120px)_auto]">
             <select
               value={studentId}
               onChange={(event) => setStudentId(event.target.value)}
-              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Select student"
             >
               <option value="">
@@ -929,7 +931,7 @@ function EntitlementsTab() {
             <select
               value={productId}
               onChange={(event) => setProductId(event.target.value)}
-              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Select product"
             >
               <option value="">Select product…</option>
@@ -944,10 +946,11 @@ function EntitlementsTab() {
               min="1"
               max="3650"
               placeholder="Days"
-              className="border-white/10 bg-[#0c0524] text-white"
+              aria-label="Access days"
+              className="w-full min-w-0 border-white/10 bg-[#0c0524] text-white"
             />
             <Button
-              className="aft-button"
+              className="aft-button w-full whitespace-nowrap xl:w-auto"
               disabled={grant.isPending || !studentId || !productId}
               onClick={() => grant.mutate({ userId: Number(studentId), productId: Number(productId), accessDays: accessDays ? Number(accessDays) : undefined })}
             >
@@ -1226,7 +1229,7 @@ function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { p
             <option value="marking">Instructor marking</option>
             <option value="resource">Resource</option>
           </select>
-          <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" className="min-h-20 border-white/10 bg-[#0c0524] text-white" />
+          <DocumentEditor value={description} onChange={setDescription} placeholder="Description" ariaLabel="Product description" />
           <Input value={image} onChange={(event) => setImage(event.target.value)} placeholder="Featured image URL (https://…)" className="border-white/10 bg-[#0c0524] text-white" />
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -1330,7 +1333,7 @@ function ProductEditor({ product, onSaved }: { product: { id: number; title: str
         <option value="marking">Instructor marking</option>
         <option value="resource">Resource</option>
       </select>
-      <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" className="min-h-20 border-white/10 bg-[#0c0524] text-white" />
+      <DocumentEditor value={description} onChange={setDescription} placeholder="Description" ariaLabel="Product description" />
       <div className="grid grid-cols-2 gap-2">
         <Input type="number" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Price ZAR" className="border-white/10 bg-[#0c0524] text-white" aria-label="Price" />
         <Input type="number" value={accessDays} onChange={(event) => setAccessDays(event.target.value)} placeholder="Access days" className="border-white/10 bg-[#0c0524] text-white" aria-label="Access days" />
@@ -1840,7 +1843,7 @@ function CouponsTab() {
             <select
               value={discountType}
               onChange={(event) => setDiscountType(event.target.value as "percent" | "fixed")}
-              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Discount type"
             >
               <option value="percent">Percent %</option>
@@ -1910,7 +1913,7 @@ function CouponsTab() {
               <select
                 value={editDiscountType}
                 onChange={(event) => setEditDiscountType(event.target.value as "percent" | "fixed")}
-                className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+                className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
                 aria-label="Edit discount type"
               >
                 <option value="percent">Percent %</option>
@@ -1975,7 +1978,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
             </div>
 
             {data.mockExam.intro && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Introduction</h3><StructuredText className="leading-7 text-[#c4b5fd]" text={data.mockExam.intro} /></section>}
-            {data.product.description && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Store description</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{data.product.description}</p></section>}
+            {data.product.description && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Store description</h3><StructuredText className="leading-7 text-[#c4b5fd]" text={data.product.description} /></section>}
 
             {isCaseStudy && data.email && (data.email.from || data.email.to || data.email.subject || data.email.html) && (
               <section>
