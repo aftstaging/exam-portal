@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import {
   ArrowRight,
@@ -29,10 +29,12 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { withBasePath } from "@/lib/basePath";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import ExamStudio from "@/components/ExamStudio";
 import { StructuredText } from "@/components/StructuredText";
+import { DocumentEditor } from "@/components/DocumentEditor";
 import { calculateRubricScore, RUBRIC_CRITERIA } from "@shared/rubric";
 
 const zar = (cents: number) => (cents / 100).toLocaleString("en-ZA", { style: "currency", currency: "ZAR" });
@@ -41,7 +43,7 @@ const shortDate = (value?: Date | string | null) => (value ? new Date(value).toL
 function BrandMark() {
   return (
     <span className="inline-flex items-center" aria-label="Accountants for Tomorrow">
-      <img src="/assets/aft_logo_white.png" alt="Accountants for Tomorrow" className="h-10 w-auto object-contain" />
+      <img src={withBasePath("/assets/aft_logo_white.png")} alt="Accountants for Tomorrow" className="h-10 w-auto object-contain" />
     </span>
   );
 }
@@ -261,7 +263,11 @@ function PaymentsTab() {
 }
 
 function UsersTab() {
-  const [role, setRole] = useState<"user" | "instructor">("user");
+  const [creationRole, setCreationRole] = useState<"user" | "instructor">("user");
+  const [roleFilter, setRoleFilter] = useState<"all" | "user" | "instructor">("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -292,20 +298,35 @@ function UsersTab() {
     onError: (error) => toast.error(error.message),
   });
   const users = usersQuery.data ?? [];
-  const visible = users.filter((user) => (role === "instructor" ? user.role === "instructor" : user.role === "user"));
-  const create = role === "instructor" ? createInstructor : createStudent;
+  const accounts = users.filter((user) => user.role === "user" || user.role === "instructor");
+  const normalizedSearch = searchTerm.trim().toLocaleLowerCase();
+  const filteredUsers = accounts.filter((user) => {
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    const searchableText = `${user.name ?? ""} ${user.email}`.toLocaleLowerCase();
+    return matchesRole && (!normalizedSearch || searchableText.includes(normalizedSearch));
+  });
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const page = Math.min(currentPage, pageCount);
+  const startIndex = filteredUsers.length ? (page - 1) * pageSize : 0;
+  const endIndex = Math.min(startIndex + pageSize, filteredUsers.length);
+  const pageUsers = filteredUsers.slice(startIndex, endIndex);
+  const create = creationRole === "instructor" ? createInstructor : createStudent;
+
+  useEffect(() => {
+    if (currentPage > pageCount) setCurrentPage(pageCount);
+  }, [currentPage, pageCount]);
 
   return (
     <div className="space-y-7">
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-white">Create account</CardTitle>
-          <Badge className="bg-[#102b36] text-[#00ff88]">{role}</Badge>
+          <Badge className="bg-[#102b36] text-[#00ff88]">{creationRole}</Badge>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex gap-2">
-            <Button variant={role === "user" ? "default" : "outline"} className={role === "user" ? "aft-button" : "border-[#00e5ff] text-white"} onClick={() => setRole("user")}>Student</Button>
-            <Button variant={role === "instructor" ? "default" : "outline"} className={role === "instructor" ? "aft-button" : "border-[#00e5ff] text-white"} onClick={() => setRole("instructor")}>Instructor</Button>
+            <Button variant={creationRole === "user" ? "default" : "outline"} className={creationRole === "user" ? "aft-button" : "border-[#00e5ff] text-white"} onClick={() => setCreationRole("user")}>Student</Button>
+            <Button variant={creationRole === "instructor" ? "default" : "outline"} className={creationRole === "instructor" ? "aft-button" : "border-[#00e5ff] text-white"} onClick={() => setCreationRole("instructor")}>Instructor</Button>
           </div>
           <form
             className="grid gap-3 md:grid-cols-[1fr_1.2fr_1fr_auto]"
@@ -319,11 +340,11 @@ function UsersTab() {
             <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Full name (optional)" className="border-white/10 bg-[#0c0524] text-white" disabled={create.isPending} />
             <Input value={password} onChange={(event) => setPassword(event.target.value)} type="text" placeholder={`Password (min 8 chars)`} className="border-white/10 bg-[#0c0524] text-white" disabled={create.isPending} />
             <Button className="aft-button" type="submit" disabled={create.isPending || !email.trim() || password.length < 8}>
-              <Plus className="mr-2 h-4 w-4" /> Create {role}
+              <Plus className="mr-2 h-4 w-4" /> Create {creationRole}
             </Button>
           </form>
           <p className="mt-3 text-xs text-white/45">
-            {role === "instructor"
+            {creationRole === "instructor"
               ? "Instructors sign in to upload content and manage marking. Admins manage billing and learner accounts."
               : "Students can be given exam access here or through the Entitlements tab — no checkout required."}
           </p>
@@ -332,13 +353,46 @@ function UsersTab() {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-white">{role === "instructor" ? "Instructors" : "Students"}</CardTitle>
-          <Badge className="bg-[#102b36] text-[#00ff88]">{visible.length} account{visible.length === 1 ? "" : "s"}</Badge>
+          <CardTitle className="text-white">User accounts</CardTitle>
+          <Badge className="bg-[#102b36] text-[#00ff88]">{filteredUsers.length} matching account{filteredUsers.length === 1 ? "" : "s"}</Badge>
         </CardHeader>
         <CardContent>
+          <div className="mb-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <Input
+              type="search"
+              aria-label="Filter accounts by name or email"
+              placeholder="Search name or email"
+              value={searchTerm}
+              onChange={(event) => { setSearchTerm(event.target.value); setCurrentPage(1); }}
+              className="border-white/10 bg-[#0c0524] text-white placeholder:text-white/35"
+            />
+            <select
+              aria-label="Filter accounts by role"
+              value={roleFilter}
+              onChange={(event) => { setRoleFilter(event.target.value as typeof roleFilter); setCurrentPage(1); }}
+              className="h-10 rounded-md border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+            >
+              <option value="all">All learners &amp; instructors</option>
+              <option value="user">Students</option>
+              <option value="instructor">Instructors</option>
+            </select>
+            <label className="flex items-center justify-between gap-2 rounded-md border border-white/10 bg-[#0c0524] px-3 text-sm text-white/65">
+              <span>Rows</span>
+              <select
+                aria-label="Rows per page"
+                value={pageSize}
+                onChange={(event) => { setPageSize(Number(event.target.value)); setCurrentPage(1); }}
+                className="h-10 bg-transparent text-sm text-white outline-none"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+          </div>
           {usersQuery.isLoading ? (
             <div className="h-24 animate-pulse rounded-xl bg-[#18093c]" />
-          ) : visible.length ? (
+          ) : pageUsers.length ? (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead>
@@ -353,7 +407,7 @@ function UsersTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((user) => (
+                  {pageUsers.map((user) => (
                     <tr key={user.id} className="border-b border-white/5">
                       <td className="py-3 pr-4 text-white">{user.name ?? "—"}</td>
                       <td className="py-3 pr-4 text-[#c4b5fd]">{user.email}</td>
@@ -381,8 +435,36 @@ function UsersTab() {
               </table>
             </div>
           ) : (
-            <p className="py-8 text-center text-sm text-white/45">No {role}s yet.</p>
+            <p className="py-8 text-center text-sm text-white/45">
+              {normalizedSearch || roleFilter !== "all" ? "No accounts match these filters." : "No student or instructor accounts yet."}
+            </p>
           )}
+          <div className="mt-5 flex flex-col gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-white/50" aria-live="polite">
+              Showing {filteredUsers.length ? startIndex + 1 : 0}–{endIndex} of {filteredUsers.length} accounts
+            </p>
+            <nav className="flex items-center justify-between gap-3 sm:justify-end" aria-label="User list pagination">
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#00e5ff]/50 text-white"
+                disabled={page <= 1}
+                onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+              >
+                Previous
+              </Button>
+              <span className="min-w-20 text-center text-xs text-white/60" aria-live="polite">Page {page} of {pageCount}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-[#00e5ff]/50 text-white"
+                disabled={page >= pageCount}
+                onClick={() => setCurrentPage((value) => Math.min(pageCount, value + 1))}
+              >
+                Next
+              </Button>
+            </nav>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -430,11 +512,11 @@ function EntitlementsTab() {
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 md:grid-cols-[1.2fr_1.4fr_120px_auto]">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(110px,120px)_auto]">
             <select
               value={studentId}
               onChange={(event) => setStudentId(event.target.value)}
-              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Select student"
             >
               <option value="">Select student…</option>
@@ -445,7 +527,7 @@ function EntitlementsTab() {
             <select
               value={productId}
               onChange={(event) => setProductId(event.target.value)}
-              className="h-11 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
+              className="h-11 w-full min-w-0 rounded-lg border border-white/10 bg-[#0c0524] px-3 text-sm text-white"
               aria-label="Select product"
             >
               <option value="">Select product…</option>
@@ -460,10 +542,11 @@ function EntitlementsTab() {
               min="1"
               max="3650"
               placeholder="Days"
-              className="border-white/10 bg-[#0c0524] text-white"
+              aria-label="Access days"
+              className="w-full min-w-0 border-white/10 bg-[#0c0524] text-white"
             />
             <Button
-              className="aft-button"
+              className="aft-button w-full whitespace-nowrap xl:w-auto"
               disabled={grant.isPending || !studentId || !productId}
               onClick={() => grant.mutate({ userId: Number(studentId), productId: Number(productId), accessDays: accessDays ? Number(accessDays) : undefined })}
             >
@@ -742,7 +825,7 @@ function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { p
             <option value="marking">Instructor marking</option>
             <option value="resource">Resource</option>
           </select>
-          <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" className="min-h-20 border-white/10 bg-[#0c0524] text-white" />
+          <DocumentEditor value={description} onChange={setDescription} placeholder="Description" ariaLabel="Product description" />
           <Input value={image} onChange={(event) => setImage(event.target.value)} placeholder="Featured image URL (https://…)" className="border-white/10 bg-[#0c0524] text-white" />
           <div className="grid grid-cols-2 gap-2">
             <div>
@@ -846,7 +929,7 @@ function ProductEditor({ product, onSaved }: { product: { id: number; title: str
         <option value="marking">Instructor marking</option>
         <option value="resource">Resource</option>
       </select>
-      <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" className="min-h-20 border-white/10 bg-[#0c0524] text-white" />
+      <DocumentEditor value={description} onChange={setDescription} placeholder="Description" ariaLabel="Product description" />
       <div className="grid grid-cols-2 gap-2">
         <Input type="number" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="Price ZAR" className="border-white/10 bg-[#0c0524] text-white" aria-label="Price" />
         <Input type="number" value={accessDays} onChange={(event) => setAccessDays(event.target.value)} placeholder="Access days" className="border-white/10 bg-[#0c0524] text-white" aria-label="Access days" />
@@ -1453,7 +1536,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
             </div>
 
             {data.mockExam.intro && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Introduction</h3><StructuredText className="leading-7 text-[#c4b5fd]" text={data.mockExam.intro} /></section>}
-            {data.product.description && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Store description</h3><p className="whitespace-pre-wrap leading-7 text-[#c4b5fd]">{data.product.description}</p></section>}
+            {data.product.description && <section><h3 className="mb-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]">Store description</h3><StructuredText className="leading-7 text-[#c4b5fd]" text={data.product.description} /></section>}
 
             {isCaseStudy && data.email && (data.email.from || data.email.to || data.email.subject || data.email.html) && (
               <section>

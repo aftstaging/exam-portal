@@ -7,6 +7,7 @@ import {
   type AuthoredSegment,
 } from "@shared/authoredTable";
 import { TableEditor, emptyTable } from "./TableEditor";
+import { normalizeAuthoredHtml, sanitizeAuthoredHtml } from "@shared/richText";
 import {
   AlignCenter,
   AlignJustify,
@@ -51,6 +52,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { StructuredText } from "@/components/StructuredText";
+import { DocumentEditor } from "@/components/DocumentEditor";
 
 type BundleFile = { fileName: string; mimeType: string; base64: string };
 type ExistingFile = { fileName: string; keepUrl: string };
@@ -309,16 +311,56 @@ function QuestionEditor({ question, index, onChange, onRemove }: { question: Que
 const TABLE_PICKER_COLUMNS = 5;
 const TABLE_PICKER_ROWS = 4;
 
+type AlignedProseProps = {
+  value: string;
+  label: string;
+  placeholder?: string;
+  className: string;
+  onFocus: (editor: HTMLDivElement) => void;
+  onChange: (value: string) => void;
+};
+
+/** A safe, editable HTML prose block used where the toolbar is alignment-only. */
+function AlignedProse({ value, label, placeholder, className, onFocus, onChange }: AlignedProseProps) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const html = useMemo(() => sanitizeAuthoredHtml(normalizeAuthoredHtml(value)), [value]);
+
+  // Keep external/imported updates in sync without resetting the caret while the author is typing.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor && document.activeElement !== editor && editor.innerHTML !== html) {
+      editor.innerHTML = html;
+    }
+  }, [html]);
+
+  return (
+    <div
+      ref={editorRef}
+      contentEditable
+      suppressContentEditableWarning
+      role="textbox"
+      aria-multiline="true"
+      aria-label={label}
+      aria-placeholder={placeholder}
+      data-placeholder={placeholder}
+      onFocus={() => {
+        if (editorRef.current) onFocus(editorRef.current);
+      }}
+      onInput={(event) => onChange(event.currentTarget.innerHTML)}
+      className={`w-full whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-[#0c0524] px-3 py-2 text-sm leading-6 text-white outline-none focus:border-[#00e5ff]/50 [&:empty:before]:pointer-events-none [&:empty:before]:text-white/35 [&:empty:before]:content-[attr(data-placeholder)] ${className}`}
+    />
+  );
+}
+
 /**
  * An authoring field that mixes prose and tables.
  *
- * Tables are shown as a grid, the way a word processor would show them, and everything around them
- * is ordinary prose in a plain textarea. The value is still one string, so nothing downstream
- * changes: `serializeAuthoredTable` writes a grid back out as the same `<table>` markup the exam
- * shell renders and the printable PDF lays out, and `splitAuthoredContent` puts the surrounding
- * prose back in place around it.
+ * Tables are shown as a grid, the way a word processor would show them. Ordinary fields keep a
+ * plain textarea and their existing marker-formatting toolbar; the task instructions can opt into
+ * an HTML prose editor with alignment-only controls. The value remains one string, so
+ * `serializeAuthoredTable` writes the same markup the exam shell and printable PDF already render.
  */
-function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, ## heading, ● bullet (start a line with - or ●), 1. numbered.", allowTable = false }: {
+function FormattingTextarea({ value, onChange, placeholder, label, className = "min-h-16", hint = "Formatting: **bold**, *italic*, ## heading, ● bullet (start a line with - or ●), 1. numbered.", allowTable = false, alignmentOnly = false }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -326,6 +368,7 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
   className?: string;
   hint?: string;
   allowTable?: boolean;
+  alignmentOnly?: boolean;
 }) {
   const [tablePicker, setTablePicker] = useState(false);
 
@@ -341,10 +384,9 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
   }, [value]);
   const proseCount = segments.filter((segment) => segment.kind === "prose").length;
 
-  // There is one textarea per prose block, so the formatting buttons need to know which of them the
-  // author is currently typing in. Focus inside a table cell clears this, so the buttons act on the
-  // block the author last chose rather than on a block they have since moved away from.
-  const proseRefs = useRef(new Map<number, HTMLTextAreaElement>());
+  // There is one editor per prose block, so the tools act on the block the author is currently
+  // typing in. Focus inside a table cell clears this, avoiding an action on an unrelated block.
+  const proseRefs = useRef(new Map<number, HTMLTextAreaElement | HTMLDivElement>());
   const activeProse = useRef<number | null>(null);
 
   const write = (next: AuthoredSegment[]) => onChange(joinAuthoredContent(next));
@@ -354,8 +396,8 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
   const applyFormat = (prefix: string, suffix = "") => {
     const index = activeProse.current;
     const segment = index === null ? null : segments[index];
-    if (index === null || !segment || segment.kind !== "prose") return;
-    const el = proseRefs.current.get(index);
+    if (alignmentOnly || index === null || !segment || segment.kind !== "prose") return;
+    const el = proseRefs.current.get(index) as HTMLTextAreaElement | undefined;
     if (!el) return;
     const { selectionStart, selectionEnd, value: current } = el;
     const selected = current.slice(selectionStart, selectionEnd);
@@ -371,13 +413,35 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
     });
   };
 
+  const applyAlignment = (command: "justifyLeft" | "justifyCenter" | "justifyRight" | "justifyFull") => {
+    const index = activeProse.current;
+    if (index === null) return;
+    const editor = proseRefs.current.get(index);
+    if (!editor || !(editor instanceof HTMLDivElement) || !editor.isConnected) return;
+    editor.focus();
+    document.execCommand(command, false);
+    replaceSegment(index, { kind: "prose", value: editor.innerHTML });
+  };
+
   const insertTable = (rows: number, columns: number) => {
     setTablePicker(false);
     const index = activeProse.current;
     const segment = index === null ? null : segments[index];
     if (index === null || !segment || segment.kind !== "prose") return;
     const el = proseRefs.current.get(index);
-    const caret = el ? el.selectionStart : segment.value.length;
+    if (!el) return;
+
+    if (alignmentOnly) {
+      if (!(el instanceof HTMLDivElement) || !el.isConnected) return;
+      el.focus();
+      document.execCommand("insertHTML", false, serializeAuthoredTable(emptyTable(rows, columns)));
+      replaceSegment(index, { kind: "prose", value: el.innerHTML });
+      activeProse.current = null;
+      return;
+    }
+
+    const textarea = el as HTMLTextAreaElement;
+    const caret = textarea.selectionStart;
     // A table is a block in its own right, so it is dropped onto its own line rather than being
     // spliced into whatever the caret happened to be sitting in the middle of.
     const before = segment.value.slice(0, caret).replace(/\s+$/, "");
@@ -401,16 +465,31 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
   };
 
   const toolButton = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0c0524] text-white/80 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]";
+  const preserveEditorSelection = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (alignmentOnly) event.preventDefault();
+  };
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-1">
         <label className="mr-1 text-xs font-semibold text-[#c4b5fd]">{label}</label>
-        <button type="button" className={toolButton} title="Bold (**text**)" aria-label="Bold" onClick={() => applyFormat("**", "**")}><Bold className="h-4 w-4" /></button>
-        <button type="button" className={toolButton} title="Italic (*text*)" aria-label="Italic" onClick={() => applyFormat("*", "*")}><Italic className="h-4 w-4" /></button>
-        <button type="button" className={toolButton} title="Heading (## text)" aria-label="Heading" onClick={() => applyFormat("## ", "")}><Menu className="h-4 w-4" /></button>
-        <button type="button" className={toolButton} title="Bullet list (● item)" aria-label="Bullet list" onClick={() => applyFormat("● ", "")}><List className="h-4 w-4" /></button>
-        <button type="button" className={toolButton} title="Numbered list (1. item)" aria-label="Numbered list" onClick={() => applyFormat("1. ", "")}><ListOrdered className="h-4 w-4" /></button>
+        {alignmentOnly ? (
+          <>
+            <span className="mr-1 text-[10px] font-medium uppercase tracking-wide text-white/45">Text alignment</span>
+            <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => applyAlignment("justifyLeft")} title="Align left" aria-label="Align left"><AlignLeft className="h-4 w-4" /></button>
+            <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => applyAlignment("justifyCenter")} title="Align centre" aria-label="Align centre"><AlignCenter className="h-4 w-4" /></button>
+            <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => applyAlignment("justifyRight")} title="Align right" aria-label="Align right"><AlignRight className="h-4 w-4" /></button>
+            <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => applyAlignment("justifyFull")} title="Justify" aria-label="Justify"><AlignJustify className="h-4 w-4" /></button>
+          </>
+        ) : (
+          <>
+            <button type="button" className={toolButton} title="Bold (**text**)" aria-label="Bold" onClick={() => applyFormat("**", "**")}><Bold className="h-4 w-4" /></button>
+            <button type="button" className={toolButton} title="Italic (*text*)" aria-label="Italic" onClick={() => applyFormat("*", "*")}><Italic className="h-4 w-4" /></button>
+            <button type="button" className={toolButton} title="Heading (## text)" aria-label="Heading" onClick={() => applyFormat("## ", "")}><Menu className="h-4 w-4" /></button>
+            <button type="button" className={toolButton} title="Bullet list (● item)" aria-label="Bullet list" onClick={() => applyFormat("● ", "")}><List className="h-4 w-4" /></button>
+            <button type="button" className={toolButton} title="Numbered list (1. item)" aria-label="Numbered list" onClick={() => applyFormat("1. ", "")}><ListOrdered className="h-4 w-4" /></button>
+          </>
+        )}
         {allowTable && (
           <div className="relative">
             <button
@@ -419,6 +498,7 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
               title="Insert a table"
               aria-label="Insert a table"
               aria-expanded={tablePicker}
+              onMouseDown={preserveEditorSelection}
               onClick={() => setTablePicker((open) => !open)}
             >
               <Table2 className="h-4 w-4" />
@@ -440,6 +520,7 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
                             title={`${rows} × ${columns}`}
                             aria-label={`Insert a ${rows} by ${columns} table`}
                             className="flex h-6 w-6 items-center justify-center rounded-md border border-white/10 text-[10px] text-white/70 transition hover:border-[#00ff88]/60 hover:bg-[#00ff88]/10 hover:text-[#00ff88]"
+                            onMouseDown={preserveEditorSelection}
                             onClick={() => insertTable(rows, columns)}
                           >
                             {rows}×{columns}
@@ -454,24 +535,39 @@ function FormattingTextarea({ value, onChange, placeholder, label, className = "
             )}
           </div>
         )}
-        <span className="ml-auto text-[10px] italic leading-4 text-white/35">{hint}</span>
+        {!alignmentOnly && <span className="ml-auto text-[10px] italic leading-4 text-white/35">{hint}</span>}
       </div>
       <div className="mt-1 space-y-1">
         {segments.map((segment, index) =>
           segment.kind === "prose" ? (
-            <textarea
-              key={index}
-              ref={(element) => {
-                if (element) proseRefs.current.set(index, element);
-                else proseRefs.current.delete(index);
-              }}
-              value={segment.value}
-              placeholder={placeholder}
-              aria-label={proseCount > 1 ? `${label}, text block ${segments.slice(0, index + 1).filter((item) => item.kind === "prose").length} of ${proseCount}` : label}
-              onFocus={() => { activeProse.current = index; }}
-              onChange={(event) => replaceSegment(index, { kind: "prose", value: event.target.value })}
-              className={`w-full rounded-lg border border-white/10 bg-[#0c0524] text-white ${className}`}
-            />
+            alignmentOnly ? (
+              <AlignedProse
+                key={index}
+                value={segment.value}
+                placeholder={placeholder}
+                label={proseCount > 1 ? `${label}, text block ${segments.slice(0, index + 1).filter((item) => item.kind === "prose").length} of ${proseCount}` : label}
+                className={className}
+                onFocus={(editor) => {
+                  activeProse.current = index;
+                  proseRefs.current.set(index, editor);
+                }}
+                onChange={(nextValue) => replaceSegment(index, { kind: "prose", value: nextValue })}
+              />
+            ) : (
+              <textarea
+                key={index}
+                ref={(element) => {
+                  if (element) proseRefs.current.set(index, element);
+                  else proseRefs.current.delete(index);
+                }}
+                value={segment.value}
+                placeholder={placeholder}
+                aria-label={proseCount > 1 ? `${label}, text block ${segments.slice(0, index + 1).filter((item) => item.kind === "prose").length} of ${proseCount}` : label}
+                onFocus={() => { activeProse.current = index; }}
+                onChange={(event) => replaceSegment(index, { kind: "prose", value: event.target.value })}
+                className={`w-full rounded-lg border border-white/10 bg-[#0c0524] text-white ${className}`}
+              />
+            )
           ) : (
             <TableEditor
               key={index}
@@ -538,7 +634,7 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
         </div>
       </div>
       <div>
-        <FormattingTextarea label="Introduction / instructions" value={section.introduction} onChange={(value) => set({ introduction: value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="min-h-32" allowTable />
+        <FormattingTextarea label="Introduction / instructions" value={section.introduction} onChange={(value) => set({ introduction: value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="min-h-32" allowTable alignmentOnly />
       </div>
       <AttachSlot
         label="Instruction sheet (optional)"
@@ -672,7 +768,12 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                   <div className="rounded-xl border border-white/10 bg-[#18093c]/50 p-4"><div className="text-[11px] font-bold uppercase tracking-wider text-white/45">Access</div><div className="mt-1 font-bold text-white">{accessDays} days</div></div>
                 </div>
 
-                {description && <p className="mt-7 text-sm leading-6 text-[#c4b5fd]"><span className="font-semibold text-white/70">Store description: </span>{description}</p>}
+                {description && (
+                  <section className="mt-7">
+                    <h2 className="text-sm font-semibold text-white/70">Store description</h2>
+                    <StructuredText className="mt-1 text-sm leading-6 text-[#c4b5fd]" text={description} />
+                  </section>
+                )}
 
                 {isCaseStudy && sortedSections.length > 0 && (
                   <div className="mt-7 space-y-6">
@@ -1272,7 +1373,10 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
                 <Input type="number" min="1" max="3650" value={accessDays} onChange={(event) => setAccessDays(event.target.value)} placeholder="30" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label="Access days" />
               </div>
             </div>
-            <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Product description shown on the store" className="mt-3 min-h-16 border-white/10 bg-[#0c0524] text-white" />
+            <div className="mt-3">
+              <label className="mb-1 block text-xs font-semibold text-[#c4b5fd]">Product description shown on the store</label>
+              <DocumentEditor value={description} onChange={setDescription} placeholder="Describe this product for learners…" ariaLabel="Product description shown on the store" />
+            </div>
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-sm font-semibold text-white"><ImageUp className="h-4 w-4 text-[#00e5ff]" /> Featured image</span>
