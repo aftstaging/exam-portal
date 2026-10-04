@@ -405,11 +405,10 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
     const printable = async (rows: typeof taskRows) => {
       const loaded = await Promise.all(rows.map((entry) => loadPrintableResource(entry)));
       return {
-        // A printable image prints its own caption directly above it, so only the files that
-        // cannot be placed on the page are listed as plain captions — otherwise every image is
-        // captioned twice, and an image that moves to its own page leaves its caption behind.
+        // Successfully embedded files print their own captions, so only files that could not be
+        // placed on the page remain plain title-only references.
         titles: rows.filter((_, index) => !loaded[index]!.base64).map((entry) => captionFor(entry.title, entry.kind)),
-        images: loaded.map((file, index) => ({ ...file, title: captionFor(rows[index]!.title, rows[index]!.kind) })),
+        attachments: loaded.map((file, index) => ({ ...file, title: captionFor(rows[index]!.title, rows[index]!.kind) })),
       };
     };
     const intro = await printable(instructionRows);
