@@ -10,6 +10,7 @@ import { richTextWordCount, sanitizeAuthoredHtml } from "@shared/richText";
 import { countActiveEntitlements, isEnrolled } from "@shared/supervision";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
 import { clampPage } from "@shared/pagination";
+import { containsPattern } from "@shared/search";
 import { DEMO_LEARNER_EMAIL, DEMO_LEARNER_NAME, DEMO_LEARNER_OPEN_ID } from "@shared/const";
 import {
   answers,
@@ -1789,7 +1790,7 @@ export async function listAdminUserPage(input: { role?: "user" | "instructor" | 
   const conditions = [];
   if (input.role) conditions.push(eq(users.role, input.role));
   const term = input.search?.trim();
-  if (term) conditions.push(or(like(users.name, `%${term}%`), like(users.email, `%${term}%`))!);
+  if (term) conditions.push(or(like(users.name, containsPattern(term)), like(users.email, containsPattern(term)))!);
   const where = conditions.length ? and(...conditions) : undefined;
   const counted = await db.select({ value: count() }).from(users).where(where);
   const total = Number(counted[0]?.value ?? 0);
