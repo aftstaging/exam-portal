@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, not } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, not, or } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
@@ -9,6 +9,7 @@ import { accountRemovalBlocker, hasActiveEntitlement, isAdminRole, isAttemptEdit
 import { richTextWordCount, sanitizeAuthoredHtml } from "@shared/richText";
 import { countActiveEntitlements, isEnrolled } from "@shared/supervision";
 import { entitlementExpiryFromAccessDays } from "@shared/payments";
+import { clampPage } from "@shared/pagination";
 import { DEMO_LEARNER_EMAIL, DEMO_LEARNER_NAME, DEMO_LEARNER_OPEN_ID } from "@shared/const";
 import {
   answers,
@@ -1719,9 +1720,27 @@ export async function getUserById(userId: number) {
   return result[0];
 }
 
-export async function listAdminUsers() {
-  const db = await getDb(); if (!db) return [];
-  const rows = await db.select().from(users).orderBy(desc(users.createdAt)).limit(500);
+export type EnrichedAdminUser = {
+  id: number;
+  openId: string;
+  name: string | null;
+  email: string | null;
+  loginMethod: string | null;
+  role: "user" | "instructor" | "admin";
+  createdAt: Date;
+  updatedAt: Date;
+  lastSignedIn: Date | null;
+  entitlementCount: number;
+  activeEntitlementCount: number;
+  enrolled: boolean;
+  attemptCount: number;
+};
+
+/**
+ * Adds the activity counts the admin tables show. Runs for exactly the rows it is
+ * handed, so a page of 25 costs two narrow queries no matter how many accounts exist.
+ */
+async function withUserActivity(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows: (typeof users.$inferSelect)[]): Promise<EnrichedAdminUser[]> {
   const userIds = rows.map((row) => row.id);
   if (!userIds.length) return [];
   const [entitlementRows, attemptRows] = await Promise.all([
@@ -1746,6 +1765,38 @@ export async function listAdminUsers() {
     enrolled: (activeEntitlementCounts.get(user.id) ?? 0) > 0,
     attemptCount: attemptCounts.get(user.id) ?? 0,
   }));
+}
+
+/**
+ * Backs the account pickers on the supervision and entitlement tabs, which need the
+ * whole list. The account table uses `listAdminUserPage` instead, so accounts past
+ * this cap stay reachable there.
+ */
+export async function listAdminUsers() {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(users).orderBy(desc(users.createdAt)).limit(500);
+  return withUserActivity(db, rows);
+}
+
+/**
+ * One page of accounts, filtered and counted in the database. Counting separately
+ * from the page is what lets the admin see accounts beyond the picker's cap.
+ */
+export async function listAdminUserPage(input: { role?: "user" | "instructor" | "admin"; search?: string; page: number; pageSize: number }) {
+  const db = await getDb();
+  const pageSize = Math.min(200, Math.max(1, Math.trunc(input.pageSize) || 10));
+  if (!db) return { items: [] as EnrichedAdminUser[], total: 0, page: 1, pageSize, totalPages: 1 };
+  const conditions = [];
+  if (input.role) conditions.push(eq(users.role, input.role));
+  const term = input.search?.trim();
+  if (term) conditions.push(or(like(users.name, `%${term}%`), like(users.email, `%${term}%`))!);
+  const where = conditions.length ? and(...conditions) : undefined;
+  const counted = await db.select({ value: count() }).from(users).where(where);
+  const total = Number(counted[0]?.value ?? 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = clampPage(input.page, totalPages);
+  const rows = await db.select().from(users).where(where).orderBy(desc(users.createdAt)).limit(pageSize).offset((page - 1) * pageSize);
+  return { items: await withUserActivity(db, rows), total, page, pageSize, totalPages };
 }
 
 export async function createManagedUser(input: { email: string; name?: string; passwordHash: string; role: "user" | "instructor" }) {

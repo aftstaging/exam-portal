@@ -86,8 +86,12 @@ export function selectPage(selected: number[], pageIds: number[], shouldSelect: 
   return shouldSelect ? [...others, ...pageIds.filter((id) => !others.includes(id))] : others;
 }
 
-/** Drops ids that are no longer present, e.g. after the rows were deleted. */
-export function pruneSelection(selected: number[], availableIds: number[]): number[] {
-  const available = new Set(availableIds);
-  return selected.filter((id) => available.has(id));
+/**
+ * Drops ids the server has confirmed are gone. Only confirmed deletions are dropped:
+ * the account table is paged, so pruning against the rows currently drawn would
+ * silently discard selections the admin made on other pages.
+ */
+export function pruneSelection(selected: number[], removedIds: number[]): number[] {
+  const removed = new Set(removedIds);
+  return selected.filter((id) => !removed.has(id));
 }

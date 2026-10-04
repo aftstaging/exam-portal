@@ -131,7 +131,15 @@ describe("selectPage", () => {
 });
 
 describe("pruneSelection", () => {
-  it("drops ids that no longer exist", () => {
-    expect(pruneSelection([1, 2, 3], [2, 3, 4])).toEqual([2, 3]);
+  it("drops the ids that were deleted", () => {
+    expect(pruneSelection([1, 2, 3], [2])).toEqual([1, 3]);
+  });
+
+  it("keeps ids that were not deleted, including ones off the current page", () => {
+    expect(pruneSelection([1, 2, 3], [])).toEqual([1, 2, 3]);
+  });
+
+  it("ignores deleted ids that were never selected", () => {
+    expect(pruneSelection([1], [7, 8])).toEqual([1]);
   });
 });

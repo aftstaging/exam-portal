@@ -41,4 +41,21 @@ describe("protected tRPC procedure contracts", () => {
     await expect(staffCaller.supervision.end({ supervisionId: 3 })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(callerFor(null).supervision.myLearners()).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("guards the account table and its bulk removal behind the admin role", async () => {
+    const learner = { id: 7, role: "user" } as TrpcContext["user"];
+    const instructor = { id: 7, role: "instructor" } as TrpcContext["user"];
+    await expect(callerFor(learner).admin.userPage({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(callerFor(instructor).admin.userPage({})).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(callerFor(learner).admin.removeUsers({ userIds: [1] })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects out-of-range paging and empty bulk selections before database work", async () => {
+    const admin = { id: 1, role: "admin" } as TrpcContext["user"];
+    const caller = callerFor(admin);
+    await expect(caller.admin.userPage({ page: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.admin.userPage({ pageSize: 0 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.admin.userPage({ pageSize: 5000 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(caller.admin.removeUsers({ userIds: [] })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 });
