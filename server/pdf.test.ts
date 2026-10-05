@@ -519,8 +519,9 @@ describe("branded printable exam PDF", () => {
       }],
     );
     const images = await drawnImageSizes(bytes);
-    // The logo heads the sheet at its own size and is not an attachment, so it is set aside.
-    const attachments = images.filter((image) => image.height !== 42);
+    // The logo heads the cover at 56pt and repeats at 16pt in every page's foot; neither is an
+    // attachment, so both are set aside by height.
+    const attachments = images.filter((image) => image.height !== 56 && image.height !== 16);
     // One attachment per sheet, so neither is scaled by the room the other happened to leave.
     expect(attachments).toHaveLength(2);
     expect(attachments[1]).toEqual(attachments[0]);
@@ -565,14 +566,16 @@ describe("branded printable exam PDF", () => {
     expect(type.y - title.y).toBeGreaterThan(24);
     // And the duration sits under the title rather than beside it, so the block is a stack.
     expect(title.y - duration.y).toBeGreaterThan(0);
-    expect(duration.y).toBeGreaterThan(line("Answer all four tasks.")!.y);
+    // The cover is its own page now, so the brief beginning on a later page is the stack's proof.
+    expect(line("Answer all four tasks.")!.page).toBeGreaterThan(duration.page);
   });
 
-  it("closes the title block with a rule below the duration, not through it", async () => {
+  it("keeps the cover page to the cover, with no rule near the duration", async () => {
     // `drawAt` paints a run without moving the cursor, so the gap measured after "Time allowed" was
-    // counted from a position the text had already left. The rule that closes the title block came
-    // out 2.75pt above that baseline, which is inside the x-height: the sheet opened with "Time
-    // allowed" struck through by the rule meant to sit under it.
+    // counted from a position the text had already left, and a closing rule once came out inside
+    // the line's x-height: the sheet opened with "Time allowed" struck through. The cover no
+    // longer carries a closing rule at all — the page break separates it from the brief — so the
+    // guard is that nothing ruled lands anywhere in the duration's band.
     const bytes = await generateBrandedPrintablePdf(
       { title: "CIMA OCS Mock Exam 1", intro: "Answer all four tasks.", totalDurationSeconds: 10800, examType: "case_study" },
       [],
@@ -580,16 +583,54 @@ describe("branded printable exam PDF", () => {
     const items = await extractTextItems(bytes);
     const line = (text: string) => items.find((item) => item.text.trim() === text);
     const duration = line("Time allowed: 3 hours")!;
-    const rules = (await drawnRules(bytes)).filter((rule) => rule.page === 1);
-    const closing = rules.filter((rule) => rule.y < duration.y && rule.y > 500);
-    // One rule closes the block: the two below it are the running head and foot furniture.
-    expect(closing).toHaveLength(1);
-    // Clear of the descenders, so it reads as a rule under the block rather than as a strike. A
-    // descender at this size reaches a fifth of it, and a rule inside that fifth is a fault.
-    expect(closing[0]!.y).toBeLessThan(duration.y - duration.size * 0.2);
-    // And still above the introduction, which is what makes it the block's floor rather than a rule
-    // that has drifted down into the prose.
-    expect(closing[0]!.y).toBeGreaterThan(line("Answer all four tasks.")!.y);
+    const rules = (await drawnRules(bytes)).filter((rule) => rule.page === duration.page);
+    const striking = rules.filter((rule) => rule.y < duration.y + duration.size && rule.y > duration.y - duration.size * 0.25);
+    expect(striking).toHaveLength(0);
+    // And the brief starts on the page after the cover rather than sharing the cover with it.
+    expect(line("Answer all four tasks.")!.page).toBeGreaterThan(duration.page);
+  });
+
+  it("announces each task once, with its time in the heading", async () => {
+    // The sheet used to repeat the cover's "Time allowed" as a meta line under every section
+    // heading, so the same sentence appeared once per task plus once on the cover. The time now
+    // travels in the heading in brackets, the way the reference papers set "[45 minutes]".
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [
+        {
+          sectionNumber: 1,
+          title: "Delivery economics",
+          durationSeconds: 2700,
+          introduction: "Read the instruction sheet before you begin.",
+          question: "Evaluate the contribution of each region.",
+        },
+      ],
+    );
+    const text = await extractText(bytes);
+    expect(text).toContain("Section 1 · Delivery economics [45 minutes]");
+    expect(text.match(/Time allowed:/g)).toHaveLength(1);
+  });
+
+  it("sets a stand-alone sub-task weighting flush right, as a label", async () => {
+    // A paragraph that is only "(sub-task (a) = 52%)" labels the requirement above it; set in the
+    // paragraph flow it read as prose. The reference papers set these flush right, where the eye
+    // lands after the requirement, so the right edge of the measure is the assertion.
+    const bytes = await generateBrandedPrintablePdf(
+      { title: "Cartn Mock Exam 4", intro: null, totalDurationSeconds: 2700 },
+      [
+        {
+          sectionNumber: 1,
+          title: "Delivery economics",
+          durationSeconds: 2700,
+          introduction: "Please address the following:\n(sub-task (a) = 52%)",
+          question: null,
+        },
+      ],
+    );
+    const items = await extractTextItems(bytes);
+    const weight = items.find((item) => item.text.includes("sub-task"));
+    expect(weight).toBeDefined();
+    expect(weight!.x + weight!.width).toBeGreaterThan(595 - 56.7 - 4);
   });
 
   it("prints the instruction sheet between the instructions and the task", async () => {

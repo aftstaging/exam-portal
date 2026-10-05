@@ -278,6 +278,22 @@ const MUTED = rgb(0.38, 0.38, 0.38);
  */
 const HEADER_BAND = rgb(0.93, 0.94, 0.97);
 
+/**
+ * The AFT violet, dark enough to carry type on white paper.
+ *
+ * The portal's own ink is near-black, which leaves a branded sheet indistinguishable from a
+ * photocopied one. Setting the announcements — the cover's title, every task heading, the running
+ * matter — in the house violet is what makes the paper an AFT paper at a glance, the way the
+ * reference papers a learner compares us against are theirs at a glance.
+ */
+const BRAND = rgb(0.094, 0.035, 0.235);
+
+/** The portal's mint, darkened until it can carry type on paper without washing out. */
+const BRAND_ACCENT = rgb(0, 0.55, 0.36);
+
+/** The tint the running matter's rules are set in: present, but quieter than any text on the page. */
+const RULE_TINT = rgb(0.8, 0.78, 0.88);
+
 /** WinAnsi code points outside plain ASCII and Latin-1 that the standard fonts do support. */
 const WINANSI_CODEPOINTS = new Set([
   0x20ac, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160, 0x2039, 0x0152,
@@ -972,8 +988,11 @@ class Canvas {
     const gaps = line.runs.reduce((count, run) => count + (run.text.match(/ /g)?.length ?? 0), 0);
     const slack = MARGIN_X + CONTENT_WIDTH - JUSTIFY_INSET - (line.x + lineWidth(line, this.fonts, size));
     // A line with no gaps has nothing to stretch, and a line whose slack is far larger than its
-    // gaps would open rivers down the page, so both are left ragged.
+    // gaps would open rivers down the page, so both are left ragged. The marker is drawn on this
+    // path too: a list line that happens to fill the measure exactly used to take this return and
+    // reach the paper indented but bulletless, one glyph away from looking like a paragraph.
     if (!gaps || slack <= 0.5 || slack / gaps > size * 0.5) {
+      if (line.marker) this.drawMarker(line, baseline, size, color);
       this.paintLine(line, baseline, size, color, line.x);
       return;
     }
@@ -1101,23 +1120,37 @@ class Canvas {
    * content box, which is why they are stamped here rather than laid out with everything else: the
    * page count is only known once drawing has finished.
    */
-  finish(exam: PrintableExam): void {
+  async finish(exam: PrintableExam): Promise<void> {
     const pages = this.document.getPages();
     const font = this.fonts.regular;
     // Truncate before sanitising: a full title can be tens of thousands of characters.
     const head = sanitizeText(exam.title.slice(0, 90));
-    const foot = `AFT · ${formatDuration(exam.totalDurationSeconds)}`;
+    const foot = `© Accountants for Tomorrow · ${formatDuration(exam.totalDurationSeconds)}`;
     const headY = PAGE_HEIGHT - 42;
     const footY = 40;
+    // The mark sits at the foot of every page, the way the reference papers carry theirs: small,
+    // quiet, and impossible to mistake for anyone else's sheet once it is photocopied loose.
+    let mark: { image: Awaited<ReturnType<PDFDocument["embedPng"]>>; width: number } | null = null;
+    const MARK_HEIGHT = 16;
+    try {
+      const image = await this.document.embedPng(Buffer.from(AFT_LOGO_BASE64, "base64"));
+      mark = { image, width: (MARK_HEIGHT * image.width) / image.height };
+    } catch {
+      // Branding is decorative; a missing or unreadable logo must not fail generation.
+    }
     pages.forEach((page, index) => {
       const label = `${examTypeLabel(exam.examType)}  ·  Page ${index + 1} of ${pages.length}`;
-      page.drawText(head, { x: MARGIN_X, y: headY, size: RUNNING_SIZE, font, color: MUTED });
-      page.drawText(label, { x: PAGE_WIDTH - MARGIN_X - font.widthOfTextAtSize(label, RUNNING_SIZE), y: headY, size: RUNNING_SIZE, font, color: MUTED });
-      page.drawText(foot, { x: MARGIN_X, y: footY, size: RUNNING_SIZE, font, color: MUTED });
+      page.drawText(head, { x: MARGIN_X, y: headY, size: RUNNING_SIZE, font, color: BRAND });
+      page.drawText(label, { x: PAGE_WIDTH - MARGIN_X - font.widthOfTextAtSize(label, RUNNING_SIZE), y: headY, size: RUNNING_SIZE, font, color: BRAND });
+      page.drawText(foot, { x: MARGIN_X, y: footY, size: RUNNING_SIZE, font, color: BRAND });
+      if (mark && mark.width <= CONTENT_WIDTH) {
+        page.drawImage(mark.image, { x: PAGE_WIDTH - MARGIN_X - mark.width, y: footY - 3, width: mark.width, height: MARK_HEIGHT });
+      }
       // The rules go straight onto the page rather than through the cursor, which belongs to the
-      // content flow and is long since finished with by the time this runs.
-      this.rule(MARGIN_X, headY - 8, CONTENT_WIDTH, 0.4, MUTED, page);
-      this.rule(MARGIN_X, footY + 14, CONTENT_WIDTH, 0.4, MUTED, page);
+      // content flow and is long since finished with by the time this runs. Set in the brand tint
+      // rather than the grey of body text: furniture, not content.
+      this.rule(MARGIN_X, headY - 8, CONTENT_WIDTH, 0.4, RULE_TINT, page);
+      this.rule(MARGIN_X, footY + 14, CONTENT_WIDTH, 0.4, RULE_TINT, page);
     });
   }
 }
@@ -1128,14 +1161,21 @@ class Canvas {
 
 type PdfOptions = { email?: PrintableEmail | null; attachments?: PrintableAttachment[] };
 
-/** Draws the AFT logo on the opening page, at a fixed height and preserving aspect ratio. */
-async function drawLogo(canvas: Canvas): Promise<void> {
+/**
+ * Draws the AFT logo centred on the measure, at the height the caller names.
+ *
+ * Centred rather than hung from the left margin: on a cover the logo announces the house, and a
+ * house mark tucked against the margin reads as a letterhead stamp rather than as the paper's
+ * mark. Aspect is preserved from the embedded image so the mark is never stretched.
+ */
+async function drawLogo(canvas: Canvas, height = LOGO_HEIGHT): Promise<void> {
   try {
     const image = await canvas.document.embedPng(Buffer.from(AFT_LOGO_BASE64, "base64"));
-    const width = (LOGO_HEIGHT * image.width) / image.height;
+    const width = (height * image.width) / image.height;
     if (width <= CONTENT_WIDTH) {
-      canvas.page.drawImage(image, { x: MARGIN_X, y: canvas.cursor - LOGO_HEIGHT, width, height: LOGO_HEIGHT });
-      canvas.space(LOGO_HEIGHT);
+      const x = MARGIN_X + (CONTENT_WIDTH - width) / 2;
+      canvas.page.drawImage(image, { x, y: canvas.cursor - height, width, height });
+      canvas.space(height);
     }
   } catch {
     // Branding is decorative; a missing or unreadable logo must not fail generation.
@@ -1152,7 +1192,7 @@ function drawCoverBlock(canvas: Canvas, exam: PrintableExam, fonts: Fonts): void
   // The type, the title and the duration are the three lines of one title block, and they are
   // centred as a band rather than each hung from the left margin: the cover then reads as a single
   // centred unit instead of three unrelated lines, which is how a paper announces itself.
-  canvas.drawCenteredLine(type, META_SIZE, META_LEADING, true, MUTED);
+  canvas.drawCenteredLine(type, META_SIZE, META_LEADING, true, BRAND);
   // The type is a label on the paper, not a heading on the same level as the name, so the air
   // between the two is deliberately generous — the name is the subject of the page.
   canvas.space(TITLE_LEADING * 0.5);
@@ -1167,25 +1207,23 @@ function drawCoverBlock(canvas: Canvas, exam: PrintableExam, fonts: Fonts): void
   );
   for (const line of titleLines) {
     canvas.reserve(TITLE_LEADING);
-    canvas.drawLines([line], TITLE_SIZE, TITLE_LEADING, INK, 0, "center");
+    canvas.drawLines([line], TITLE_SIZE, TITLE_LEADING, BRAND, 0, "center");
   }
   canvas.space(META_LEADING);
-  // The duration is meta, not a heading: it used to print at the size of a section title, which is
-  // how the same sentence appeared at 15pt here and at 9pt under every section.
-  canvas.drawCenteredLine(`Time allowed: ${duration}`, META_SIZE, META_LEADING, false, MUTED);
-  // A rule closes the title block, so the introduction below it reads as a new band of content
-  // rather than as a continuation of the title. It is set half a row below the duration's baseline,
-  // which is the gap a reader expects between a line of text and the rule under it.
-  canvas.space(ROW_LEADING * 0.5);
-  canvas.hairline(canvas.cursor);
+  // The duration is the one line a candidate looks for first, so it carries the accent rather
+  // than the grey of furniture: announced, not footnoted. Same declared size as every other meta
+  // line — colour does the work, not a step off the type scale.
+  canvas.drawCenteredLine(`Time allowed: ${duration}`, META_SIZE, META_LEADING, true, BRAND_ACCENT);
+  // No rule closes the block: the cover is its own page, and the page break is the strongest
+  // separator available. A rule here would be furniture guarding an empty room.
   canvas.space(BODY_LEADING * 0.6);
 }
 
 /** Renders a heading, keeping it attached to the first group of the block that follows. */
-function drawHeading(canvas: Canvas, text: string, fonts: Fonts, size = H1_SIZE, leading = H1_LEADING): void {
+function drawHeading(canvas: Canvas, text: string, fonts: Fonts, size = H1_SIZE, leading = H1_LEADING, color: RGB = INK): void {
   const lines = layoutRuns([{ text, bold: true }], fonts, size, MARGIN_X, MARGIN_X, MARGIN_X + CONTENT_WIDTH);
   canvas.reserve(leading);
-  canvas.drawLines(lines, size, leading);
+  canvas.drawLines(lines, size, leading, color);
 }
 
 /** Renders a body fragment, or nothing when the fragment is empty. */
@@ -1201,14 +1239,27 @@ function drawFragment(
   if (!text) return;
   const parsed = parseRichHtml(text);
   if (!parsed.length) return;
+  // A paragraph that is nothing but a sub-task weighting — "(sub-task (a) = 52%)" — is a label on
+  // the requirement above it, not prose. The reference papers a learner compares us against set
+  // these flush right in bold italic, where the eye finds them after reading the requirement;
+  // left in the paragraph flow they read as a sentence that has lost its verb. The alignment is
+  // set on the block so the line is measured and wrapped as the right-aligned line it prints as.
+  const weighted = parsed.map((block) => {
+    if (block.table || block.kind !== "paragraph") return block;
+    const plain = block.runs.map((run) => run.text).join("").trim();
+    if (!/^[\[(]\s*sub-task\b[\s\S]{0,80}?\d(?:[\d.]+)?\s*%[\])]$/i.test(plain)) return block;
+    return { ...block, align: "right" as const, runs: block.runs.map((run) => ({ ...run, bold: true, italic: true })) };
+  });
   // Emphasis is applied to the runs before layout, never after it: painting a line in a wider
   // face than the one it was wrapped against pushes it past the margin and out of alignment.
-  const blocks = bold ? boldedBlocks(parsed) : parsed;
+  const blocks = bold ? boldedBlocks(weighted) : weighted;
   // Paragraphs are separated by more than a fraction of the leading: at this measure two
   // consecutive paragraphs run together and the reader loses the break between them.
   const groups = layoutBlocks(blocks, fonts, size, leading, MARGIN_X, MARGIN_X + CONTENT_WIDTH, leading * 0.6);
   groups.forEach((group, index) => {
-    canvas.drawGroup(group, size, leading, INK);
+    // The weighting labels are the only right-aligned groups a fragment can hold, and they are
+    // set in the house violet so the label reads as furniture of the requirement above it.
+    canvas.drawGroup(group, size, leading, group.align === "right" ? BRAND : INK);
     if (index === groups.length - 1) canvas.space(gapAfter);
   });
 }
@@ -1464,8 +1515,16 @@ export async function generateBrandedPrintablePdf(
   };
   const canvas = new Canvas(document, fonts);
 
-  await drawLogo(canvas);
+  // The cover is its own page: mark, type, title and duration in the middle of generous air, the
+  // way a published paper opens. Everything the candidate has to read starts on the next page,
+  // so the cover never competes with the brief.
+  canvas.space(72);
+  await drawLogo(canvas, 56);
+  canvas.space(30);
   drawCoverBlock(canvas, exam, fonts);
+  if (exam.intro || options.email || (options.attachments ?? []).length || sections.length) {
+    canvas.breakToNewPage();
+  }
 
   if (exam.intro) {
     // At the body size with a little more leading than the body: the cover paragraph is prose, and
@@ -1477,7 +1536,7 @@ export async function generateBrandedPrintablePdf(
   if (options.email) drawEmail(canvas, options.email, fonts);
 
   if (attachments.length) {
-    drawHeading(canvas, "Attachments", fonts, H2_SIZE, H2_LEADING);
+    drawHeading(canvas, "Attachments", fonts, H2_SIZE, H2_LEADING, BRAND);
     for (const attachment of attachments) {
       await drawAttachment(canvas, fonts, attachment);
       canvas.space(BODY_LEADING * 0.3);
@@ -1487,14 +1546,15 @@ export async function generateBrandedPrintablePdf(
   for (const section of sections) {
     canvas.reserve(H1_LEADING * 3);
     canvas.space(BODY_LEADING * 0.6);
-    drawHeading(canvas, `Section ${section.sectionNumber} · ${section.title}`, fonts);
+    // One line announces the task, its name and its time, the way the reference papers set
+    // "Task 1 - Unseen case material [45 minutes]": the duration travels in the heading in
+    // brackets instead of repeating the cover's "Time allowed" as a second meta line under every
+    // section, which used to put the same sentence on the sheet once per task plus once on the
+    // cover. Set in the house violet so a candidate flipping to a task lands on its heading.
+    drawHeading(canvas, `Section ${section.sectionNumber} · ${section.title} [${formatDuration(section.durationSeconds)}]`, fonts, H1_SIZE, H1_LEADING, BRAND);
     // The heading is held to the first thing under it, then given room to breathe before the text
     // that follows, so a section opens as a block instead of as a heading buried in a paragraph.
-    canvas.space(H1_LEADING * 0.3);
-    // Set at the meta size rather than as a scaled offset from whatever the body size happened to be:
-    // a per-section duration is meta, and it belongs on the same measure as the cover's, not one or
-    // two points above or below it depending on which fragment it was drawn with.
-    drawFragment(canvas, fonts, `Time allowed: ${formatDuration(section.durationSeconds)}`, META_SIZE, BODY_LEADING, BODY_LEADING * 0.5);
+    canvas.space(H1_LEADING * 0.35);
     drawFragment(canvas, fonts, section.introduction);
     // The instruction sheet is read with the instructions, so it prints before the extra notes
     // rather than being held back with the other attachments.
@@ -1529,7 +1589,7 @@ export async function generateBrandedPrintablePdf(
     }
   }
 
-  canvas.finish(exam);
+  await canvas.finish(exam);
   // Metadata is truncated because a title may be arbitrarily long authored content.
   document.setTitle(sanitizeText(exam.title.slice(0, 200)));
   document.setCreator("AFT Learning Portal");

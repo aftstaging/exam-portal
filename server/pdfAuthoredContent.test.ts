@@ -12,15 +12,20 @@ import { generateBrandedPrintablePdf } from "./pdf";
  * invisible in a test of the parser, because the parser is not where the page goes wrong.
  */
 
-/** The text a reader would see if they selected the whole page and copied it. */
+/** The text a reader would see if they selected the whole document and copied it. */
 async function pageText(bytes: Uint8Array): Promise<string> {
   const doc = await getDocument({
     data: new Uint8Array(bytes),
     standardFontDataUrl: "node_modules/pdfjs-dist/standard_fonts/",
   }).promise;
-  const page = await doc.getPage(1);
-  const content = await page.getTextContent();
-  return content.items.map((item) => ("str" in item ? item.str : "")).join(" ").replace(/\s+/g, " ").trim();
+  // Every page, not just the first: the cover is its own page now, so the brief a test asserts
+  // on begins on page two.
+  const parts: string[] = [];
+  for (let number = 1; number <= doc.numPages; number += 1) {
+    const content = await (await doc.getPage(number)).getTextContent();
+    parts.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
+  }
+  return parts.join(" ").replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -37,18 +42,20 @@ async function drawnStrings(bytes: Uint8Array): Promise<string[]> {
     data: new Uint8Array(bytes),
     standardFontDataUrl: "node_modules/pdfjs-dist/standard_fonts/",
   }).promise;
-  const page = await doc.getPage(1);
-  const ops = await page.getOperatorList();
   const out: string[] = [];
-  for (let index = 0; index < ops.fnArray.length; index += 1) {
-    if (ops.fnArray[index] !== OPS.showText) continue;
-    const args = ops.argsArray[index];
-    if (!Array.isArray(args)) continue;
-    // A showText argument is a run of glyphs, each carrying the character it stands for. Reading
-    // those back is what recovers the page's own text, spacing included.
-    const glyphs = args[0];
-    if (!Array.isArray(glyphs)) continue;
-    out.push(glyphs.map((glyph: { unicode?: string }) => glyph.unicode ?? "").join(""));
+  // Every page, in order: the cover is its own page, so the body's runs start on page two.
+  for (let number = 1; number <= doc.numPages; number += 1) {
+    const ops = await (await doc.getPage(number)).getOperatorList();
+    for (let index = 0; index < ops.fnArray.length; index += 1) {
+      if (ops.fnArray[index] !== OPS.showText) continue;
+      const args = ops.argsArray[index];
+      if (!Array.isArray(args)) continue;
+      // A showText argument is a run of glyphs, each carrying the character it stands for. Reading
+      // those back is what recovers the page's own text, spacing included.
+      const glyphs = args[0];
+      if (!Array.isArray(glyphs)) continue;
+      out.push(glyphs.map((glyph: { unicode?: string }) => glyph.unicode ?? "").join(""));
+    }
   }
   return out;
 }
@@ -236,5 +243,20 @@ describe("the printable table grid", () => {
     const tableWidth = Math.max(...verticals.map((rect) => rect.x + rect.width)) - Math.min(...verticals.map((rect) => rect.x));
     const bands = rects.filter((rect) => rect.width > tableWidth * 0.9 && rect.height > 8 && rect.height < 60);
     expect(bands.length).toBe(1);
+  });
+});
+
+describe("the printable list markers", () => {
+  it("keeps every list marker, even on a line that fills the measure", async () => {
+    // A justified line that happens to fill the measure takes the ragged path in the writer's
+    // justification, and that path used to return before the marker was drawn: the first bullet
+    // of a list reached the paper indented but bulletless, one glyph from reading as a paragraph.
+    const intro = [
+      "Please include in the briefing paper an explanation of:",
+      "<ul><li>The differences between the profit statements in Schedule 1, and the profits they show, in each of the two months.</li></ul>",
+      "- Discuss how environmental costs could be captured in an environmental cost of quality report, illustrating each category with a genuine example drawn from Schedule 2.\n",
+    ].join("\n");
+    const text = await pageText(await printIntro(intro));
+    expect(text.match(/•/g)?.length).toBe(2);
   });
 });
