@@ -1515,21 +1515,30 @@ export async function generateBrandedPrintablePdf(
   };
   const canvas = new Canvas(document, fonts);
 
-  // The cover is its own page: mark, type, title and duration in the middle of generous air, the
-  // way a published paper opens. Everything the candidate has to read starts on the next page,
-  // so the cover never competes with the brief.
+  // The cover is the top of the first page: mark, type, title and duration in generous air, the
+  // way a published paper opens, with the brief and its table of contents directly beneath. The
+  // work the candidate is set does start on a fresh page, so the front matter is never crowded.
   canvas.space(72);
   await drawLogo(canvas, 56);
   canvas.space(30);
   drawCoverBlock(canvas, exam, fonts);
-  if (exam.intro || options.email || (options.attachments ?? []).length || sections.length) {
-    canvas.breakToNewPage();
-  }
 
   if (exam.intro) {
+    // The brief travels with the cover rather than starting the second page. The instructions and
+    // the table of contents are what a candidate looks for before anything else, and pushing them
+    // over a page break made the front of the paper read as a title page rather than as the start
+    // of the exam. A long brief still runs on: the canvas breaks the page itself when it runs out
+    // of room, so a contents list that does not fit lands on page 2 rather than off the sheet.
+    canvas.space(BODY_LEADING);
     // At the body size with a little more leading than the body: the cover paragraph is prose, and
     // setting it a point larger made it read as a different kind of text rather than as a lead-in.
     drawFragment(canvas, fonts, exam.intro, BODY_SIZE, BODY_LEADING + 1, BODY_LEADING * 0.6);
+  }
+
+  // The brief has had the page. Everything the candidate works through — the email brief, the
+  // attachments and the tasks — starts fresh, so no task opens halfway down the contents page.
+  if (options.email || (options.attachments ?? []).length || sections.length) {
+    canvas.breakToNewPage();
   }
 
   const attachments = options.attachments ?? [];

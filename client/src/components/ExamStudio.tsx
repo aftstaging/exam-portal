@@ -636,9 +636,6 @@ function SectionEditor({ section, index, onChange, onRemove }: { section: Sectio
           <Input type="number" min="1" value={section.duration} onChange={(event) => set({ duration: event.target.value })} placeholder="45" className="mt-1 border-white/10 bg-[#0c0524] text-white" aria-label={`Section duration ${index + 1}`} />
         </div>
       </div>
-      <div>
-        <FormattingTextarea label="Introduction / instructions" value={section.introduction} onChange={(value) => set({ introduction: value })} placeholder="Brief for this task — weighting, instructions, what candidates must do…" className="min-h-32" allowTable alignmentOnly />
-      </div>
       <AttachSlot
         label="Instruction sheet (optional)"
         icon={<Paperclip className="h-4 w-4" />}
@@ -1406,8 +1403,11 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
               <section>
                 <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-[.14em] text-[#00ff88]"><Layers3 className="h-4 w-4" /> Sections / tasks & timing</div>
                 <p className="mb-3 text-xs leading-5 text-white/50">
-                  Add each case-study task in order. Each section has its own title, time limit, formatted introduction/instructions, optional extra notes, email attachment (composed manually or attached as an image / PDF) and reference material. Pre-seen and formulae + tables stay exam-wide below.
+                  The instructions and table of contents below belong to the whole paper and print on page 1, above every task. Then add each case-study task in order: each has its own title, time limit, instruction sheet, optional extra notes, email attachment (composed manually or attached as an image / PDF) and reference material. Pre-seen and formulae + tables stay exam-wide below.
                 </p>
+                <div className="mb-4">
+                  <FormattingTextarea label="Introduction / instructions" value={intro} onChange={setIntro} placeholder="Instructions for the whole paper, with the table of contents — what candidates must do, how the marks are split…" className="min-h-32" allowTable alignmentOnly />
+                </div>
                 <div className="space-y-4">
                   {sections.map((section, index) => (
                     <SectionEditor

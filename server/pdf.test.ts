@@ -566,16 +566,17 @@ describe("branded printable exam PDF", () => {
     expect(type.y - title.y).toBeGreaterThan(24);
     // And the duration sits under the title rather than beside it, so the block is a stack.
     expect(title.y - duration.y).toBeGreaterThan(0);
-    // The cover is its own page now, so the brief beginning on a later page is the stack's proof.
-    expect(line("Answer all four tasks.")!.page).toBeGreaterThan(duration.page);
+    // The brief shares the cover's page, so the stack is read top to bottom in one place rather
+    // than being split across the front of the paper and page 2.
+    expect(line("Answer all four tasks.")!.page).toBe(duration.page);
   });
 
-  it("keeps the cover page to the cover, with no rule near the duration", async () => {
+  it("keeps the title block free of a rule, and holds no task on the front page", async () => {
     // `drawAt` paints a run without moving the cursor, so the gap measured after "Time allowed" was
     // counted from a position the text had already left, and a closing rule once came out inside
-    // the line's x-height: the sheet opened with "Time allowed" struck through. The cover no
-    // longer carries a closing rule at all — the page break separates it from the brief — so the
-    // guard is that nothing ruled lands anywhere in the duration's band.
+    // the line's x-height: the sheet opened with "Time allowed" struck through. The title block no
+    // longer carries a closing rule at all — the brief shares the page now, so nothing separates
+    // them but air — so the guard is that nothing ruled lands anywhere in the duration's band.
     const bytes = await generateBrandedPrintablePdf(
       { title: "CIMA OCS Mock Exam 1", intro: "Answer all four tasks.", totalDurationSeconds: 10800, examType: "case_study" },
       [],
@@ -586,8 +587,47 @@ describe("branded printable exam PDF", () => {
     const rules = (await drawnRules(bytes)).filter((rule) => rule.page === duration.page);
     const striking = rules.filter((rule) => rule.y < duration.y + duration.size && rule.y > duration.y - duration.size * 0.25);
     expect(striking).toHaveLength(0);
-    // And the brief starts on the page after the cover rather than sharing the cover with it.
-    expect(line("Answer all four tasks.")!.page).toBeGreaterThan(duration.page);
+    // The brief belongs on page 1 with the title block, and the work the candidate is set does not:
+    // the first task has to turn the page, or the contents page becomes the task's own page.
+    expect(line("Answer all four tasks.")!.page).toBe(duration.page);
+    const task = await generateBrandedPrintablePdf(
+      { title: "CIMA OCS Mock Exam 1", intro: "Answer all four tasks.", totalDurationSeconds: 10800, examType: "case_study" },
+      [{ sectionNumber: 1, title: "Delivery economics", durationSeconds: 2700, introduction: "Assess the decision." }],
+    );
+    const taskItems = await extractTextItems(task);
+    expect(taskItems.find((item) => item.text.includes("Delivery economics"))!.page).toBeGreaterThan(1);
+  });
+
+  it("prints the instructions and table of contents on page 1, above every task", async () => {
+    // The introduction is exam-wide, and it is the thing a candidate reads before anything else, so
+    // it used to land on page 2 behind the title block — the front of the paper read as a title page
+    // and the contents arrived once the work had already started.
+    const bytes = await generateBrandedPrintablePdf(
+      {
+        title: "Cartn Mock Exam 4",
+        intro: "<h2>Instructions</h2><p>Answer all tasks.</p><table><tr><th>Section</th><th>Marks</th></tr><tr><td>Task 1</td><td>20</td></tr><tr><td>Task 2</td><td>30</td></tr></table>",
+        totalDurationSeconds: 5400,
+      },
+      [
+        { sectionNumber: 1, title: "Delivery economics", durationSeconds: 2700, introduction: "Assess the decision." },
+        { sectionNumber: 2, title: "Growth options", durationSeconds: 2700, introduction: "Rank the options." },
+      ],
+    );
+    const items = await extractTextItems(bytes);
+    const run = (text: string) => items.find((item) => item.text.trim() === text)!;
+    // The whole of the front matter — the instructions and every row of the contents — is page 1.
+    for (const text of ["Instructions", "Answer all tasks.", "Section", "Marks", "Task 1", "20", "Task 2", "30"]) {
+      expect(run(text).page).toBe(1);
+    }
+    // It reads under the title block rather than being pushed off behind it.
+    expect(run("Instructions").y).toBeLessThan(run("Time allowed: 1 hour 30 minutes").y);
+    // pdfjs reports y upward from the foot of the page, so a lower y is further down the sheet: the
+    // brief and the contents sit below the duration rather than above it.
+    expect(run("Answer all tasks.").y).toBeLessThan(run("Time allowed: 1 hour 30 minutes").y);
+    expect(run("30").y).toBeLessThan(run("Answer all tasks.").y);
+    // Both tasks still turn the page, so no task opens halfway down the contents.
+    expect(run("Section 1 · Delivery economics [45 minutes]").page).toBeGreaterThan(1);
+    expect(run("Section 2 · Growth options [45 minutes]").page).toBeGreaterThan(1);
   });
 
   it("announces each task once, with its time in the heading", async () => {
