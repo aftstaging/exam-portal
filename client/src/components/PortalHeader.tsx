@@ -1,7 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { startLogin } from "@/const";
+import { startLogin, COURSES_URL } from "@/const";
 import { withBasePath } from "@/lib/basePath";
 
 const logoUrl = withBasePath("/assets/aft_logo_white.png");
@@ -27,6 +27,7 @@ export function PublicHeader({ onLogin }: { onLogin: () => void }) {
             <Link href="/" className="nav-link">Home</Link>
             <Link href="/shop" className="nav-link">Shop</Link>
             <Link href="/mock-exams" className="nav-link">Mock exams</Link>
+            <a href={COURSES_URL} className="nav-link" target="_blank" rel="noopener noreferrer">Courses</a>
             <Link href="/dashboard" className="nav-link">My Account</Link>
             <Link href="/cart" className="nav-link">Cart</Link>
           </nav>
