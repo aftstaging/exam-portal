@@ -665,6 +665,27 @@ function normalizeRuns(runs: RichRun[]): RichRun[] {
   return out.filter((run) => run.text.length > 0);
 }
 
+/**
+ * Decides whether a table's first row is a row of column labels.
+ *
+ * Tables imported from a question paper carry their headings in ordinary `<td>` cells, so no
+ * `<th>` ever arrives and the label row would print in the regular face, indistinguishable from
+ * the data under it. A first row whose cells are all short, word-bearing labels is a heading row
+ * in practice. A first row of bare figures is data and stays as authored, as does a first cell
+ * holding a sentence: labels are short, and a heading that reads as prose is not a heading.
+ */
+function looksLikeHeaderRow(row: RichBlock[][]): boolean {
+  if (row.length < 2) return false;
+  const texts = row.map((cell) =>
+    cell
+      .map((block) => block.runs.map((run) => run.text).join(""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+  return texts.every((text) => text.length > 0 && text.length <= 48 && /[a-z]/i.test(text));
+}
+
 /** Splits a table's inner HTML into rows of cells, each cell parsed into its own blocks. */
 function parseTable(inner: string): RichTable {
   const rows: RichBlock[][][] = [];
@@ -682,7 +703,7 @@ function parseTable(inner: string): RichTable {
       cells.push(parsed.length ? parsed : [{ kind: "paragraph" as const, runs: [], level: 3, depth: 0, marker: null, ordered: false }]);
     }
     if (!cells.length) cells.push([]);
-    if (rowIndex === 0 && sawHeader) headerRow = true;
+    if (rowIndex === 0 && (sawHeader || looksLikeHeaderRow(cells))) headerRow = true;
     rows.push(cells);
     rowIndex += 1;
   }

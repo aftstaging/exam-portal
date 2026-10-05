@@ -340,6 +340,13 @@ describe("branded printable exam PDF", () => {
     const document = await PDFDocument.load(bytes);
     expect(document.getPageCount()).toBeGreaterThan(0);
     expect(document.getPage(0).getSize().width).toBe(595);
+    // The question is the one line the sheet exists to carry. A patch merge dropped its draw
+    // while db.ts kept sending it and this test kept passing, because it only looked at page
+    // geometry — so the sheet's own text is checked here, question included.
+    const text = await extractText(bytes);
+    expect(text).toContain("Recommend how management should evaluate the control environment.");
+    expect(text).toContain("Compute the contribution per delivery route.");
+    expect(text).toContain("SoPa Foods is considering a takeaway and home-delivery service.");
   });
 
   it("renders content containing characters outside the WinAnsi encoding", async () => {
