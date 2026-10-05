@@ -269,6 +269,15 @@ const JUSTIFY_INSET = 1;
 const INK = rgb(0, 0, 0);
 const MUTED = rgb(0.38, 0.38, 0.38);
 
+/**
+ * The tint a table's heading row sits on.
+ *
+ * A heading row set in bold on bare white still competes with the figures below it; a pale band
+ * under the labels is what makes a printed table read as headings-over-data at a glance. Kept
+ * very light so it survives a mono photocopy as a whisper of grey rather than a slab.
+ */
+const HEADER_BAND = rgb(0.93, 0.94, 0.97);
+
 /** WinAnsi code points outside plain ASCII and Latin-1 that the standard fonts do support. */
 const WINANSI_CODEPOINTS = new Set([
   0x20ac, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030, 0x0160, 0x2039, 0x0152,
@@ -874,6 +883,18 @@ class Canvas {
     const lineLeading = group.leading ?? leading;
     const lineCount = Math.max(1, Math.round(group.height / lineLeading));
     const top = this.cursor - gapBefore;
+    // A heading row's band is laid down before its text, so the glyphs stay on top of the tint.
+    // Drawn per row-group because each row is its own group: only the first carries the band.
+    if (group.grid?.first) {
+      const edges = group.grid.edges;
+      this.page.drawRectangle({
+        x: edges[0]!,
+        y: top - group.height,
+        width: edges[edges.length - 1]! - edges[0]!,
+        height: group.height,
+        color: HEADER_BAND,
+      });
+    }
     for (let index = 0; index < lineCount; index += 1) {
       const baseline = top - lineSize - index * lineLeading;
       if (group.rows) {
@@ -898,19 +919,35 @@ class Canvas {
    * content scale.
    *
    * Each row is a separate group, so the top rule is drawn for every row and the bottom rule
-   * only for the last: drawing both on every row would put a pair of rules in each gap between
-   * rows and read as a double border.
+   * only for the last and for the heading row: drawing a bottom rule on every row as well would
+   * put a pair of rules in each gap between rows and read as a double border.
+   *
+   * Two weights are in play. The outer frame, and the rule under the heading row, are drawn
+   * heavier: they are the edges of the table and the split between labels and figures. The
+   * divisions between columns and between body rows stay hairline, so the frame reads as the
+   * table's boundary and the interior reads as its contents.
    */
   private drawGrid(grid: TableGrid, top: number, bottom: number, size: number, color: RGB): void {
-    const thickness = Math.max(0.5, size * 0.06);
-    const half = thickness / 2;
-    for (const x of grid.edges) {
-      // The outer edges are drawn on the group's own box; the vertical runs the full row height
-      // so a cell that wraps onto three lines is boxed on all three.
-      this.rule(x - half, bottom, thickness, top - bottom, color);
+    const hair = Math.max(0.5, size * 0.06);
+    const frame = Math.max(0.9, size * 0.13);
+    grid.edges.forEach((x, index) => {
+      const outer = index === 0 || index === grid.edges.length - 1;
+      const thickness = outer ? frame : hair;
+      // The vertical runs the full row height so a cell that wraps onto three lines is boxed on
+      // all three.
+      this.rule(x - thickness / 2, bottom, thickness, top - bottom, color);
+    });
+    // The top of every row is what puts a rule between each pair of rows. An earlier version
+    // ruled only the table's top and bottom edges, which left neighbouring rows separated by
+    // nothing but whitespace: on paper the table read as a list of short lines rather than a
+    // grid, which is exactly how an imported section plan arrived.
+    const topThickness = grid.first ? frame : hair;
+    for (const [x0, x1] of horizontalSpans(grid.edges)) this.rule(x0, top - topThickness / 2, x1 - x0, topThickness, color);
+    // The heading row's underline is the table's strongest divider; the last row closes the
+    // frame. A middle row draws nothing here — the next row's top rule is already in that gap.
+    if (grid.first || grid.last) {
+      for (const [x0, x1] of horizontalSpans(grid.edges)) this.rule(x0, bottom - frame / 2, x1 - x0, frame, color);
     }
-    if (grid.first) for (const [x0, x1] of horizontalSpans(grid.edges)) this.rule(x0, top - half, x1 - x0, thickness, color);
-    if (grid.last) for (const [x0, x1] of horizontalSpans(grid.edges)) this.rule(x0, bottom - half, x1 - x0, thickness, color);
   }
 
   /** Draws lines one at a time, breaking the page when one no longer fits. */
@@ -1470,6 +1507,15 @@ export async function generateBrandedPrintablePdf(
       canvas.space(BODY_LEADING * 0.3);
     }
     drawFragment(canvas, fonts, section.scenario);
+    // A task's instruction sheet IS its question, reproduced from the paper, so where one is
+    // attached the stored prompt would say the same thing twice and is left out. Where there is
+    // no sheet the prompt is the only question on the page — and a printable exam without its
+    // question is not an exam paper — so it is drawn here, between the scenario and the email.
+    const hasInstructionSheet = (section.introAttachmentTitles?.length ?? 0) > 0 || (section.introAttachments?.length ?? 0) > 0;
+    if (section.question && !hasInstructionSheet) {
+      canvas.space(BODY_LEADING * 0.3);
+      drawFragment(canvas, fonts, section.question);
+    }
     if (section.email) {
       canvas.space(BODY_LEADING * 0.3);
       drawEmail(canvas, section.email, fonts);

@@ -331,3 +331,33 @@ describe("richTextWordCount", () => {
     expect(richTextWordCount("<ul><li>one</li><li>two</li></ul>")).toBe(2);
   });
 });
+
+describe("parseRichHtml table heading rows", () => {
+  const tableOf = (html: string) => parseRichHtml(html).find((block) => block.table)?.table;
+
+  // Tables imported from a question paper carry their column labels in ordinary `<td>` cells, so
+  // without this the label row printed in the regular face and read as data.
+  it("reads a first row of short labels as the heading row", () => {
+    const table = tableOf(
+      "<table><tr><td>Section Number</td><td>Time for section</td><td>Number of tasks</td></tr><tr><td>1</td><td>45</td><td>1</td></tr></table>",
+    );
+    expect(table?.headerRow).toBe(true);
+  });
+
+  it("leaves a first row of bare figures as data", () => {
+    const table = tableOf("<table><tr><td>1</td><td>45</td></tr><tr><td>2</td><td>90</td></tr></table>");
+    expect(table?.headerRow).toBe(false);
+  });
+
+  it("leaves a first cell holding a sentence as data", () => {
+    const table = tableOf(
+      "<table><tr><td>The learner must allocate the available time across the tasks below</td><td>45</td></tr><tr><td>2</td><td>90</td></tr></table>",
+    );
+    expect(table?.headerRow).toBe(false);
+  });
+
+  it("still honours an explicit th heading row", () => {
+    const table = tableOf("<table><tr><th>Region</th><th>Total</th></tr><tr><td>North</td><td>300</td></tr></table>");
+    expect(table?.headerRow).toBe(true);
+  });
+});

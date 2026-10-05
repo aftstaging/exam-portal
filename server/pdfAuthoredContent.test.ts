@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from "pdf-lib";
 import { getDocument, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { generateBrandedPrintablePdf } from "./pdf";
 
@@ -154,5 +155,86 @@ describe("the printable page for authored content", () => {
     const text = await pageText(await printIntro(MIXED_INTRO));
     expect(text.indexOf("Region")).toBeLessThan(text.indexOf("Northern"));
     expect(text.indexOf("Northern")).toBeLessThan(text.indexOf("Southern"));
+  });
+});
+
+/** The content streams of every page, decoded to text, the way pdf.test.ts reads them. */
+function pageContentStreams(document: PDFDocument, contents: unknown): PDFRawStream[] {
+  const resolved = document.context.lookup(contents as never);
+  if (resolved instanceof PDFRawStream) return [resolved];
+  if (resolved instanceof PDFArray) {
+    return resolved
+      .asArray()
+      .map((entry) => document.context.lookup(entry))
+      .filter((entry): entry is PDFRawStream => entry instanceof PDFRawStream);
+  }
+  return [];
+}
+
+/**
+ * The filled rectangles the writer emitted, as page geometry: rules, bands and frames are all
+ * drawn as one translated polygon each, so the `cm` above a polygon carries its position and the
+ * polygon itself carries its size. Read from the content stream rather than through pdfjs,
+ * because pdfjs hands paths back in a local space where the page position is no longer visible.
+ */
+async function filledRectangles(bytes: Uint8Array): Promise<{ x: number; y: number; width: number; height: number }[]> {
+  const document = await PDFDocument.load(bytes, { updateMetadata: false });
+  const rects: { x: number; y: number; width: number; height: number }[] = [];
+  for (const page of document.getPages()) {
+    for (const source of pageContentStreams(document, page.node.Contents())) {
+      const text = Buffer.from(decodePDFRawStream(source).decode()).toString("latin1");
+      const drawn = /1 0 0 1 (-?[\d.]+) (-?[\d.]+) cm\n(?:1 0 0 1 0 0 cm\n)*0 0 m\n0 ([\d.]+) l\n([\d.]+) [\d.]+ l\n[\d.]+ 0 l\nh\nf/g;
+      for (const match of text.matchAll(drawn)) {
+        rects.push({ x: Number(match[1]), y: Number(match[2]), width: Number(match[4]), height: Number(match[3]) });
+      }
+    }
+  }
+  return rects;
+}
+
+/** Groups y positions that land within `tolerance` of each other, so one boundary counts once. */
+function levelsOf(ys: number[], tolerance = 1.5): number {
+  const sorted = [...ys].sort((a, b) => a - b);
+  let clusters = 0;
+  let previous = Number.NEGATIVE_INFINITY;
+  for (const y of sorted) {
+    if (y - previous > tolerance) clusters += 1;
+    previous = y;
+  }
+  return clusters;
+}
+
+describe("the printable table grid", () => {
+  const SECTION_PLAN = [
+    "<table>",
+    "<tr><td>Section Number</td><td>Time for section</td><td>Number of tasks</td></tr>",
+    "<tr><td>1</td><td>45</td><td>1</td></tr>",
+    "<tr><td>2</td><td>45</td><td>1</td></tr>",
+    "</table>",
+  ].join("");
+
+  it("rules every gap between the rows of a table", async () => {
+    // Reported from a real printable exam: the imported section plan printed its column rules
+    // and its outer top and bottom edges but nothing between the rows, so on paper the table
+    // read as a list of short lines. A three-row table needs four rules across it.
+    const rects = await filledRectangles(await printIntro(SECTION_PLAN));
+    const verticals = rects.filter((rect) => rect.height > rect.width * 3 && rect.height > 8);
+    expect(verticals.length).toBeGreaterThan(0);
+    const top = Math.max(...verticals.map((rect) => rect.y + rect.height));
+    const bottom = Math.min(...verticals.map((rect) => rect.y));
+    const horizontals = rects.filter(
+      (rect) => rect.width > 40 && rect.height <= 2 && rect.y <= top + 1 && rect.y >= bottom - 1,
+    );
+    expect(levelsOf(horizontals.map((rect) => rect.y))).toBe(4);
+  });
+
+  it("sets a tinted band under the heading row", async () => {
+    // The band is a filled rectangle the height of the heading row and the width of the table,
+    // which no rule can be: rules are hairline, and the band is what separates labels from data.
+    const rects = await filledRectangles(await printIntro(SECTION_PLAN));
+    const verticals = rects.filter((rect) => rect.height > rect.width * 3 && rect.height > 8);
+    const tableWidth = Math.max(...verticals.map((rect) => rect.x + rect.width)) - Math.min(...verticals.map((rect) => rect.x));
+    const bands = rects.filter((rect) => rect.width > tableWidth * 0.9 && rect.height > 8 && rect.height < 60);
+    expect(bands.length).toBe(1);
   });
 });

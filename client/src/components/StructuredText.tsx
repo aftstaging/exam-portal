@@ -59,7 +59,11 @@ function renderCell(blocks: RichBlock[], key: number, header: boolean): ReactNod
     <Tag
       key={key}
       {...(header ? { scope: "col" as const } : {})}
-      className="border border-white/15 px-3 py-2 align-top"
+      className={
+        header
+          ? "border border-white/15 bg-[#18093c]/70 px-3 py-2 text-left align-top font-bold text-white"
+          : "border border-white/15 px-3 py-2 align-top"
+      }
     >
       {blocks.length ? renderBlocks(blocks) : null}
     </Tag>
@@ -193,10 +197,25 @@ function splitEmailHeader(text: string): EmailHeader | null {
   return { rows, body: body.join("\n") };
 }
 
-export function StructuredText({ text, className = "" }: { text?: string | null; className?: string }) {
+export function StructuredText({
+  text,
+  className = "",
+  omitTables = false,
+}: {
+  text?: string | null;
+  className?: string;
+  /**
+   * Leaves table blocks out of the render, keeping the prose and lists around them.
+   *
+   * A section's introduction carries the paper's section-plan table as well as its instructions,
+   * and some views want only the instructions: the plan is already summarised beside them, so
+   * repeating the full grid there pushes the actual guidance below the fold.
+   */
+  omitTables?: boolean;
+}) {
   const source = repairLigatures(text ?? "");
   const email = splitEmailHeader(source);
-  const blocks = parseRichHtml(email ? email.body : source);
+  const blocks = parseRichHtml(email ? email.body : source).filter((block) => !(omitTables && block.table));
   return (
     <div className={className}>
       {email && (
