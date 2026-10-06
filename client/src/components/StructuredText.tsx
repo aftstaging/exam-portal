@@ -61,8 +61,8 @@ function renderCell(blocks: RichBlock[], key: number, header: boolean): ReactNod
       {...(header ? { scope: "col" as const } : {})}
       className={
         header
-          ? "border border-white/15 bg-[#18093c]/70 px-3 py-2 text-left align-top font-bold text-white"
-          : "border border-white/15 px-3 py-2 align-top"
+          ? "h-10 min-w-[6rem] border border-white/15 bg-[#18093c]/70 px-3 py-2 text-left align-top font-bold text-white"
+          : "h-10 min-w-[6rem] border border-white/15 px-3 py-2 align-top"
       }
     >
       {blocks.length ? renderBlocks(blocks) : null}

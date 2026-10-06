@@ -756,7 +756,7 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                 <Badge className="w-fit bg-[#102b36] text-[#00e5ff]">{examType === "case_study" ? "Case study" : "Objective test"} · draft</Badge>
                 <CardTitle className="mt-3 text-3xl text-white">{title || "Untitled exam"}</CardTitle>
                 <p className="max-w-2xl text-[#c4b5fd]">This is how the exam presents to learners once published.</p>
-                {intro ? <StructuredText className="mt-3 max-w-3xl text-base leading-7 text-[#c4b5fd]" text={intro} /> : <p className="mt-3 max-w-2xl text-sm text-white/45">No introduction has been configured yet.</p>}
+                {intro ? <StructuredText className="mt-3 max-w-3xl text-base leading-7 text-[#c4b5fd] [&_p]:text-justify [&_td_p]:text-left [&_th_p]:text-left" text={intro} /> : <p className="mt-3 max-w-2xl text-sm text-white/45">No introduction has been configured yet.</p>}
               </CardHeader>
               <CardContent className="px-8 py-7">
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
