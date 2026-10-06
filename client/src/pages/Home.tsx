@@ -578,7 +578,7 @@ function ModeSelection({ setScreen }: { setScreen: (next: string) => void }) { c
                       </span>
                     </div>
                     <div className="px-4 py-3">
-                      <StructuredText className="text-xs leading-5 text-[#c4b5fd]" text={section.introduction || "See protected question paper"} />
+                      <p className="text-xs leading-5 text-[#c4b5fd]">See protected question paper</p>
                     </div>
                   </div>
                 ))}
