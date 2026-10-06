@@ -179,17 +179,22 @@ sudo systemctl restart aft-portal
 2. Register using the `OWNER_EMAIL` (`admin@accountantsfortomorrow.co.za` by default).
    That user is auto-promoted to **admin**.
 
-Re-create the demo accounts on the server (idempotent):
+No demo accounts are seeded in production. The production account reconciliation updates existing accounts only: it sets `admin@accountantsfortomorrow.co.za` to admin, `instructor@accountantsfortomorrow.co.za` to instructor, and disables demo logins without deleting users or their history. It does not create either staff account if missing.
+
+After backing up the database, preview the changes:
 
 ```bash
 cd /opt/aft-learning-portal
-pnpm exec tsx server/scripts/seed-demo-accounts.ts
+pnpm exec tsx server/scripts/reconcile-production-accounts.ts
 ```
 
-Demo logins (sandbox only, don't use in production):
+Review the listed accounts, then apply them explicitly:
 
-- Admin: `demo.admin@accountantsfortomorrow.co.za` / `AdminDemo!2026`
-- Student: `demo.student@accountantsfortomorrow.co.za` / `StudentDemo!2026`
+```bash
+pnpm exec tsx server/scripts/reconcile-production-accounts.ts --apply
+```
+
+The old `seed-demo-accounts.ts` command is retired. QA demo access is unavailable when `NODE_ENV=production`.
 
 ---
 

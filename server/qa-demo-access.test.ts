@@ -13,17 +13,33 @@ function callerFor(user: TrpcContext["user"], res: TrpcContext["res"] = { clearC
 }
 
 describe("QA demo access mode", () => {
+  const originalNodeEnv = process.env.NODE_ENV;
   beforeEach(() => {
     delete process.env.AFT_QA_DEMO_ACCESS;
+    process.env.NODE_ENV = "test";
   });
   afterEach(() => {
     delete process.env.AFT_QA_DEMO_ACCESS;
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it("reports the demo access flag through qaDemoStatus", async () => {
     expect(await callerFor(null).auth.qaDemoStatus()).toEqual({ enabled: false });
     process.env.AFT_QA_DEMO_ACCESS = "true";
     expect(await callerFor(null).auth.qaDemoStatus()).toEqual({ enabled: true });
+  });
+
+  it("keeps QA demo access disabled in production even when the flag is true", async () => {
+    process.env.AFT_QA_DEMO_ACCESS = "true";
+    process.env.NODE_ENV = "production";
+    expect(await callerFor(null).auth.qaDemoStatus()).toEqual({ enabled: false });
+    await expect(callerFor(null).auth.qaDemoLogin()).rejects.toThrow("QA demo access is disabled");
+  });
+
+  it("keeps QA demo access disabled outside development and test", async () => {
+    process.env.AFT_QA_DEMO_ACCESS = "true";
+    process.env.NODE_ENV = "staging";
+    expect(await callerFor(null).auth.qaDemoStatus()).toEqual({ enabled: false });
   });
 
   it("fails closed when the QA demo access flag is disabled", async () => {

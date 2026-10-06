@@ -58,11 +58,10 @@ The downloaded project reported `Error: spawn EINVAL` in PowerShell because the 
 
 ## Temporary QA/demo learner access mode
 
-A clearly labelled QA learner access path is now available for controlled testing without circulating real learner passwords:
+The isolated QA learner flow is available only in non-production environments:
 
-- **Enable:** set `AFT_QA_DEMO_ACCESS=true` in the server environment and restart. The sign-in dialog then shows a `Temporary QA access` panel with an `Enter as demo learner` action. The demo learner must have been provisioned first by an administrator via the admin console `Provision 60-day demo account` action (`admin.provisionDemoLearner`, gated to admins).
-- **What it does:** `auth.qaDemoStatus` exposes whether the mode is on; `auth.qaDemoLogin` starts a session for the isolated demo learner (`demo@accountantsfortomorrow.co.za`, openId `aft-demo-learner-60d`) without a password.
-- **Safety:** the demo account is always a non-admin `user` role, so admin procedures still reject it. The login procedure issues a normal signed session cookie and does not call any entitlement-granting or pricing code, so it cannot grant or alter real learner entitlements. PayFast ITN verification and protected-resource entitlement checks are untouched.
-- **Disabled by default:** with the flag absent or not strictly `true`, `qaDemoLogin` fails with `QA demo access is disabled` and the dialog hides the QA panel.
-- **Rollback:** remove `AFT_QA_DEMO_ACCESS` from the environment and restart; no database migration is required. The demo learner and its 60-day entitlements remain but cease to be reachable through the QA panel.
-- **Coverage:** `server/qa-demo-access.test.ts` verifies status reporting, the fails-closed disabled path, and the isolated demo openId constant; `server/qa-demo-session.test.ts` proves the session cookie is issued for the demo learner and that login cannot call entitlement-granting procedures.
+- **Enable for local QA:** set `AFT_QA_DEMO_ACCESS=true` with `NODE_ENV=development` or `test`. The sign-in dialog and admin provisioning control are hidden unless the server reports the flag as enabled.
+- **Environment guard:** the server enables QA demo access only in `development` or `test`; it remains disabled in production, staging, or any other environment even if the flag is accidentally set to `true`.
+- **Existing production demo rows:** run `server/scripts/reconcile-production-accounts.ts` first without arguments to review the existing demo accounts and staff role changes. After a database backup, rerun with `--apply` to mark demo logins disabled while preserving their rows and related history. The script does not create missing staff accounts.
+- **Authentication:** accounts marked `loginMethod=disabled` cannot log in with a password and existing signed sessions are rejected by the server.
+- **Coverage:** `server/qa-demo-access.test.ts` verifies normal flag behavior and that production always fails closed; `server/qa-demo-session.test.ts` covers the isolated non-production QA session.
