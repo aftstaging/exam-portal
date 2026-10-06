@@ -1,4 +1,4 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS, isLoginDisabled } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
@@ -112,6 +112,12 @@ class SDKServer {
     // Local session may reference an account that no longer exists.
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    // Disabled accounts keep their rows and history but cannot be used to
+    // authenticate, so previously issued session cookies stop working.
+    if (isLoginDisabled(user.loginMethod)) {
+      throw ForbiddenError("This account has been disabled");
     }
 
     await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });

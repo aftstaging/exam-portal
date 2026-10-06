@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, isLoginDisabled } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { publicOrigin } from "./_core/basePath";
 import { systemRouter } from "./_core/systemRouter";
@@ -39,6 +39,9 @@ export const appRouter = router({
       const user = await getUserByEmail(input.email);
       if (!user || !user.passwordHash) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
+      }
+      if (isLoginDisabled(user.loginMethod)) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "This account has been disabled" });
       }
       if (!verifyPassword(input.password, user.passwordHash)) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
@@ -293,7 +296,10 @@ export const appRouter = router({
     createObjectiveQuestion: staffProcedure.input(z.object({ mockExamId: z.number().int().positive(), topic: z.string().min(1).max(180), prompt: z.string().min(1).max(10000), options: z.array(z.string().min(1).max(1000)).min(2).max(8), correct: z.number().int().min(0), questionType: z.enum(["single_choice", "multiple_choice", "dropdown", "numerical", "text_input"]).optional(), explanation: z.string().max(5000).optional(), rationale: z.array(z.string().max(1000)).max(8).optional(), difficulty: z.enum(["easy", "medium", "hard"]), attachmentBase64: z.string().max(15_000_000).optional(), attachmentFileName: z.string().max(240).optional(), attachmentMimeType: z.string().max(120).optional() })).mutation(({ ctx, input }) => createAdminObjectiveQuestion({ ...input, userId: ctx.user.id })),
     updateObjectiveQuestionRationale: staffProcedure.input(z.object({ questionId: z.number().int().positive(), rationale: z.array(z.string().max(1000)).max(8) })).mutation(({ ctx, input }) => updateAdminObjectiveQuestionRationale({ ...input, userId: ctx.user.id })),
     uploadResource: staffProcedure.input(z.object({ productId: z.number().int().positive(), title: z.string().max(240), kind: z.enum(["pre_seen", "formulae", "printable_pdf", "feedback", "course_material", "reference"]), fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().min(1).max(28000000) })).mutation(({ ctx, input }) => uploadAdminResource({ ...input, userId: ctx.user.id })),
-    provisionDemoLearner: adminProcedure.mutation(({ ctx }) => provisionDemoLearner(ctx.user.id)),
+    provisionDemoLearner: adminProcedure.mutation(({ ctx }) => {
+      if (!ENV.qaDemoAccessEnabled()) throw new TRPCError({ code: "FORBIDDEN", message: "QA demo access is disabled" });
+      return provisionDemoLearner(ctx.user.id);
+    }),
     users: adminProcedure.query(() => listAdminUsers()),
     userPage: adminProcedure.input(z.object({ role: z.enum(["user", "instructor", "admin"]).optional(), search: z.string().max(200).optional(), page: z.number().int().min(1).optional().default(1), pageSize: z.number().int().min(1).max(200).optional().default(10) })).query(({ input }) => listAdminUserPage(input)),
     createStudent: adminProcedure.input(z.object({ email: z.string().email().max(320), password: z.string().min(8).max(200), name: z.string().min(1).max(200).optional() })).mutation(({ ctx, input }) => createManagedUser({ email: input.email, name: input.name, passwordHash: hashPassword(input.password), role: "user" })),

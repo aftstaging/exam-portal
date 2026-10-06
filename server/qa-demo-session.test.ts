@@ -58,6 +58,7 @@ function createQaContext() {
 describe("QA demo learner session", () => {
   beforeEach(() => {
     process.env.AFT_QA_DEMO_ACCESS = "true";
+    process.env.NODE_ENV = "test";
   });
 
   it("starts a demo learner session with a session cookie", async () => {

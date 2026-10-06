@@ -18,5 +18,12 @@ export const ENV = {
   payfastLivePassphrase: process.env.PAYFAST_LIVE_PASSPHRASE ?? "",
   payfastMode: (process.env.PAYFAST_MODE as "sandbox" | "live") || "sandbox",
 
-  qaDemoAccessEnabled: () => process.env.AFT_QA_DEMO_ACCESS === "true",
+  // QA demo access is a development/test affordance only. Even if the flag is
+  // accidentally set to "true" in production (or staging, or any other
+  // environment), the server keeps it disabled.
+  qaDemoAccessEnabled: () => {
+    if (process.env.AFT_QA_DEMO_ACCESS !== "true") return false;
+    const nodeEnv = process.env.NODE_ENV ?? "development";
+    return nodeEnv === "development" || nodeEnv === "test";
+  },
 };
