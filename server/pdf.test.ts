@@ -616,11 +616,12 @@ describe("branded printable exam PDF", () => {
     const items = await extractTextItems(bytes);
     const run = (text: string) => items.find((item) => item.text.trim() === text)!;
     // The whole of the front matter — the instructions and every row of the contents — is page 1.
-    for (const text of ["Instructions", "Answer all tasks.", "Section", "Marks", "Task 1", "20", "Task 2", "30"]) {
+    // The instructions open under the centred heading the candidate is told to look for.
+    for (const text of ["Exam timings and instructions", "Answer all tasks.", "Section", "Marks", "Task 1", "20", "Task 2", "30"]) {
       expect(run(text).page).toBe(1);
     }
     // It reads under the title block rather than being pushed off behind it.
-    expect(run("Instructions").y).toBeLessThan(run("Time allowed: 1 hour 30 minutes").y);
+    expect(run("Exam timings and instructions").y).toBeLessThan(run("Time allowed: 1 hour 30 minutes").y);
     // pdfjs reports y upward from the foot of the page, so a lower y is further down the sheet: the
     // brief and the contents sit below the duration rather than above it.
     expect(run("Answer all tasks.").y).toBeLessThan(run("Time allowed: 1 hour 30 minutes").y);

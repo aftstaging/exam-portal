@@ -1,9 +1,11 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, not, or } from "drizzle-orm";
+import { notifyUser } from "./notifications";
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/mysql2";
 import { ENV } from "./_core/env";
 import { storageGetBytes, storageGetSignedUrl, storagePut } from "./storage";
 import { generateBrandedPrintablePdf, isJpegBytes, isPdfBytes, isPngBytes } from "./pdf";
+import { interpretDocument } from "./documentText";
 import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { accountRemovalBlocker, hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
 import { richTextWordCount, sanitizeAuthoredHtml } from "@shared/richText";
@@ -61,7 +63,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
   if (!existing[0]) {
     const createdUser = await db.select({ id: users.id }).from(users).where(eq(users.openId, user.openId)).limit(1);
-    if (createdUser[0]) await db.insert(notifications).values({ userId: createdUser[0].id, type: "account", subject: "Welcome to Accountants for Tomorrow", body: "Your learner account is ready. Explore your products and begin your exam preparation." });
+    if (createdUser[0]) await notifyUser(db, { userId: createdUser[0].id, type: "account", subject: "Welcome to Accountants for Tomorrow", body: "Your learner account is ready. Explore your products and begin your exam preparation." });
   }
 }
 
@@ -94,7 +96,7 @@ export async function createLocalUser(input: { email: string; name?: string; pas
   });
   const created = await getUserByEmail(email);
   if (!created) throw new Error("User could not be created");
-  await db.insert(notifications).values({ userId: created.id, type: "account", subject: "Welcome to Accountants for Tomorrow", body: "Your learner account is ready. Explore your products and begin your exam preparation." });
+  await notifyUser(db, { userId: created.id, type: "account", subject: "Welcome to Accountants for Tomorrow", body: "Your learner account is ready. Explore your products and begin your exam preparation." });
   return created;
 }
 
@@ -312,58 +314,70 @@ export async function submitAttempt(input: { userId: number; attemptId: number; 
   return { success: true, status };
 }
 
-/** Resource row fields the printable PDF needs to decide whether to embed a file. */
+/** Resource row fields the printable PDF needs to decide how to print a file. */
 type PrintableResource = { kind: string; title: string; fileKey: string | null; fileUrl: string | null };
 
 /**
- * Keys that name a document the PDF writer cannot place, so their bytes are never worth
- * downloading. A `.pdf` key is deliberately absent from this list: those pages are printed into the
- * exam rather than named on it, so they are worth fetching.
- * Anything else is fetched and judged on its content: uploads land under generated keys that do
- * not always keep the original extension, and a stored content type is not always the real one.
+ * What a reference file contributes to the printable: its text, as interpreted HTML that is set
+ * on the page; a picture or PDF to embed where text cannot carry it; or only its name, when the
+ * file is neither readable nor placeable.
  */
-const DOCUMENT_FILE = /\.(docx?|txt|xlsx?|pptx?|csv|rtf|odt|zip)$/i;
+type PrintableContent =
+  | { type: "html"; html: string }
+  | { type: "embed"; base64: string; mimeType: string }
+  | { type: "name"; name: string };
 
-/**
- * Loads an attachment as PDF or image bytes when the stored file really is one.
- *
- * A PDF is loaded for the same reason a picture is: listing it by title left the sheet with a
- * caption and nothing to read, which is the one thing an attached PDF is there for.
- *
- * Failures are not fatal: a resource that cannot be read, or that turns out to be a document the
- * PDF writer cannot place, is still listed by title.
- */
-async function loadPrintableResource(entry: PrintableResource): Promise<{ kind: string; title: string; base64?: string; mimeType?: string }> {
-  const fallback = { kind: entry.kind, title: entry.title };
-  if (!entry.fileKey || DOCUMENT_FILE.test(entry.fileKey)) return fallback;
+/** Strips the internal " · Pre-seen" style suffix so a fallback name never advertises the file's role. */
+function visibleName(title: string): string {
+  return title.replace(/\s*·\s*(Pre-seen|Formulae \+ tables|Reference material|Printable exam|Feedback)\s*$/i, "").trim();
+}
+
+async function printableContent(fileName: string, bytes: Buffer, mimeType: string | undefined, name: string): Promise<PrintableContent> {
+  const interpreted = await interpretDocument({ bytes, fileName, mimeType });
+  if (interpreted.kind === "html") return { type: "html", html: interpreted.html };
+  if (interpreted.kind === "image") return { type: "embed", base64: bytes.toString("base64"), mimeType: interpreted.mimeType };
+  if (isPdfBytes(bytes)) return { type: "embed", base64: bytes.toString("base64"), mimeType: "application/pdf" };
+  return { type: "name", name };
+}
+
+/** Reads a stored resource and decides how the printable prints it. */
+async function loadPrintableResource(entry: PrintableResource): Promise<PrintableContent> {
+  const name = visibleName(entry.title);
+  if (!entry.fileKey) return { type: "name", name };
   try {
     const { body, contentType } = await storageGetBytes(entry.fileKey);
-    if (!body.length) return fallback;
-    const mimeType = isPdfBytes(body)
-      ? "application/pdf"
-      : isPngBytes(body)
-        ? "image/png"
-        : isJpegBytes(body)
-          ? "image/jpeg"
-          : contentType ?? undefined;
-    if (!mimeType) return fallback;
-    return { ...fallback, base64: body.toString("base64"), mimeType };
+    if (!body.length) return { type: "name", name };
+    return await printableContent(entry.fileKey, body, contentType ?? undefined, name);
   } catch {
-    return fallback;
+    return { type: "name", name };
   }
 }
 
-/**
- * Turns an uploaded file's data URL into printable bytes, or null when it is not something the PDF
- * writer can place — a Word attachment, for instance, stays a listed caption.
- */
-function inlineAttachmentPayload(base64: string): { base64: string; mimeType: string } | null {
-  const match = /^data:([^;,]+)?(?:;[^,]*)?,([\s\S]*)$/.exec(base64);
-  const payload = match ? match[2] ?? "" : base64;
-  if (!payload) return null;
-  const head = Buffer.from(payload.slice(0, 16), "base64");
-  const mimeType = isPdfBytes(head) ? "application/pdf" : isPngBytes(head) ? "image/png" : isJpegBytes(head) ? "image/jpeg" : null;
-  return mimeType ? { base64: payload, mimeType } : null;
+/** Decodes an uploaded file's data URL (or raw base64) into bytes. */
+function decodeUploadedFile(data: string): Buffer | null {
+  const payload = data.startsWith("data:") ? data.slice(data.indexOf(",") + 1) : data;
+  return payload ? Buffer.from(payload, "base64") : null;
+}
+
+async function loadCoverImageForProduct(productId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select({ featuredImageUrl: products.featuredImageUrl }).from(products).where(eq(products.id, productId)).limit(1);
+  return loadCoverImage(rows[0]?.featuredImageUrl);
+}
+
+/** The product's featured image as cover bytes, when it is stored as a PNG or JPEG. */
+async function loadCoverImage(url: string | null | undefined): Promise<{ bytes: Buffer; mimeType: "image/png" | "image/jpeg" } | null> {
+  const key = url?.match(/(?:^|\/)storage\/(.+)$/)?.[1];
+  if (!key) return null;
+  try {
+    const { body } = await storageGetBytes(key);
+    if (isPngBytes(body)) return { bytes: body, mimeType: "image/png" };
+    if (isJpegBytes(body)) return { bytes: body, mimeType: "image/jpeg" };
+  } catch {
+    // The cover prints without the product image when it cannot be read.
+  }
+  return null;
 }
 
 export async function generatePrintablePdf(userId: number, mockExamId: number) {
@@ -376,13 +390,17 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
   const emailMeta = universalResources.filter((entry) => entry.kind === "email" && entry.fileUrl && entry.fileUrl.trim().startsWith("{"))
     .map((entry) => { try { return JSON.parse(entry.fileUrl as string) as { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null; } catch { return null; } })
     .filter((entry): entry is { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } => Boolean(entry))[0] ?? null;
-  const attachmentRank: Record<string, number> = { pre_seen: 0, formulae: 1, reference: 2, printable_pdf: 3, feedback: 4, email: 5 };
-  const attachments = await Promise.all(
-    universalResources
-      .filter((entry) => entry.title && entry.kind in attachmentRank)
-      .sort((a, b) => (attachmentRank[a.kind] ?? 9) - (attachmentRank[b.kind] ?? 9))
-      .map((entry) => loadPrintableResource(entry)),
-  );
+  // Reference, pre-seen and formulae material print as text where it can be read. Solutions and
+  // the generated printable itself never go on the candidate's paper.
+  const universalOrder: Record<string, number> = { pre_seen: 0, formulae: 1, reference: 2, email: 3 };
+  const universalFiles = universalResources
+    .filter((entry) => entry.title && entry.kind in universalOrder && (entry.kind !== "email" || Boolean(entry.fileKey)))
+    .sort((a, b) => (universalOrder[a.kind] ?? 9) - (universalOrder[b.kind] ?? 9));
+  const universalLoaded = await Promise.all(universalFiles.map(async (entry) => ({ entry, content: await loadPrintableResource(entry) })));
+  const documents = universalLoaded.flatMap(({ content }) => (content.type === "html" ? [content.html] : []));
+  // A file that is neither text nor a picture cannot be placed, so it is left off the paper rather
+  // than named on it: a bare file name is a caption with nothing to read.
+  const attachments = universalLoaded.flatMap(({ entry, content }) => (content.type === "embed" ? [{ kind: entry.kind, title: "", base64: content.base64, mimeType: content.mimeType }] : []));
 
   // Per-task email / reference / instruction-sheet attachments for each case-study section.
   const sectionAttachments = productResources.filter((entry) => entry.sectionNumber != null && (entry.kind === "email" || entry.kind === "reference" || entry.kind === "instructions") && Boolean(entry.title));
@@ -393,37 +411,30 @@ export async function generatePrintablePdf(userId: number, mockExamId: number) {
     if (metaRow?.fileUrl) {
       try { email = JSON.parse(metaRow.fileUrl) as typeof email; } catch { email = null; }
     }
-    const captionFor = (title: string, kind: string) =>
-      `${kind === "email" ? "Email attachment image" : kind === "instructions" ? "Instruction sheet" : "Reference material"}: ${title}`
-        .split(` · Task ${section.sectionNumber}`)
-        .join("");
     // The instruction sheet prints with the task's instructions, so it is split out of the other
-    // per-task files: whether it is a picture or a PDF, its own content is placed on the page, and
-    // only a file the writer cannot place at all is listed as a plain caption.
+    // per-task files.
     const instructionRows = taskRows.filter((entry) => entry.kind === "instructions");
     const otherRows = taskRows.filter((entry) => entry !== metaRow && entry.kind !== "instructions");
-    const printable = async (rows: typeof taskRows) => {
-      const loaded = await Promise.all(rows.map((entry) => loadPrintableResource(entry)));
-      return {
-        // Successfully embedded files print their own captions, so only files that could not be
-        // placed on the page remain plain title-only references.
-        titles: rows.filter((_, index) => !loaded[index]!.base64).map((entry) => captionFor(entry.title, entry.kind)),
-        attachments: loaded.map((file, index) => ({ ...file, title: captionFor(rows[index]!.title, rows[index]!.kind) })),
-      };
-    };
-    const intro = await printable(instructionRows);
-    const rest = await printable(otherRows);
+    const load = async (rows: typeof taskRows) => Promise.all(rows.map(async (entry) => loadPrintableResource(entry)));
+    const intro = await load(instructionRows);
+    const rest = await load(otherRows);
+    const embeds = (contents: PrintableContent[]) => contents.flatMap((content) => (content.type === "embed" ? [{ kind: "reference", title: "", base64: content.base64, mimeType: content.mimeType }] : []));
+    const names = (contents: PrintableContent[]) => contents.flatMap((content) => (content.type === "name" && content.name ? [content.name] : []));
+    const htmlOf = (contents: PrintableContent[]) => contents.flatMap((content) => (content.type === "html" ? [content.html] : []));
     return {
       ...section,
       email,
-      attachmentTitles: rest.titles,
-      attachments: rest.attachments,
-      introAttachmentTitles: intro.titles,
-      introAttachments: intro.attachments,
+      documents: htmlOf(rest),
+      attachmentTitles: names(rest),
+      attachments: embeds(rest),
+      introDocuments: htmlOf(intro),
+      introAttachmentTitles: names(intro),
+      introAttachments: embeds(intro),
     };
   }));
 
-  const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, pdfSections, { email: emailMeta, attachments });
+  const coverImage = await loadCoverImage(exam[0].product.featuredImageUrl);
+  const bytes = await generateBrandedPrintablePdf(exam[0].mockExam, pdfSections, { email: emailMeta, attachments, documents, coverImage });
   const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
   const existing = await db.select().from(resources).where(and(eq(resources.productId, exam[0].product.id), eq(resources.kind, "printable_pdf"))).limit(1);
   if (existing[0]) {
@@ -581,7 +592,7 @@ export async function createLockedSubmission(input: { userId: number; attemptId:
   if (!input.optOutOfMarking) {
     await db.insert(markings).values({ attemptId: input.attemptId, status: "unassigned", totalPoints: 0, awardedPoints: 0 });
   }
-  await db.insert(notifications).values({ userId: input.userId, type: "submission", subject: "Exam submission received", body: "Your submission has been securely locked and recorded." });
+  await notifyUser(db, { userId: input.userId, type: "submission", subject: "Exam submission received", body: "Your submission has been securely locked and recorded." });
   return { submissionId: created[0]?.id, status };
 }
 
@@ -849,7 +860,7 @@ export async function releaseFeedback(input: { markingId: number; feedback: stri
   await db.insert(feedbackStates).values({ attemptId: row[0].attemptId, state: "available", summary: input.feedback, releasedAt: new Date() });
   await db.update(attempts).set({ status: "marked" }).where(eq(attempts.id, row[0].attemptId));
   const attemptOwner = await db.select().from(attempts).where(eq(attempts.id, row[0].attemptId)).limit(1);
-  if (attemptOwner[0]) await db.insert(notifications).values({ userId: attemptOwner[0].userId, type: "marking", subject: "Your marking is available", body: "Your case-study feedback has been released and is ready to review." });
+  if (attemptOwner[0]) await notifyUser(db, { userId: attemptOwner[0].userId, type: "marking", subject: "Your marking is available", body: "Your case-study feedback has been released and is ready to review." });
   return { success: true };
 }
 
@@ -1354,36 +1365,45 @@ export async function createExamBundle(input: ExamBundleInput) {
   if (input.examType === "case_study" && !input.preModeratedPdf) {
     const persistedSections = await db.select({ sectionNumber: caseStudySections.sectionNumber, title: caseStudySections.title, durationSeconds: caseStudySections.durationSeconds, introduction: caseStudySections.introduction, scenario: caseStudySections.scenario, question: caseStudySections.question }).from(caseStudySections).where(eq(caseStudySections.mockExamId, mockExamId)).orderBy(asc(caseStudySections.sectionNumber));
     const exam = { title, intro: input.intro?.trim() || null, totalDurationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), examType: input.examType };
-    const pdfSections = (persistedSections.length ? persistedSections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }]).map((section) => {
+    const pdfSections = await Promise.all((persistedSections.length ? persistedSections : [{ sectionNumber: 1, title: "Case study task", durationSeconds: Math.max(60, Math.round(input.totalDurationSeconds)), introduction: "Refer to the protected question paper for the complete case-study task and instructions." }]).map(async (section) => {
       const authored = input.caseStudySections?.find((item) => item.sectionNumber === section.sectionNumber);
       let email: { from?: string | null; to?: string | null; subject?: string | null; html?: string | null } | null = null;
       const attachmentTitles: string[] = [];
       const attachments: { kind: string; title: string; base64?: string; mimeType?: string }[] = [];
+      const documents: string[] = [];
       if (authored) {
         if (authored.emailText?.trim() || authored.emailFrom?.trim() || authored.emailTo?.trim() || authored.emailSubject?.trim()) {
           email = { from: authored.emailFrom?.trim() || null, to: authored.emailTo?.trim() || null, subject: authored.emailSubject?.trim() || null, html: authored.emailText?.trim() || null };
         }
-        // A picture has to be handed to the writer as bytes: listing only its name produced a
-        // question paper full of captions and no illustrations at all.
-        for (const [kind, file, label] of [
-          ["reference", authored.reference, "Reference material"],
-          ["email", authored.emailImage, "Email attachment image"],
-        ] as const) {
+        // Reference material is read as text where it can be, so tables and formulae set as text
+        // rather than as a picture of the page. A picture that cannot be read as text is embedded.
+        for (const [kind, file] of [["reference", authored.reference], ["email", authored.emailImage]] as const) {
           if (!file?.base64) continue;
-          const title = `${label}: ${file.fileName || "attachment"}`;
-          const payload = inlineAttachmentPayload(file.base64);
-          if (payload) attachments.push({ kind, title, base64: payload.base64, mimeType: payload.mimeType });
-          else attachmentTitles.push(title);
+          const bytes = decodeUploadedFile(file.base64);
+          if (!bytes) continue;
+          const content = await printableContent(file.fileName || "attachment", bytes, file.mimeType, file.fileName || "attachment");
+          if (content.type === "html") documents.push(content.html);
+          else if (content.type === "embed") attachments.push({ kind, title: "", base64: content.base64, mimeType: content.mimeType });
+          else if (content.name) attachmentTitles.push(content.name);
         }
       }
-      return { ...section, email, attachmentTitles, attachments };
-    });
-    const pdfAttachments: { kind: string; title: string }[] = [];
-    if (input.preSeen?.base64) pdfAttachments.push({ kind: "pre_seen", title: `${title} · Pre-seen` });
-    if (input.formulae?.base64) pdfAttachments.push({ kind: "formulae", title: `${title} · Formulae + tables` });
-    if (input.feedbackFile?.base64) pdfAttachments.push({ kind: "feedback", title: `${title} · Feedback` });
+      return { ...section, email, documents, attachmentTitles, attachments };
+    }));
+    // Pre-seen and formulae are read as text onto the paper, as the reference material is. Solutions
+    // (the feedback file) never print on the candidate's paper.
+    const documents: string[] = [];
+    const pdfAttachments: { kind: string; title: string; base64?: string; mimeType?: string }[] = [];
+    for (const [kind, file] of [["pre_seen", input.preSeen], ["formulae", input.formulae]] as const) {
+      if (!file?.base64) continue;
+      const bytes = decodeUploadedFile(file.base64);
+      if (!bytes) continue;
+      const content = await printableContent(file.fileName || kind, bytes, file.mimeType, file.fileName || kind);
+      if (content.type === "html") documents.push(content.html);
+      else if (content.type === "embed") pdfAttachments.push({ kind, title: "", base64: content.base64, mimeType: content.mimeType });
+    }
+    const coverImage = await loadCoverImageForProduct(productId);
     try {
-      const bytes = await generateBrandedPrintablePdf(exam, pdfSections, { email: null, attachments: pdfAttachments });
+      const bytes = await generateBrandedPrintablePdf(exam, pdfSections, { email: null, attachments: pdfAttachments, documents, coverImage });
       const uploaded = await storagePut(`mock-exams/${mockExamId}/printable-exam.pdf`, bytes, "application/pdf");
       const resourceId = (await db.insert(resources).values({ productId, title: `${title} · Printable exam`, kind: "printable_pdf", fileKey: uploaded.key, fileUrl: uploaded.url, status: "draft" }).$returningId())[0]?.id;
       generatedPdfUrl = uploaded.url;
@@ -1721,7 +1741,7 @@ export async function claimFreeProduct(input: { userId: number; productId: numbe
   if (existing && hasActiveEntitlement(existing)) return { success: true, alreadyOwned: true };
   const startsAt = new Date();
   const created = await db.insert(entitlements).values({ userId: input.userId, productId: input.productId, source: "free", status: "active", startsAt, expiresAt: entitlementExpiryFromAccessDays(product.accessDays, startsAt) }).$returningId();
-  await db.insert(notifications).values({ userId: input.userId, type: "purchase", subject: "Free objective test added", body: `Your access to ${product.title} is now active.` });
+  await notifyUser(db, { userId: input.userId, type: "purchase", subject: "Free objective test added", body: `Your access to ${product.title} is now active.` });
   return { success: true, alreadyOwned: false, entitlementId: created[0]?.id };
 }
 
@@ -1821,7 +1841,7 @@ export async function createManagedUser(input: { email: string; name?: string; p
   if (!created) throw new Error("Account could not be created");
   const subject = input.role === "instructor" ? "Welcome to the content team" : "Welcome to Accountants for Tomorrow";
   const body = input.role === "instructor" ? "Your instructor account is ready. Sign in to build products, upload exam content, and manage marking." : "Your learner account was created by an administrator. Explore your allocated products and begin your exam preparation.";
-  await db.insert(notifications).values({ userId: created.id, type: "account", subject, body });
+  await notifyUser(db, { userId: created.id, type: "account", subject, body });
   return created;
 }
 
@@ -1920,7 +1940,7 @@ export async function adminGrantEntitlement(input: { adminUserId: number; userId
     await db.insert(entitlements).values({ userId: input.userId, productId: input.productId, source: "admin", status: "active", grantedBy: input.adminUserId, startsAt, expiresAt });
   }
   await recordPayment({ userId: input.userId, productId: input.productId, provider: "admin", reference: `admin-grant-${Date.now()}`, amountCents: product.priceCents, metadata: { grantedBy: input.adminUserId, accessDays, expiresAt: expiresAt?.toISOString() ?? null, reason: "manual-allocation" } });
-  await db.insert(notifications).values({ userId: input.userId, type: "account", subject: "Exam access granted", body: `Your access to ${product.title} has been granted${expiresAt ? ` and runs until ${expiresAt.toLocaleDateString()}` : ""}.` });
+  await notifyUser(db, { userId: input.userId, type: "account", subject: "Exam access granted", body: `Your access to ${product.title} has been granted${expiresAt ? ` and runs until ${expiresAt.toLocaleDateString()}` : ""}.` });
   await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "entitlement", entityId: existing?.id ?? 0, action: "granted", metadata: JSON.stringify({ userId: input.userId, productId: input.productId, accessDays, expiresAt: expiresAt?.toISOString() ?? null }) });
   return { success: true, productId: input.productId, title: product.title, startsAt, expiresAt };
 }
@@ -1930,7 +1950,7 @@ export async function revokeEntitlement(input: { adminUserId: number; entitlemen
   const row = (await db.select({ id: entitlements.id, userId: entitlements.userId, product: products.title }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(eq(entitlements.id, input.entitlementId)).limit(1))[0];
   if (!row) throw new Error("Entitlement not found");
   await db.update(entitlements).set({ status: "revoked" }).where(eq(entitlements.id, input.entitlementId));
-  await db.insert(notifications).values({ userId: row.userId, type: "account", subject: "Access removed", body: `Your access to ${row.product} has been removed by an administrator.` });
+  await notifyUser(db, { userId: row.userId, type: "account", subject: "Access removed", body: `Your access to ${row.product} has been removed by an administrator.` });
   await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "entitlement", entityId: input.entitlementId, action: "revoked", metadata: JSON.stringify({ product: row.product }) });
   return { success: true };
 }
@@ -1983,8 +2003,8 @@ export async function assignSupervision(input: { adminUserId: number; studentId:
   const created = await db.insert(supervisions).values({ studentId: input.studentId, instructorId: input.instructorId, status: "active", notes, assignedBy: input.adminUserId }).$returningId();
   const supervisionId = created[0]?.id ?? 0;
   await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "supervision", entityId: supervisionId, action: existing ? "reassigned" : "assigned", metadata: JSON.stringify({ studentId: input.studentId, instructorId: input.instructorId, previousInstructorId: existing?.instructorId ?? null }) });
-  await db.insert(notifications).values({ userId: input.instructorId, type: "account", subject: "New learner assigned for supervision", body: `${student.name ?? student.email ?? "A learner"} has been assigned to you for supervision.` });
-  await db.insert(notifications).values({ userId: input.studentId, type: "account", subject: "Your supervising instructor has been set", body: `${instructor.name ?? instructor.email ?? "An instructor"} is now your supervising instructor.` });
+  await notifyUser(db, { userId: input.instructorId, type: "account", subject: "New learner assigned for supervision", body: `${student.name ?? student.email ?? "A learner"} has been assigned to you for supervision.` });
+  await notifyUser(db, { userId: input.studentId, type: "account", subject: "Your supervising instructor has been set", body: `${instructor.name ?? instructor.email ?? "An instructor"} is now your supervising instructor.` });
   return { success: true, supervisionId, reassigned: Boolean(existing) };
 }
 
@@ -1995,7 +2015,7 @@ export async function endSupervision(input: { adminUserId: number; supervisionId
   if (row.status !== "active") throw new Error("This supervision assignment has already ended");
   await db.update(supervisions).set({ status: "ended", endedAt: new Date() }).where(eq(supervisions.id, input.supervisionId));
   await db.insert(auditEvents).values({ userId: input.adminUserId, entityType: "supervision", entityId: input.supervisionId, action: "ended", metadata: JSON.stringify({ studentId: row.studentId, instructorId: row.instructorId }) });
-  await db.insert(notifications).values({ userId: row.instructorId, type: "account", subject: "Learner supervision ended", body: "A learner has been removed from your supervision list." });
+  await notifyUser(db, { userId: row.instructorId, type: "account", subject: "Learner supervision ended", body: "A learner has been removed from your supervision list." });
   return { success: true };
 }
 
@@ -2197,7 +2217,7 @@ export async function checkoutWithCoupon(input: { userId: number; productIds: nu
   await db.insert(couponRedemptions).values({ couponId: coupon.id, userId: input.userId, amountCents: Math.round(validated.discountCents) });
   await recordPayment({ userId: input.userId, productId: available[0].id, provider: "admin", reference: `coupon-${coupon.code}`, amountCents: 0, metadata: { couponCode: coupon.code, couponId: coupon.id, productIds: available.map((p) => p.id), discountCents: validated.discountCents, granted, source: "coupon" } });
   await db.insert(auditEvents).values({ userId: input.userId, entityType: "coupon", entityId: coupon.id, action: "redeemed", metadata: JSON.stringify({ code: coupon.code, productIds: available.map((p) => p.id), discountCents: validated.discountCents }) });
-  if (granted) await db.insert(notifications).values({ userId: input.userId, type: "purchase", subject: "Products added", body: `Your ${granted} Accountants for Tomorrow product${granted === 1 ? " is" : "s are"} now active via coupon ${coupon.code}.` });
+  if (granted) await notifyUser(db, { userId: input.userId, type: "purchase", subject: "Products added", body: `Your ${granted} Accountants for Tomorrow product${granted === 1 ? " is" : "s are"} now active via coupon ${coupon.code}.` });
 
   return { success: true, granted, couponCode: coupon.code, discountCents: validated.discountCents };
 }

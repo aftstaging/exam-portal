@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { notifyUser } from "./notifications";
 import type { IRouter } from "express";
 import { ENV } from "./_core/env";
 import { getDb, recordPayment } from "./db";
@@ -86,7 +87,7 @@ export function registerPayFastITN(app: IRouter, getMode: () => Promise<PayFastM
         granted += 1;
       }
     }
-    if (granted) await db.insert(notifications).values({ userId, type: "purchase", subject: "Purchase confirmed", body: `Your ${granted} Accountants for Tomorrow product${granted === 1 ? " is" : "s are"} now active.` });
+    if (granted) await notifyUser(db, { userId, type: "purchase", subject: "Purchase confirmed", body: `Your ${granted} Accountants for Tomorrow product${granted === 1 ? " is" : "s are"} now active.` });
     await recordPayment({
       userId,
       productId: productIds[0],

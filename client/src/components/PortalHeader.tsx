@@ -3,10 +3,14 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { startLogin, COURSES_URL } from "@/const";
 import { withBasePath } from "@/lib/basePath";
+import { trpc } from "@/lib/trpc";
 
 const logoUrl = withBasePath("/assets/aft_logo_white.png");
 
 export function PublicHeader({ onLogin }: { onLogin: () => void }) {
+  const me = trpc.auth.me.useQuery(undefined, { retry: false });
+  const signedIn = Boolean(me.data);
+  const isStaffUser = me.data?.role === "instructor" || me.data?.role === "admin";
   return (
     <>
       <div className="utility-bar">
@@ -29,6 +33,8 @@ export function PublicHeader({ onLogin }: { onLogin: () => void }) {
             <Link href="/mock-exams" className="nav-link">Mock exams</Link>
             <a href={COURSES_URL} className="nav-link" target="_blank" rel="noopener noreferrer">Courses</a>
             <Link href="/dashboard" className="nav-link">My Account</Link>
+            {signedIn && <Link href="/profile" className="nav-link">My profile</Link>}
+            {isStaffUser && <Link href="/instructor" className="nav-link">Instructor</Link>}
             <Link href="/cart" className="nav-link">Cart</Link>
           </nav>
 

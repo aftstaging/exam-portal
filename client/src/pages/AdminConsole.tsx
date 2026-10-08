@@ -25,6 +25,7 @@ import {
   Users,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ProductImage } from "@/components/PortalUi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1339,7 +1340,7 @@ function ProductsPanel({ publish, canPublish }: { publish: { mutate: (input: { p
                   </div>
                 </div>
                 {product.featuredImageUrl && (
-                  <img src={product.featuredImageUrl} alt={product.title} className="mt-3 h-24 w-full rounded-lg object-cover" />
+                  <ProductImage src={product.featuredImageUrl} alt={product.title} className="mt-3 h-24 w-full rounded-lg object-cover" />
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="text-xs capitalize text-white/40">{product.category}</span>
@@ -1435,7 +1436,7 @@ function ProductEditor({ product, onSaved }: { product: { id: number; title: str
         </div>
         <Input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="Or paste an image URL (https://…)" className="border-white/10 bg-[#0c0524] text-white" aria-label="Featured image URL" />
         {(imageUrl || product.featuredImageUrl) && (
-          <img src={imageUrl || product.featuredImageUrl || ""} alt="Product preview" className="h-28 w-full rounded-lg object-cover" />
+          <ProductImage src={imageUrl || product.featuredImageUrl || ""} alt="Product preview" className="h-28 w-full rounded-lg object-cover" />
         )}
       </div>
       <Button className="aft-button w-full" disabled={updateProduct.isPending || !title.trim()} onClick={() => updateProduct.mutate({ productId: product.id, title, category, description, featuredImageUrl: imageUrl || undefined, priceCents: Math.round(Number(price || 0) * 100), accessDays: Number(accessDays) || 30 })}>

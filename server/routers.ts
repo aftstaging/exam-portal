@@ -17,8 +17,10 @@ import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
 import { ONE_YEAR_MS } from "@shared/const";
 import { type User } from "../drizzle/schema";
-import { parseExamPdf } from "./pdfImport";
+import { IMPORTABLE_EXTENSIONS, parseExamDocument } from "./documentImport";
 import { staffProcedure } from "./_core/trpc";
+import { isValidDateOfBirth, isValidHttpsUrl, isValidPhone } from "@shared/performance";
+import { addSubmissionComment, getInstructorDashboard, getInstructorPublicCard, getInstructorSubmission, getLearnerPerformance, getLearnerSubmissionDetail, getMyProfile, gradeSubmission, listConversations, listThread, sendMessage, unreadMessageCount, updateMyProfile, uploadAvatar } from "./profiles";
 
 function toSafeUser(user: User) {
   const { passwordHash, ...safe } = user;
@@ -98,13 +100,14 @@ export const appRouter = router({
     submit: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), optOutOfMarking: z.boolean() })).mutation(({ ctx, input }) => createLockedSubmission({ ...input, userId: ctx.user.id })),
     printable: protectedProcedure.input(z.object({ mockExamId: z.number().int().positive() })).mutation(({ ctx, input }) => getPrintableExamPdf(ctx.user.id, input.mockExamId)),
     createFromPdf: staffProcedure.input(z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120).optional(), base64: z.string().min(1).max(28000000) })).mutation(async ({ input }) => {
-      if (input.mimeType && !/^application\/pdf$/i.test(input.mimeType)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Only PDF files are supported for import." });
+      const extension = input.fileName.split(".").pop()?.toLowerCase() ?? "";
+      if (!(IMPORTABLE_EXTENSIONS as readonly string[]).includes(extension)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Import a PDF, Word, text, Markdown, HTML or image file." });
       }
       try {
-        return await parseExamPdf({ fileName: input.fileName, base64: input.base64 });
+        return await parseExamDocument({ fileName: input.fileName, mimeType: input.mimeType, base64: input.base64 });
       } catch (error) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? `Could not read this PDF: ${error.message}` : "Could not read this PDF." });
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? `Could not read this file: ${error.message}` : "Could not read this file." });
       }
     }),
   }),
@@ -322,6 +325,44 @@ export const appRouter = router({
     assign: adminProcedure.input(z.object({ studentId: z.number().int().positive(), instructorId: z.number().int().positive(), notes: z.string().max(2000).optional() })).mutation(({ ctx, input }) => assignSupervision({ adminUserId: ctx.user.id, studentId: input.studentId, instructorId: input.instructorId, notes: input.notes })),
     end: adminProcedure.input(z.object({ supervisionId: z.number().int().positive() })).mutation(({ ctx, input }) => endSupervision({ adminUserId: ctx.user.id, supervisionId: input.supervisionId })),
     myLearners: staffProcedure.query(({ ctx }) => listInstructorSupervisees(ctx.user.id)),
+  }),
+  profile: router({
+    me: protectedProcedure.query(({ ctx }) => getMyProfile(ctx.user.id)),
+    update: protectedProcedure.input(z.object({
+      name: z.string().max(200).optional(),
+      bio: z.string().max(2000).nullable().optional(),
+      phone: z.string().max(40).nullable().optional(),
+      headline: z.string().max(160).nullable().optional(),
+      employer: z.string().max(200).nullable().optional(),
+      city: z.string().max(120).nullable().optional(),
+      country: z.string().max(120).nullable().optional(),
+      dateOfBirth: z.string().max(10).nullable().optional(),
+      linkedinUrl: z.string().max(400).nullable().optional(),
+      targetQualification: z.string().max(200).nullable().optional(),
+      emergencyContactName: z.string().max(200).nullable().optional(),
+      emergencyContactPhone: z.string().max(40).nullable().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      if (!isValidPhone(input.phone ?? null) || !isValidPhone(input.emergencyContactPhone ?? null)) throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a valid phone number, e.g. +27 82 555 1234" });
+      if (!isValidDateOfBirth(input.dateOfBirth ?? null)) throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a valid date of birth (YYYY-MM-DD) in the past" });
+      if (!isValidHttpsUrl(input.linkedinUrl ?? null)) throw new TRPCError({ code: "BAD_REQUEST", message: "LinkedIn must be a full https:// link" });
+      return updateMyProfile(ctx.user.id, input);
+    }),
+    uploadAvatar: protectedProcedure.input(z.object({ fileName: z.string().min(1).max(240), mimeType: z.string().max(120), base64: z.string().min(1).max(8_000_000) })).mutation(({ ctx, input }) => uploadAvatar(ctx.user.id, input)),
+    performance: protectedProcedure.query(({ ctx }) => getLearnerPerformance(ctx.user.id)),
+    submission: protectedProcedure.input(z.object({ attemptId: z.number().int().positive() })).query(({ ctx, input }) => getLearnerSubmissionDetail(ctx.user.id, input.attemptId)),
+  }),
+  messages: router({
+    unreadCount: protectedProcedure.query(({ ctx }) => unreadMessageCount(ctx.user.id)),
+    conversations: protectedProcedure.query(({ ctx }) => listConversations(ctx.user.id)),
+    thread: protectedProcedure.input(z.object({ partnerId: z.number().int().positive() })).query(({ ctx, input }) => listThread(ctx.user.id, input.partnerId)),
+    send: protectedProcedure.input(z.object({ recipientId: z.number().int().positive(), body: z.string().min(1).max(5000) })).mutation(({ ctx, input }) => sendMessage({ id: ctx.user.id, name: ctx.user.name, role: ctx.user.role }, input)),
+  }),
+  instructor: router({
+    dashboard: staffProcedure.query(({ ctx }) => getInstructorDashboard({ id: ctx.user.id, role: ctx.user.role })),
+    submission: staffProcedure.input(z.object({ attemptId: z.number().int().positive() })).query(({ ctx, input }) => getInstructorSubmission({ id: ctx.user.id, role: ctx.user.role }, input.attemptId)),
+    comment: staffProcedure.input(z.object({ attemptId: z.number().int().positive(), body: z.string().min(1).max(5000), visibleToLearner: z.boolean() })).mutation(({ ctx, input }) => addSubmissionComment({ id: ctx.user.id, role: ctx.user.role, name: ctx.user.name }, input)),
+    grade: staffProcedure.input(z.object({ attemptId: z.number().int().positive(), awardedPoints: z.number().int().min(0).max(10000), totalPoints: z.number().int().min(1).max(10000), feedback: z.string().min(1).max(100000) })).mutation(({ ctx, input }) => gradeSubmission({ id: ctx.user.id, role: ctx.user.role, name: ctx.user.name }, input)),
+    card: protectedProcedure.input(z.object({ instructorId: z.number().int().positive() })).query(({ input }) => getInstructorPublicCard(input.instructorId)),
   }),
   marking: router({
     queue: staffProcedure.query(({ ctx }) => listMarkerQueue({ userId: ctx.user.id, role: ctx.user.role })),

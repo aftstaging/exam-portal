@@ -1,3 +1,4 @@
+import { mediaUrl } from "@/lib/media";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Check, ChevronLeft, ChevronRight, Flag, PackageOpen, RotateCcw } from "lucide-react";
@@ -104,7 +105,7 @@ function QuizScreen({ title, questions, current, question, setQuestion, answers,
         </div>
         <div className="max-w-4xl">
           <h1 className="text-lg font-semibold leading-7 text-[#18212b] sm:text-xl">{current.prompt}</h1>
-          {current.attachmentUrl && <img src={current.attachmentUrl} alt={current.attachmentFileName || "Question illustration"} className="mt-5 max-h-72 max-w-full rounded border border-slate-200 object-contain" />}
+          {current.attachmentUrl && <img src={mediaUrl(current.attachmentUrl) ?? undefined} alt={current.attachmentFileName || "Question illustration"} className="mt-5 max-h-72 max-w-full rounded border border-slate-200 object-contain" />}
           <div className="mt-6"><AnswerControl current={current} question={question} answers={answers} setAnswers={setAnswers} /></div>
           <div className="mt-12 text-right text-xs font-medium text-slate-600">AFT-OT-{String(question + 1).padStart(4, "0")}</div>
         </div>
@@ -209,7 +210,7 @@ function AnswerControl({ current, question, answers, setAnswers }: { current: Re
   const selected = Array.isArray(value) ? value : [];
   const choose = (index: number) => setAnswers((old) => ({ ...old, [question]: current.questionType === "multiple_choice" ? (selected.includes(index) ? selected.filter((item) => item !== index) : [...selected, index]) : index }));
   return <div className="space-y-4">
-    {current.attachmentUrl && <img src={current.attachmentUrl} alt={current.attachmentFileName || "Question illustration"} className="max-h-80 max-w-full rounded border border-slate-200 object-contain" />}
+    {current.attachmentUrl && <img src={mediaUrl(current.attachmentUrl) ?? undefined} alt={current.attachmentFileName || "Question illustration"} className="max-h-80 max-w-full rounded border border-slate-200 object-contain" />}
     {current.questionType === "text_input" || current.questionType === "numerical" ? <Input value={typeof value === "string" ? value : ""} onChange={(event) => setAnswers((old) => ({ ...old, [question]: event.target.value }))} inputMode={current.questionType === "numerical" ? "decimal" : "text"} placeholder={current.questionType === "numerical" ? "Enter a number" : "Enter your answer"} className="h-10 max-w-xl rounded-none border-slate-400 bg-white text-[#18212b] placeholder:text-slate-400" /> : current.questionType === "dropdown" ? <select value={typeof value === "number" ? value : ""} onChange={(event) => setAnswers((old) => ({ ...old, [question]: Number(event.target.value) }))} className="h-10 w-full max-w-xl rounded-none border border-slate-400 bg-white px-3 text-sm text-[#18212b]"><option value="">Select an answer</option>{current.options.map((option, index) => <option key={option} value={index}>{option}</option>)}</select> : <div className="space-y-2">{current.options.map((option, index) => { const isSelected = current.questionType === "multiple_choice" ? selected.includes(index) : value === index; return <button type="button" key={option} onClick={() => choose(index)} className={`flex w-full max-w-xl items-center gap-3 rounded-none border-0 px-1 py-0.5 text-left text-sm leading-6 ${isSelected ? "font-semibold text-[#0877bd]" : "text-[#18212b] hover:text-[#0877bd]"}`}><span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border ${isSelected ? "border-[#0877bd]" : "border-slate-300"}`}>{isSelected && <span className="h-2 w-2 rounded-full bg-[#0877bd]" />}</span>{option}</button>; })}</div>}
   </div>;
 }

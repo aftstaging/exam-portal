@@ -1,3 +1,4 @@
+import { ProductImage } from "@/components/PortalUi";
 import { ArrowRight, BookOpen, Clock3, Download, FileText, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -44,9 +45,8 @@ export default function StudyResources() {
           const isFree = product.priceCents === 0;
           const isMarking = product.category === "marking";
           const Icon = isMarking ? FileText : BookOpen;
-          const featuredImage = product.featuredImageUrl || imageByCategory[product.category] || imageByCategory.resource;
-          return <Card key={product.id} className="group overflow-hidden border-white/10 bg-[#120730] transition duration-200 hover:-translate-y-1 hover:border-[#00e5ff]/50">
-            <CardContent className="p-0"><div className="relative h-44 overflow-hidden"><img src={featuredImage} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#120730] via-transparent to-transparent" /></div><div className="p-6">
+                    return <Card key={product.id} className="group overflow-hidden border-white/10 bg-[#120730] transition duration-200 hover:-translate-y-1 hover:border-[#00e5ff]/50">
+            <CardContent className="p-0"><div className="relative h-44 overflow-hidden"><ProductImage src={product.featuredImageUrl} fallback={imageByCategory[product.category] || imageByCategory.resource} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#120730] via-transparent to-transparent" /></div><div className="p-6">
               <div className="flex items-start justify-between gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#102b36] text-[#00e5ff]"><Icon className="h-6 w-6" /></div><Badge className={`bg-[#102b36] text-[#00ff88]`}>{isFree ? "Free · Published" : "30-day access · Published"}</Badge></div>
               <p className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">{qualification?.name ?? "AFT professional practice"}</p><p className="mt-2 text-xs font-bold uppercase tracking-[.16em] text-white/45">{product.category === "resource" ? "Study resource" : "Instructor marking"}</p>
               <h3 className="mt-2 min-h-14 text-xl font-bold leading-7 text-white">{product.title}</h3>

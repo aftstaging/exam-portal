@@ -59,8 +59,15 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
     await expect(learner.exams.createFromPdf(uploadArgs("cartn-mock-3-questions.pdf"))).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("rejects a non-PDF mime type", async () => {
-    await expect(staffCaller().exams.createFromPdf({ fileName: "paper.txt", mimeType: "text/plain", base64: "aGVsbG8=" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: /Only PDF files are supported/i });
+  it("rejects an unsupported file type", async () => {
+    await expect(staffCaller().exams.createFromPdf({ fileName: "paper.exe", mimeType: "application/octet-stream", base64: "aGVsbG8=" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: /Import a PDF, Word, text, Markdown, HTML or image file/ });
+  });
+
+  it("imports a text file as an exam draft", async () => {
+    const draft = await staffCaller().exams.createFromPdf({ fileName: "paper.txt", mimeType: "text/plain", base64: Buffer.from("Read the brief.\n\nTask 1 - Review\n\nDo it.").toString("base64") });
+    expect(draft.title).toBe("paper");
+    expect(draft.intro).toContain("Read the brief.");
+    expect(draft.caseStudySections?.[0]?.title).toBe("Review");
   });
 
   it("surfaces unreadable files as a bad request", async () => {
