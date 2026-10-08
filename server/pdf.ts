@@ -1,6 +1,7 @@
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, type RGB } from "pdf-lib";
+import { PDFDocument, PDFFont, PDFImage, PDFPage, StandardFonts, rgb, type RGB } from "pdf-lib";
 import { parseRichHtml as parseSharedRichHtml, type RichAlign, type RichBlockKind as SharedBlockKind } from "@shared/richText";
 import { AFT_LOGO_BASE64 } from "./aftLogo";
+import { escapeHtml } from "@shared/richText";
 
 export type PrintableExam = {
   title: string;
@@ -26,6 +27,10 @@ export type PrintableSection = {
    */
   introAttachmentTitles?: string[];
   introAttachments?: PrintableAttachment[];
+  /** Reference material for this task, interpreted as HTML and set as text. */
+  documents?: string[];
+  /** The instruction sheet, interpreted as HTML and set as text with the instructions. */
+  introDocuments?: string[];
 };
 export type PrintableEmail = { from?: string | null; to?: string | null; subject?: string | null; html?: string | null };
 export type PrintableAttachment = { kind: string; title: string; base64?: string | null; mimeType?: string | null };
@@ -268,6 +273,7 @@ const JUSTIFY_INSET = 1;
 
 const INK = rgb(0, 0, 0);
 const MUTED = rgb(0.38, 0.38, 0.38);
+const WHITE = rgb(1, 1, 1);
 
 /**
  * The tint a table's heading row sits on.
@@ -289,10 +295,16 @@ const HEADER_BAND = rgb(0.93, 0.94, 0.97);
 const BRAND = rgb(0.094, 0.035, 0.235);
 
 /** The portal's mint, darkened until it can carry type on paper without washing out. */
-const BRAND_ACCENT = rgb(0, 0.55, 0.36);
+/** AFT mint (#00ff88) and cyan (#00e5ff) are the portal's accents; they are only ever drawn on the violet band. */
+const MINT = rgb(0, 1, 0.533);
+const CYAN = rgb(0, 0.898, 1);
+/** A deeper teal for accent text on white, where the bright mint and cyan would not be legible. */
+const BRAND_ACCENT = rgb(0, 0.48, 0.55);
+const BAND_HEIGHT = 196;
+const COVER_IMAGE_HEIGHT = 230;
 
 /** The tint the running matter's rules are set in: present, but quieter than any text on the page. */
-const RULE_TINT = rgb(0.8, 0.78, 0.88);
+const RULE_TINT = rgb(0.8, 0.76, 0.94);
 
 /** WinAnsi code points outside plain ASCII and Latin-1 that the standard fonts do support. */
 const WINANSI_CODEPOINTS = new Set([
@@ -1140,8 +1152,8 @@ class Canvas {
     }
     pages.forEach((page, index) => {
       const label = `${examTypeLabel(exam.examType)}  ·  Page ${index + 1} of ${pages.length}`;
-      page.drawText(head, { x: MARGIN_X, y: headY, size: RUNNING_SIZE, font, color: BRAND });
-      page.drawText(label, { x: PAGE_WIDTH - MARGIN_X - font.widthOfTextAtSize(label, RUNNING_SIZE), y: headY, size: RUNNING_SIZE, font, color: BRAND });
+      if (index > 0) page.drawText(head, { x: MARGIN_X, y: headY, size: RUNNING_SIZE, font, color: BRAND });
+      if (index > 0) page.drawText(label, { x: PAGE_WIDTH - MARGIN_X - font.widthOfTextAtSize(label, RUNNING_SIZE), y: headY, size: RUNNING_SIZE, font, color: BRAND });
       page.drawText(foot, { x: MARGIN_X, y: footY, size: RUNNING_SIZE, font, color: BRAND });
       if (mark && mark.width <= CONTENT_WIDTH) {
         page.drawImage(mark.image, { x: PAGE_WIDTH - MARGIN_X - mark.width, y: footY - 3, width: mark.width, height: MARK_HEIGHT });
@@ -1149,7 +1161,7 @@ class Canvas {
       // The rules go straight onto the page rather than through the cursor, which belongs to the
       // content flow and is long since finished with by the time this runs. Set in the brand tint
       // rather than the grey of body text: furniture, not content.
-      this.rule(MARGIN_X, headY - 8, CONTENT_WIDTH, 0.4, RULE_TINT, page);
+      if (index > 0) this.rule(MARGIN_X, headY - 8, CONTENT_WIDTH, 0.4, RULE_TINT, page);
       this.rule(MARGIN_X, footY + 14, CONTENT_WIDTH, 0.4, RULE_TINT, page);
     });
   }
@@ -1159,7 +1171,14 @@ class Canvas {
  * Document assembly
  * ------------------------------------------------------------------ */
 
-type PdfOptions = { email?: PrintableEmail | null; attachments?: PrintableAttachment[] };
+type PdfOptions = {
+  email?: PrintableEmail | null;
+  attachments?: PrintableAttachment[];
+  /** Interpreted reference material (HTML) that prints as text, placed before the tasks. */
+  documents?: string[];
+  /** The product's featured image, printed on the cover. */
+  coverImage?: { bytes: Buffer; mimeType: "image/png" | "image/jpeg" } | null;
+};
 
 /**
  * Draws the AFT logo centred on the measure, at the height the caller names.
@@ -1182,41 +1201,92 @@ async function drawLogo(canvas: Canvas, height = LOGO_HEIGHT): Promise<void> {
   }
 }
 
-/** Renders the aligned exam type, title and duration block. */
-function drawCoverBlock(canvas: Canvas, exam: PrintableExam, fonts: Fonts): void {
-  canvas.reserve(TITLE_LEADING * 2 + META_LEADING * 3 + BODY_LEADING * 2);
-  const type = examTypeLabel(exam.examType).toUpperCase();
-  const duration = formatDuration(exam.totalDurationSeconds);
+/**
+ * Draws the cover: a full-bleed violet band carrying the exam type, title and time allowed, a
+ * mint and cyan rule under it, then the product's featured image and the AFT mark.
+ *
+ * The band is drawn at the top of the first page and the canvas cursor is moved into it for the
+ * text, so the centred lines reuse the same measure as the rest of the paper.
+ */
+async function drawCover(canvas: Canvas, exam: PrintableExam, fonts: Fonts, coverImage: PdfOptions["coverImage"]): Promise<void> {
+  const page = canvas.page;
+  page.drawRectangle({ x: 0, y: PAGE_HEIGHT - BAND_HEIGHT, width: PAGE_WIDTH, height: BAND_HEIGHT, color: BRAND });
+  page.drawRectangle({ x: 0, y: PAGE_HEIGHT - BAND_HEIGHT - 4, width: PAGE_WIDTH, height: 4, color: MINT });
+  page.drawRectangle({ x: 0, y: PAGE_HEIGHT - BAND_HEIGHT - 8, width: PAGE_WIDTH, height: 1.2, color: CYAN });
 
-  canvas.space(6);
-  // The type, the title and the duration are the three lines of one title block, and they are
-  // centred as a band rather than each hung from the left margin: the cover then reads as a single
-  // centred unit instead of three unrelated lines, which is how a paper announces itself.
-  canvas.drawCenteredLine(type, META_SIZE, META_LEADING, true, BRAND);
-  // The type is a label on the paper, not a heading on the same level as the name, so the air
-  // between the two is deliberately generous — the name is the subject of the page.
-  canvas.space(TITLE_LEADING * 0.5);
-
-  const titleLines = layoutRuns(
-    [{ text: exam.title, bold: true }],
-    fonts,
-    TITLE_SIZE,
-    MARGIN_X,
-    MARGIN_X,
-    MARGIN_X + CONTENT_WIDTH,
-  );
+  canvas.cursor = PAGE_HEIGHT - 56;
+  canvas.drawCenteredLine(examTypeLabel(exam.examType).toUpperCase(), META_SIZE, META_LEADING + 4, true, MINT);
+  const titleLines = layoutRuns([{ text: exam.title, bold: true }], fonts, TITLE_SIZE, MARGIN_X, MARGIN_X, MARGIN_X + CONTENT_WIDTH);
   for (const line of titleLines) {
-    canvas.reserve(TITLE_LEADING);
-    canvas.drawLines([line], TITLE_SIZE, TITLE_LEADING, BRAND, 0, "center");
+    canvas.drawLines([line], TITLE_SIZE, TITLE_LEADING, WHITE, 0, "center");
   }
-  canvas.space(META_LEADING);
-  // The duration is the one line a candidate looks for first, so it carries the accent rather
-  // than the grey of furniture: announced, not footnoted. Same declared size as every other meta
-  // line — colour does the work, not a step off the type scale.
-  canvas.drawCenteredLine(`Time allowed: ${duration}`, META_SIZE, META_LEADING, true, BRAND_ACCENT);
-  // No rule closes the block: the cover is its own page, and the page break is the strongest
-  // separator available. A rule here would be furniture guarding an empty room.
-  canvas.space(BODY_LEADING * 0.6);
+  canvas.cursor -= 6;
+  canvas.drawCenteredLine(`Time allowed: ${formatDuration(exam.totalDurationSeconds)}`, META_SIZE, META_LEADING, true, MINT);
+
+  canvas.cursor = PAGE_HEIGHT - BAND_HEIGHT - 34;
+  if (coverImage) {
+    try {
+      const image = coverImage.mimeType === "image/png"
+        ? await canvas.document.embedPng(coverImage.bytes)
+        : await canvas.document.embedJpg(coverImage.bytes);
+      const scale = Math.min(CONTENT_WIDTH / image.width, COVER_IMAGE_HEIGHT / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      page.drawImage(image, { x: MARGIN_X + (CONTENT_WIDTH - width) / 2, y: canvas.cursor - height, width, height });
+      canvas.space(height + BODY_LEADING);
+    } catch {
+      // A product image that cannot be embedded is left off the cover; the paper still prints.
+    }
+  }
+  await drawLogo(canvas, 56);
+  canvas.space(BODY_LEADING);
+}
+
+/** Matches the heading that opens the candidate instructions, e.g. "Exam timings and instructions". */
+const INSTRUCTIONS_HEADING = /^\W*(exam\s+)?(timings?\s*(and|&)\s*)?instructions?\b/i;
+
+function plainText(block: RichBlock): string {
+  return block.runs.map((run) => run.text).join("").replace(/\s+/g, " ").trim();
+}
+
+/** Splits an HTML fragment at each top-level block element, so each chunk is one block. */
+function splitHtmlBlocks(html: string): string[] {
+  const starts: number[] = [];
+  const pattern = /<(h[1-6]|p|ul|ol|table|div)[\s>]/gi;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(html)) !== null) {
+    if (match.index > 0) starts.push(match.index);
+  }
+  const cuts = [0, ...starts, html.length];
+  const chunks: string[] = [];
+  for (let index = 0; index < cuts.length - 1; index += 1) {
+    const chunk = html.slice(cuts[index], cuts[index + 1]);
+    if (chunk.trim()) chunks.push(chunk);
+  }
+  return chunks;
+}
+
+/** True when an HTML chunk is the heading that opens the candidate instructions. */
+function opensInstructions(chunk: string): boolean {
+  const blocks = parseRichHtml(chunk);
+  if (!blocks.length || blocks.some((block) => block.table)) return false;
+  const text = blocks.map(plainText).join(" ").replace(/\s+/g, " ").trim();
+  return text.length > 0 && text.length <= 240 && INSTRUCTIONS_HEADING.test(text);
+}
+
+/** Re-sets blocks centred on the measure, dropping list markers into the text they introduce. */
+function centredBlocks(blocks: RichBlock[]): RichBlock[] {
+  return blocks.map((block) => {
+    if (block.table) return block;
+    const runs = block.marker ? [{ text: `${block.marker} `, bold: false }, ...block.runs] : block.runs;
+    return { ...block, marker: null, depth: 0, align: "center" as const, runs };
+  });
+}
+
+/** Renders a heading centred on the measure. */
+function drawCenteredHeading(canvas: Canvas, text: string, size: number, leading: number, color: RGB = BRAND): void {
+  canvas.reserve(leading);
+  canvas.drawCenteredLine(text, size, leading, true, color);
 }
 
 /** Renders a heading, keeping it attached to the first group of the block that follows. */
@@ -1226,8 +1296,71 @@ function drawHeading(canvas: Canvas, text: string, fonts: Fonts, size = H1_SIZE,
   canvas.drawLines(lines, size, leading, color);
 }
 
+type FragmentSegment = { kind: "blocks"; blocks: RichBlock[] } | { kind: "image"; bytes: Buffer; mimeType: "image/png" | "image/jpeg"; alt: string };
+
+/**
+ * Splits an authored fragment into runs of text blocks and embedded images.
+ *
+ * Authors paste diagrams into rich text as `data:` images. The shared parser flattens an image to
+ * its alt text, which is fine on screen but loses the diagram on paper, so images are cut out
+ * first and the text between them is parsed as usual. Images the writer cannot embed (SVG, WebP,
+ * links to other hosts) fall back to their alt text.
+ */
+export function splitFragment(html: string): FragmentSegment[] {
+  const segments: FragmentSegment[] = [];
+  const pattern = /<img\b[^>]*>/gi;
+  let cursor = 0;
+  const pushText = (chunk: string) => {
+    const blocks = parseRichHtml(chunk);
+    if (blocks.length) segments.push({ kind: "blocks", blocks });
+  };
+  for (const match of Array.from(html.matchAll(pattern))) {
+    const tag = match[0];
+    pushText(html.slice(cursor, match.index));
+    cursor = (match.index ?? 0) + tag.length;
+    const src = /\ssrc\s*=\s*"([^"]*)"/i.exec(tag)?.[1] ?? "";
+    const alt = (/\salt\s*=\s*"([^"]*)"/i.exec(tag)?.[1] ?? "").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+    const data = /^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/=\s]+)$/i.exec(src);
+    if (data) {
+      segments.push({ kind: "image", bytes: Buffer.from(data[2]!.replace(/\s+/g, ""), "base64"), mimeType: data[1]!.toLowerCase() as "image/png" | "image/jpeg", alt });
+    } else if (alt) {
+      pushText(`<p>${escapeHtml(alt)}</p>`);
+    }
+  }
+  pushText(html.slice(cursor));
+  return segments;
+}
+
+/** Draws an embedded diagram, centred and scaled to fit the measure and a sensible height. */
+async function drawFragmentImage(canvas: Canvas, fonts: Fonts, segment: Extract<FragmentSegment, { kind: "image" }>): Promise<void> {
+  let image: PDFImage | null = null;
+  try {
+    image = segment.mimeType === "image/png"
+      ? await canvas.document.embedPng(segment.bytes)
+      : await canvas.document.embedJpg(segment.bytes);
+  } catch {
+    image = null;
+  }
+  if (!image) {
+    if (segment.alt) await drawFragment(canvas, fonts, `<p>${escapeHtml(segment.alt)}</p>`);
+    return;
+  }
+  // Pixels are mapped to points at 0.75, the screen's own ratio, so a diagram keeps its
+  // authored size unless it is wider than the measure or taller than the diagram box.
+  const naturalWidth = image.width * 0.75;
+  const naturalHeight = image.height * 0.75;
+  const scale = Math.min(1, (CONTENT_WIDTH * 0.9) / naturalWidth, FRAGMENT_IMAGE_HEIGHT / naturalHeight);
+  const width = naturalWidth * scale;
+  const height = naturalHeight * scale;
+  canvas.reserve(height + BODY_LEADING);
+  canvas.page.drawImage(image, { x: MARGIN_X + (CONTENT_WIDTH - width) / 2, y: canvas.cursor - height, width, height });
+  canvas.space(height + BODY_LEADING * 0.5);
+}
+
+const FRAGMENT_IMAGE_HEIGHT = 300;
+
 /** Renders a body fragment, or nothing when the fragment is empty. */
-function drawFragment(
+async function drawFragment(
   canvas: Canvas,
   fonts: Fonts,
   text: string | null | undefined,
@@ -1235,33 +1368,50 @@ function drawFragment(
   leading = BODY_LEADING,
   gapAfter = 0,
   bold = false,
-): void {
+  align?: "center",
+): Promise<void> {
   if (!text) return;
-  const parsed = parseRichHtml(text);
-  if (!parsed.length) return;
-  // A paragraph that is nothing but a sub-task weighting — "(sub-task (a) = 52%)" — is a label on
-  // the requirement above it, not prose. The reference papers a learner compares us against set
-  // these flush right in bold italic, where the eye finds them after reading the requirement;
-  // left in the paragraph flow they read as a sentence that has lost its verb. The alignment is
-  // set on the block so the line is measured and wrapped as the right-aligned line it prints as.
-  const weighted = parsed.map((block) => {
-    if (block.table || block.kind !== "paragraph") return block;
-    const plain = block.runs.map((run) => run.text).join("").trim();
-    if (!/^[\[(]\s*sub-task\b[\s\S]{0,80}?\d(?:[\d.]+)?\s*%[\])]$/i.test(plain)) return block;
-    return { ...block, align: "right" as const, runs: block.runs.map((run) => ({ ...run, bold: true, italic: true })) };
-  });
-  // Emphasis is applied to the runs before layout, never after it: painting a line in a wider
-  // face than the one it was wrapped against pushes it past the margin and out of alignment.
-  const blocks = bold ? boldedBlocks(weighted) : weighted;
-  // Paragraphs are separated by more than a fraction of the leading: at this measure two
-  // consecutive paragraphs run together and the reader loses the break between them.
-  const groups = layoutBlocks(blocks, fonts, size, leading, MARGIN_X, MARGIN_X + CONTENT_WIDTH, leading * 0.6);
-  groups.forEach((group, index) => {
-    // The weighting labels are the only right-aligned groups a fragment can hold, and they are
-    // set in the house violet so the label reads as furniture of the requirement above it.
-    canvas.drawGroup(group, size, leading, group.align === "right" ? BRAND : INK);
-    if (index === groups.length - 1) canvas.space(gapAfter);
-  });
+  const segments = splitFragment(text);
+  const gap = leading * 0.6;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index]!;
+    const last = index === segments.length - 1;
+    if (segment.kind === "image") {
+      await drawFragmentImage(canvas, fonts, segment);
+      if (last) canvas.space(gapAfter);
+      continue;
+    }
+    // A paragraph that is nothing but a sub-task weighting — "(sub-task (a) = 52%)" — is a label on
+    // the requirement above it, not prose. The reference papers a learner compares us against set
+    // these flush right in bold italic, where the eye finds them after reading the requirement;
+    // left in the paragraph flow they read as a sentence that has lost its verb.
+    const weighted = segment.blocks.map((block) => {
+      if (block.table || block.kind !== "paragraph") return block;
+      const plain = plainText(block);
+      if (!/^[\[(]\s*sub-task\b[\s\S]{0,80}?\d(?:[\d.]+)?\s*%[\])]$/i.test(plain)) return block;
+      return { ...block, align: "right" as const, runs: block.runs.map((run) => ({ ...run, bold: true, italic: true })) };
+    });
+    // Emphasis is applied to the runs before layout, never after it: painting a line in a wider
+    // face than the one it was wrapped against pushes it past the margin and out of alignment.
+    const bolded = bold ? boldedBlocks(weighted) : weighted;
+    const blocks = align === "center" ? centredBlocks(bolded) : bolded;
+    // Blocks are laid out one at a time so the gap after a list can be set apart from the prose
+    // that follows it: the contents list and the instructions below it need a line between them.
+    let previous: RichBlock | null = null;
+    for (const block of blocks) {
+      if (previous) {
+        canvas.space(gap);
+        if (previous.kind === "listItem" && block.kind !== "listItem") canvas.space(leading);
+      }
+      const groups = layoutBlocks([block], fonts, size, leading, MARGIN_X, MARGIN_X + CONTENT_WIDTH, 0);
+      for (const group of groups) {
+        canvas.drawGroup(group, size, leading, group.align === "right" ? BRAND : INK);
+      }
+      previous = block;
+    }
+    if (!last && segments[index + 1]?.kind === "image") canvas.space(gap);
+    if (last) canvas.space(gapAfter);
+  }
 }
 
 /**
@@ -1277,7 +1427,7 @@ function drawFragment(
  * distinction in it, so the header read as one slab of text and the message body lost the
  * emphasis the author actually applied.
  */
-function drawEmail(canvas: Canvas, email: PrintableEmail, fonts: Fonts): void {
+async function drawEmail(canvas: Canvas, email: PrintableEmail, fonts: Fonts): Promise<void> {
   const rows: [string, string | null | undefined][] = [
     ["From", email.from],
     ["To", email.to],
@@ -1294,7 +1444,7 @@ function drawEmail(canvas: Canvas, email: PrintableEmail, fonts: Fonts): void {
   for (const [label, value] of present) {
     canvas.reserve(ROW_LEADING);
     const baseline = canvas.cursor - META_SIZE;
-    canvas.drawAt(MARGIN_X, baseline, label, META_SIZE, true, MUTED);
+    canvas.drawAt(MARGIN_X, baseline, label, META_SIZE, true, BRAND);
     // A long address or subject is wrapped in its own column rather than run past the right
     // margin, which is what a value longer than the measure used to do.
     canvas.drawLines(
@@ -1306,7 +1456,7 @@ function drawEmail(canvas: Canvas, email: PrintableEmail, fonts: Fonts): void {
   canvas.space(CAPTION_GAP);
   canvas.hairline(canvas.cursor);
   canvas.space(CAPTION_GAP);
-  drawFragment(canvas, fonts, email.html, BODY_SIZE, BODY_LEADING, BODY_LEADING * 0.8);
+  await drawFragment(canvas, fonts, email.html, BODY_SIZE, BODY_LEADING, BODY_LEADING * 0.8);
 }
 
 /** A decoded attachment image, or null when the attachment is not an image the writer can embed. */
@@ -1515,37 +1665,44 @@ export async function generateBrandedPrintablePdf(
   };
   const canvas = new Canvas(document, fonts);
 
-  // The cover is the top of the first page: mark, type, title and duration in generous air, the
-  // way a published paper opens, with the brief and its table of contents directly beneath. The
-  // work the candidate is set does start on a fresh page, so the front matter is never crowded.
-  canvas.space(72);
-  await drawLogo(canvas, 56);
-  canvas.space(30);
-  drawCoverBlock(canvas, exam, fonts);
+  await drawCover(canvas, exam, fonts, options.coverImage ?? null);
 
   if (exam.intro) {
-    // The brief travels with the cover rather than starting the second page. The instructions and
-    // the table of contents are what a candidate looks for before anything else, and pushing them
-    // over a page break made the front of the paper read as a title page rather than as the start
-    // of the exam. A long brief still runs on: the canvas breaks the page itself when it runs out
-    // of room, so a contents list that does not fit lands on page 2 rather than off the sheet.
-    canvas.space(BODY_LEADING);
-    // At the body size with a little more leading than the body: the cover paragraph is prose, and
-    // setting it a point larger made it read as a different kind of text rather than as a lead-in.
-    drawFragment(canvas, fonts, exam.intro, BODY_SIZE, BODY_LEADING + 1, BODY_LEADING * 0.6);
+    // The brief travels with the cover. The table of contents sits on the cover; the candidate
+    // instructions follow it, set apart by one line and centred under their own heading.
+    const chunks = splitHtmlBlocks(exam.intro);
+    const at = chunks.findIndex(opensInstructions);
+    const contents = at >= 0 ? chunks.slice(0, at).join("") : exam.intro;
+    const headingOnly = at >= 0 && parseRichHtml(chunks[at]).map(plainText).join(" ").length <= 60;
+    const instructions = at >= 0 ? chunks.slice(headingOnly ? at + 1 : at).join("") : "";
+    const bodyLeading = BODY_LEADING + 1;
+    if (contents.trim()) {
+      await drawFragment(canvas, fonts, contents, BODY_SIZE, bodyLeading, BODY_LEADING * 0.6);
+    }
+    if (at >= 0) {
+      // One line between the contents and the instructions that follow them.
+      canvas.space(BODY_LEADING);
+      drawCenteredHeading(canvas, "Exam timings and instructions", H1_SIZE, H1_LEADING, BRAND);
+      canvas.space(BODY_LEADING * 0.4);
+      if (instructions.trim()) {
+        await drawFragment(canvas, fonts, instructions, BODY_SIZE, bodyLeading, BODY_LEADING * 0.6, false, "center");
+      }
+    }
   }
 
-  // The brief has had the page. Everything the candidate works through — the email brief, the
-  // attachments and the tasks — starts fresh, so no task opens halfway down the contents page.
-  if (options.email || (options.attachments ?? []).length || sections.length) {
+  // The brief has had the page. Everything the candidate works through starts fresh.
+  if (options.email || (options.attachments ?? []).length || (options.documents ?? []).length || sections.length) {
     canvas.breakToNewPage();
   }
 
-  const attachments = options.attachments ?? [];
-  if (options.email) drawEmail(canvas, options.email, fonts);
+  if (options.email) await drawEmail(canvas, options.email, fonts);
+  for (const html of options.documents ?? []) {
+    await drawFragment(canvas, fonts, html);
+    canvas.space(BODY_LEADING * 0.3);
+  }
 
+  const attachments = options.attachments ?? [];
   if (attachments.length) {
-    drawHeading(canvas, "Attachments", fonts, H2_SIZE, H2_LEADING, BRAND);
     for (const attachment of attachments) {
       await drawAttachment(canvas, fonts, attachment);
       canvas.space(BODY_LEADING * 0.3);
@@ -1564,33 +1721,41 @@ export async function generateBrandedPrintablePdf(
     // The heading is held to the first thing under it, then given room to breathe before the text
     // that follows, so a section opens as a block instead of as a heading buried in a paragraph.
     canvas.space(H1_LEADING * 0.35);
-    drawFragment(canvas, fonts, section.introduction);
+    await drawFragment(canvas, fonts, section.introduction);
+    for (const html of section.introDocuments ?? []) {
+      await drawFragment(canvas, fonts, html);
+      canvas.space(BODY_LEADING * 0.3);
+    }
     // The instruction sheet is read with the instructions, so it prints before the extra notes
     // rather than being held back with the other attachments.
     for (const title of section.introAttachmentTitles ?? []) {
       canvas.space(BODY_LEADING * 0.3);
-      drawFragment(canvas, fonts, title, META_SIZE, BODY_LEADING, 0);
+      await drawFragment(canvas, fonts, title, META_SIZE, BODY_LEADING, 0);
     }
     for (const attachment of section.introAttachments ?? []) {
       await drawAttachment(canvas, fonts, attachment);
       canvas.space(BODY_LEADING * 0.3);
     }
-    drawFragment(canvas, fonts, section.scenario);
+    await drawFragment(canvas, fonts, section.scenario);
     // A task's instruction sheet IS its question, reproduced from the paper, so where one is
     // attached the stored prompt would say the same thing twice and is left out. Where there is
     // no sheet the prompt is the only question on the page — and a printable exam without its
     // question is not an exam paper — so it is drawn here, between the scenario and the email.
-    const hasInstructionSheet = (section.introAttachmentTitles?.length ?? 0) > 0 || (section.introAttachments?.length ?? 0) > 0;
+    const hasInstructionSheet = (section.introDocuments?.length ?? 0) > 0 || (section.introAttachmentTitles?.length ?? 0) > 0 || (section.introAttachments?.length ?? 0) > 0;
     if (section.question && !hasInstructionSheet) {
       canvas.space(BODY_LEADING * 0.3);
-      drawFragment(canvas, fonts, section.question);
+      await drawFragment(canvas, fonts, section.question);
     }
     if (section.email) {
       canvas.space(BODY_LEADING * 0.3);
-      drawEmail(canvas, section.email, fonts);
+      await drawEmail(canvas, section.email, fonts);
+    }
+    for (const html of section.documents ?? []) {
+      await drawFragment(canvas, fonts, html);
+      canvas.space(BODY_LEADING * 0.3);
     }
     for (const title of section.attachmentTitles ?? []) {
-      drawFragment(canvas, fonts, title, META_SIZE, BODY_LEADING, 0);
+      await drawFragment(canvas, fonts, title, META_SIZE, BODY_LEADING, 0);
     }
     for (const attachment of section.attachments ?? []) {
       await drawAttachment(canvas, fonts, attachment);

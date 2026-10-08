@@ -1,3 +1,4 @@
+import { ProductImage } from "@/components/PortalUi";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   joinAuthoredContent,
@@ -39,6 +40,7 @@ import {
   Strikethrough,
   TimerReset,
   Table2,
+  ImagePlus,
   Trash2,
   Underline,
   UploadCloud,
@@ -52,6 +54,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { readFileAsDataUrl } from "@/lib/media";
 import { StructuredText } from "@/components/StructuredText";
 import { DocumentEditor } from "@/components/DocumentEditor";
 
@@ -68,6 +71,14 @@ type AttachSlotProps = {
   onChange: (file: EditableFile) => void;
   note?: string;
 };
+
+const IMPORT_EXTENSIONS = ["pdf", "docx", "txt", "md", "markdown", "html", "htm", "png", "jpg", "jpeg"];
+const IMPORT_ACCEPT = IMPORT_EXTENSIONS.map((extension) => `.${extension}`).join(",");
+
+function isImportableFile(file: File): boolean {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return IMPORT_EXTENSIONS.includes(extension);
+}
 
 function AttachSlot({ label, icon, hint, accept, value, onChange, note }: AttachSlotProps) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -154,7 +165,7 @@ function PdfImportSlot({ label, icon, hint, busy, attached, onAttach, onRemove }
         <Button type="button" size="sm" variant="outline" className="h-9 border-[#00e5ff] px-3 text-xs text-[#00e5ff]" disabled={Boolean(busy)} onClick={() => fileRef.current?.click()}>
           {busy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="mr-1 h-3.5 w-3.5" />} {busy ? "Reading PDF…" : "Choose PDF"}
         </Button>
-        <input ref={fileRef} type="file" accept=".pdf,application/pdf" className="hidden" onChange={(event) => {
+        <input ref={fileRef} type="file" accept={IMPORT_ACCEPT} className="hidden" onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
           if (!file) return;
@@ -205,6 +216,27 @@ function RichTextEditor({ value, onChange, placeholder }: { value: string; onCha
   }, [setHtml]);
 
   const toolButton = "inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-[#0c0524] text-white/80 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]";
+  const diagramInput = useRef<HTMLInputElement>(null);
+
+  // A diagram is inserted as an image in the text, so it prints beside the words that refer to it.
+  // Only the source and alt text are kept: that is all the sanitiser keeps of an image.
+  const insertDiagram = async (file: File) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (!/^image\/(png|jpeg)$/i.test(file.type)) {
+      toast.error("Diagrams must be a PNG or JPEG picture");
+      return;
+    }
+    if (file.size > 2_000_000) {
+      toast.error("Diagrams must be 2 MB or smaller");
+      return;
+    }
+    const dataUrl = await readFileAsDataUrl(file);
+    const alt = file.name.replace(/\.[a-z0-9]+$/i, "").replace(/["<>&]/g, "");
+    editor.focus();
+    document.execCommand("insertHTML", false, `<p><img src="${dataUrl}" alt="${alt}"></p>`);
+    onChange(editor.innerHTML);
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0c0524]">
@@ -220,6 +252,19 @@ function RichTextEditor({ value, onChange, placeholder }: { value: string; onCha
         <span className="mx-1 h-5 w-px bg-white/10" />
         <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("insertUnorderedList")} title="Bullet list" aria-label="Bullet list"><List className="h-4 w-4" /></button>
         <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => exec("insertOrderedList")} title="Numbered list" aria-label="Numbered list"><ListOrdered className="h-4 w-4" /></button>
+        <span className="mx-1 h-5 w-px bg-white/10" />
+        <button type="button" className={toolButton} onMouseDown={(event) => event.preventDefault()} onClick={() => diagramInput.current?.click()} title="Insert diagram (PNG or JPEG)" aria-label="Insert diagram"><ImagePlus className="h-4 w-4" /></button>
+        <input
+          ref={diagramInput}
+          type="file"
+          accept="image/png,image/jpeg"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void insertDiagram(file);
+          }}
+        />
       </div>
       <div
         ref={editorRef}
@@ -976,15 +1021,15 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
   });
 
   const handleQuestionPaper = async (file: File) => {
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    if (!isImportableFile(file)) {
       setParseNotes([]);
-      toast.error("The question paper must be a PDF file");
+      toast.error("Import a PDF, Word, text, Markdown, HTML or image file");
       return;
     }
     const data = await readFile(file);
     if (!data) {
       setParseNotes([]);
-      toast.error("Could not read the selected PDF");
+      toast.error("Could not read the selected file");
       return;
     }
     importFromPdf.mutate({ fileName: data.fileName, mimeType: data.mimeType, base64: data.base64 });
@@ -1373,7 +1418,7 @@ export default function ExamStudio({ onCreated, onCancelled, editExamId }: { onC
                 <span className="flex items-center gap-2 text-sm font-semibold text-white"><ImageUp className="h-4 w-4 text-[#00e5ff]" /> Featured image</span>
                 {(featuredImage || featuredImageUrl) && (
                   <div className="flex items-center gap-2">
-                    <img src={featuredImage ? featuredImage.base64 : featuredImageUrl} alt="Featured preview" className="h-14 w-24 rounded-lg object-cover" />
+                    <ProductImage src={featuredImage ? featuredImage.base64 : featuredImageUrl} alt="Featured preview" className="h-14 w-24 rounded-lg object-cover" />
                     <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-[#ff8278]" onClick={() => { setFeaturedImage(null); setFeaturedImageUrl(""); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 )}

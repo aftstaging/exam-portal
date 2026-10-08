@@ -1,4 +1,5 @@
 import express, { type IRouter } from "express";
+import { notifyUser } from "./notifications";
 import Stripe from "stripe";
 import { getDb, recordPayment } from "./db";
 import { entitlements, notifications, products } from "../drizzle/schema";
@@ -28,7 +29,7 @@ export function registerStripeWebhook(app: IRouter) {
             const startsAt = new Date();
             await db.insert(entitlements).values({ userId, productId, source: "purchase", status: "active", startsAt, expiresAt: entitlementExpiryFromAccessDays(product?.accessDays, startsAt) });
             await recordPayment({ userId, productId, provider: "stripe", reference: session.id, amountCents: session.amount_total ?? product?.priceCents ?? 0, status: "completed", metadata: { checkout: session.id, customer: session.customer ?? undefined } });
-            await db.insert(notifications).values({ userId, type: "purchase", subject: "Purchase confirmed", body: "Your Accountants for Tomorrow access is now active." });
+            await notifyUser(db, { userId, type: "purchase", subject: "Purchase confirmed", body: "Your Accountants for Tomorrow access is now active." });
           }
         }
       }

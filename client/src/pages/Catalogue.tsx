@@ -1,3 +1,4 @@
+import { ProductImage } from "@/components/PortalUi";
 import { ArrowRight, BookOpen, Clock3, FileText, Filter, PenLine, ShieldCheck, ShoppingBasket } from "lucide-react";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
@@ -67,9 +68,8 @@ export default function Catalogue({ kind = "exams" }: { kind?: "shop" | "exams" 
           const isObjective = product.category === "objective_test";
           const Icon = isMarking ? PenLine : isObjective ? BookOpen : FileText;
           const detailHref = linkedExam ? (isObjective ? `/objective-tests?mockExamId=${linkedExam.mockExam.id}&productId=${product.id}` : `/case-study/debrief?mockExamId=${linkedExam.mockExam.id}&productId=${product.id}`) : "/dashboard";
-          const featuredImage = product.featuredImageUrl || imageByCategory[product.category] || imageByCategory.resource;
-          return <Card key={product.id} className="group overflow-hidden border-white/10 bg-[#120730] transition duration-200 hover:-translate-y-1 hover:border-[#00e5ff]/50">
-            <CardContent className="p-0"><div className="relative h-44 overflow-hidden"><img src={featuredImage} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#120730] via-transparent to-transparent" /></div><div className="p-6">
+                    return <Card key={product.id} className="group overflow-hidden border-white/10 bg-[#120730] transition duration-200 hover:-translate-y-1 hover:border-[#00e5ff]/50">
+            <CardContent className="p-0"><div className="relative h-44 overflow-hidden"><ProductImage src={product.featuredImageUrl} fallback={imageByCategory[product.category] || imageByCategory.resource} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#120730] via-transparent to-transparent" /></div><div className="p-6">
               <div className="flex items-start justify-between gap-4"><div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#102b36] text-[#00e5ff]"><Icon className="h-6 w-6" /></div><Badge className={`${product.status === "published" ? "bg-[#102b36] text-[#00ff88]" : product.status === "archived" ? "bg-[#18093c]/60 text-white/55" : "bg-[#18093c]/60 text-[#f4c44e]"}`}>{product.status === "published" ? (isFree ? "Free sample · Published" : "30-day access · Published") : isFree ? "Free sample" : "30-day access"}</Badge></div>
               <p className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-[#00ff88]">{qualification?.name ?? "AFT professional practice"}</p><p className="mt-2 text-xs font-bold uppercase tracking-[.16em] text-white/45">{product.category.replace("_", " ")}</p>
               <h3 className="mt-2 min-h-14 text-xl font-bold leading-7 text-white">{product.title}</h3>

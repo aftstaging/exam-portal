@@ -4,6 +4,7 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageProxy } from "./storageProxy";
+import { registerNotificationStream } from "./notificationStream";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -54,6 +55,7 @@ async function startServer() {
   portal.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerPayFastITN(portal, async () => (await getPayFastGatewaySettings()).mode);
   registerStorageProxy(portal);
+  registerNotificationStream(portal);
   portal.post("/api/auto-submit", handleAutoSubmit);
   // tRPC API
   portal.use(

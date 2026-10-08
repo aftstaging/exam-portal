@@ -189,8 +189,54 @@ export const markings = mysqlTable("markings", {
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["account", "purchase", "submission", "marking"]).notNull(),
+  type: mysqlEnum("type", ["account", "purchase", "submission", "marking", "message", "comment", "profile", "supervision"]).notNull(),
   subject: varchar("subject", { length: 240 }).notNull(),
+  body: text("body").notNull(),
+  // In-app route the notification opens (e.g. /profile, /instructor). Optional for older rows.
+  link: varchar("link", { length: 500 }),
+  readAt: timestamp("readAt"),
+  // Set once the notification has been delivered by email; null when email is not configured or failed.
+  emailedAt: timestamp("emailedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// Personal details shared by learners and instructors. One row per account, created on first save.
+export const userProfiles = mysqlTable("userProfiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  bio: text("bio"),
+  phone: varchar("phone", { length: 40 }),
+  headline: varchar("headline", { length: 160 }),
+  employer: varchar("employer", { length: 200 }),
+  city: varchar("city", { length: 120 }),
+  country: varchar("country", { length: 120 }),
+  dateOfBirth: varchar("dateOfBirth", { length: 10 }),
+  linkedinUrl: varchar("linkedinUrl", { length: 400 }),
+  targetQualification: varchar("targetQualification", { length: 200 }),
+  emergencyContactName: varchar("emergencyContactName", { length: 200 }),
+  emergencyContactPhone: varchar("emergencyContactPhone", { length: 40 }),
+  avatarKey: varchar("avatarKey", { length: 500 }),
+  avatarUrl: text("avatarUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+// Feedback an instructor or marker leaves on a learner's attempt. Learners see only the comments
+// flagged visibleToLearner; staff notes stay internal.
+export const submissionComments = mysqlTable("submissionComments", {
+  id: int("id").autoincrement().primaryKey(),
+  attemptId: int("attemptId").notNull(),
+  authorId: int("authorId").notNull(),
+  body: text("body").notNull(),
+  visibleToLearner: int("visibleToLearner").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// Direct messages between a supervising instructor and their learners.
+export const messages = mysqlTable("messages", {
+  id: int("id").autoincrement().primaryKey(),
+  senderId: int("senderId").notNull(),
+  recipientId: int("recipientId").notNull(),
   body: text("body").notNull(),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -258,3 +304,6 @@ export type Coupon = typeof coupons.$inferSelect;
 export type CouponRedemption = typeof couponRedemptions.$inferSelect;
 export type Supervision = typeof supervisions.$inferSelect;
 export type InsertSupervision = typeof supervisions.$inferInsert;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type SubmissionComment = typeof submissionComments.$inferSelect;
+export type Message = typeof messages.$inferSelect;

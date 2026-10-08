@@ -2,6 +2,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import AdminConsole from "@/pages/AdminConsole";
+import Profile from "@/pages/Profile";
+import InstructorDashboard from "@/pages/InstructorDashboard";
+import { NotificationListener } from "@/components/NotificationListener";
 import { Route, Router as BasePathRouter, Switch } from "wouter";
 import { APP_BASE_PATH } from "@/lib/basePath";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -25,7 +28,9 @@ function Routes() {
       <Route path="/case-study/:screen" component={Home} />
       <Route path="/objective-tests" component={Home} />
       <Route path="/admin" component={() => <AdminConsole mode="admin" />} />
-      <Route path="/instructor" component={() => <AdminConsole mode="instructor" />} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/instructor" component={InstructorDashboard} />
+      <Route path="/instructor/content" component={() => <AdminConsole mode="instructor" />} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -42,6 +47,7 @@ export default function App() {
         <ThemeProvider defaultTheme="dark">
           <TooltipProvider>
             <Toaster />
+            <NotificationListener />
             <Routes />
             <LoginDialog />
           </TooltipProvider>
