@@ -13,14 +13,27 @@ import { products } from "../drizzle/schema";
 import { createPayFastHostedCheckout, type PayFastMode } from "./payfast";
 import { eq, inArray } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "./_core/password";
+
+const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+const signInByIp = createRateLimiter({ windowMs: FIFTEEN_MINUTES_MS, max: 30 });
+const signInByEmail = createRateLimiter({ windowMs: FIFTEEN_MINUTES_MS, max: 8 });
+const registerByIp = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 10 });
+
+// Scrypt hash of a random string nobody knows. Used to equalise response time for unknown emails.
+let dummyPasswordHash: string | null = null;
+function getDummyPasswordHash(): string {
+  dummyPasswordHash ??= hashPassword(`${Math.random()}-${Date.now()}`);
+  return dummyPasswordHash;
+}
 import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
-import { ONE_YEAR_MS } from "@shared/const";
+import { SESSION_TTL_MS } from "@shared/const";
+import { createRateLimiter } from "./_core/rateLimit";
 import { type User } from "../drizzle/schema";
 import { IMPORTABLE_EXTENSIONS, parseExamDocument } from "./documentImport";
 import { staffProcedure } from "./_core/trpc";
 import { isValidDateOfBirth, isValidHttpsUrl, isValidPhone } from "@shared/performance";
-import { addSubmissionComment, getInstructorDashboard, getInstructorPublicCard, getInstructorSubmission, getLearnerPerformance, getLearnerSubmissionDetail, getMyProfile, gradeSubmission, listConversations, listThread, sendMessage, unreadMessageCount, updateMyProfile, uploadAvatar } from "./profiles";
+import { addSubmissionComment, buildSubmissionPdf, uploadMarkedSubmission, getInstructorDashboard, getInstructorPublicCard, getInstructorSubmission, getLearnerPerformance, getLearnerSubmissionDetail, getMyProfile, gradeSubmission, listConversations, listThread, sendMessage, unreadMessageCount, updateMyProfile, uploadAvatar } from "./profiles";
 
 function toSafeUser(user: User) {
   const { passwordHash, ...safe } = user;
@@ -38,37 +51,50 @@ export const appRouter = router({
     me: publicProcedure.query(opts => (opts.ctx.user ? toSafeUser(opts.ctx.user) : null)),
     logout: publicProcedure.mutation(({ ctx }) => { ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 }); return { success: true } as const; }),
     login: publicProcedure.input(z.object({ email: z.string().email().max(320), password: z.string().min(8).max(200) })).mutation(async ({ ctx, input }) => {
+      const ip = ctx.req.ip ?? "unknown";
+      const emailKey = input.email.trim().toLowerCase();
+      if (signInByIp.isLimited(ip) || signInByEmail.isLimited(emailKey)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many sign-in attempts. Please wait a few minutes and try again." });
+      }
       const user = await getUserByEmail(input.email);
-      if (!user || !user.passwordHash) {
+      // Always run one scrypt comparison, so an unknown email takes as long to answer as a known one.
+      const passwordMatches = verifyPassword(input.password, user?.passwordHash ?? getDummyPasswordHash());
+      if (!user || !user.passwordHash || !passwordMatches) {
+        signInByIp.hit(ip);
+        signInByEmail.hit(emailKey);
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
       }
+      // The disabled notice is shown only to someone who has proved the password, so it cannot be used to probe accounts.
       if (isLoginDisabled(user.loginMethod)) {
         throw new TRPCError({ code: "UNAUTHORIZED", message: "This account has been disabled" });
       }
-      if (!verifyPassword(input.password, user.passwordHash)) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password" });
-      }
+      signInByEmail.reset(emailKey);
       await updateUserLastSignedIn(user.id);
-      const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+      const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: SESSION_TTL_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_TTL_MS });
       return toSafeUser(user);
     }),
     register: publicProcedure.input(z.object({ email: z.string().email().max(320), password: z.string().min(8).max(200), name: z.string().min(1).max(200).optional() })).mutation(async ({ ctx, input }) => {
+      const ip = ctx.req.ip ?? "unknown";
+      if (registerByIp.isLimited(ip)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many registration attempts. Please try again later." });
+      }
+      registerByIp.hit(ip);
       const existing = await getUserByEmail(input.email);
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists" });
       }
       const passwordHash = hashPassword(input.password);
       const user = await createLocalUser({ email: input.email, name: input.name, passwordHash });
-      const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+      const sessionToken = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: SESSION_TTL_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_TTL_MS });
       return toSafeUser(user);
     }),
     qaDemoStatus: publicProcedure.query(() => ({ enabled: ENV.qaDemoAccessEnabled() })),
     qaDemoLogin: publicProcedure.mutation(async ({ ctx }) => {
       const demoUser = await getDemoLearnerForQaAccess();
-      const sessionToken = await sdk.createSessionToken(demoUser.openId, { name: demoUser.name ?? "", expiresInMs: ONE_YEAR_MS });
-      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
+      const sessionToken = await sdk.createSessionToken(demoUser.openId, { name: demoUser.name ?? "", expiresInMs: SESSION_TTL_MS });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_TTL_MS });
       await updateUserLastSignedIn(demoUser.id);
       return toSafeUser(demoUser);
     }),
@@ -362,6 +388,8 @@ export const appRouter = router({
     submission: staffProcedure.input(z.object({ attemptId: z.number().int().positive() })).query(({ ctx, input }) => getInstructorSubmission({ id: ctx.user.id, role: ctx.user.role }, input.attemptId)),
     comment: staffProcedure.input(z.object({ attemptId: z.number().int().positive(), body: z.string().min(1).max(5000), visibleToLearner: z.boolean() })).mutation(({ ctx, input }) => addSubmissionComment({ id: ctx.user.id, role: ctx.user.role, name: ctx.user.name }, input)),
     grade: staffProcedure.input(z.object({ attemptId: z.number().int().positive(), awardedPoints: z.number().int().min(0).max(10000), totalPoints: z.number().int().min(1).max(10000), feedback: z.string().min(1).max(100000) })).mutation(({ ctx, input }) => gradeSubmission({ id: ctx.user.id, role: ctx.user.role, name: ctx.user.name }, input)),
+    submissionPdf: staffProcedure.input(z.object({ attemptId: z.number().int().positive() })).mutation(({ ctx, input }) => buildSubmissionPdf({ id: ctx.user.id, role: ctx.user.role }, input.attemptId)),
+    uploadMarkedPdf: staffProcedure.input(z.object({ attemptId: z.number().int().positive(), fileName: z.string().min(1).max(240), base64: z.string().min(1).max(35000000) })).mutation(({ ctx, input }) => uploadMarkedSubmission({ id: ctx.user.id, role: ctx.user.role, name: ctx.user.name }, input)),
     card: protectedProcedure.input(z.object({ instructorId: z.number().int().positive() })).query(({ input }) => getInstructorPublicCard(input.instructorId)),
   }),
   marking: router({

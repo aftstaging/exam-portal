@@ -1,6 +1,7 @@
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { sanitizeAuthoredHtml } from "@shared/richText";
 
 export type ProtectedResource = {
   id: number;
@@ -20,7 +21,7 @@ export default function ProtectedResourceView({ resource }: { resource: Protecte
           <p className="mt-2 text-xs leading-5 text-white/55">From: <span className="text-white/80">{resource.email.from || "—"}</span></p>
           <p className="text-xs leading-5 text-white/55">To: <span className="text-white/80">{resource.email.to || "—"}</span></p>
         </div>
-        {resource.email.html && <div className="aft-rich-text max-h-[55vh] overflow-auto px-5 py-4 text-sm leading-7 text-[#e9e4ff] break-words" dangerouslySetInnerHTML={{ __html: resource.email.html }} />}
+        {resource.email.html && <div className="aft-rich-text max-h-[55vh] overflow-auto px-5 py-4 text-sm leading-7 text-[#e9e4ff] break-words" dangerouslySetInnerHTML={{ __html: sanitizeAuthoredHtml(resource.email.html) }} />}
       </div>
     );
   }

@@ -845,7 +845,7 @@ function ExamPreviewDraft({ onClose, isCaseStudy, title, intro, description, exa
                                 <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {section.emailTo || "—"}</div>
                               </div>
                               <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {section.emailSubject || "—"}</div>
-                              <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: section.emailText }} />
+                              <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: sanitizeAuthoredHtml(section.emailText) }} />
                             </div>
                           )}
                           {(section.emailImage || section.reference || section.instructionFile) && (

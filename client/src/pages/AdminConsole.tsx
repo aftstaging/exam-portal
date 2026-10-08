@@ -58,6 +58,7 @@ import { StructuredText } from "@/components/StructuredText";
 import { DocumentEditor } from "@/components/DocumentEditor";
 import { calculateRubricScore, RUBRIC_CRITERIA } from "@shared/rubric";
 import { accountRemovalBlocker } from "@shared/integrity";
+import { sanitizeAuthoredHtml } from "@shared/richText";
 import {
   PAGE_SIZE_OPTIONS,
   pageWindow,
@@ -2063,7 +2064,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                     <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {data.email.to || "—"}</div>
                   </div>
                   <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {data.email.subject || "—"}</div>
-                  <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: data.email.html ?? "" }} />
+                  <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: sanitizeAuthoredHtml(data.email.html) }} />
                 </div>
               </section>
             )}
@@ -2085,7 +2086,7 @@ function ExamPreviewModal({ data, loading, onClose }: { data: { mockExam: { titl
                             <div className="bg-[#0c0524] px-4 py-2 text-sm text-[#c4b5fd]"><span className="text-white/45">To:</span> {section.email.to || "—"}</div>
                           </div>
                           <div className="border-t border-white/10 bg-[#0c0524] px-4 py-2 text-sm font-semibold text-white">Subject: {section.email.subject || "—"}</div>
-                          <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: section.email.html ?? "" }} />
+                          <div className="aft-rich-text border-t border-white/10 bg-white/[0.03] px-4 py-4 text-sm leading-6 text-[#c4b5fd]" dangerouslySetInnerHTML={{ __html: sanitizeAuthoredHtml(section.email.html) }} />
                         </div>
                       )}
                       {(section.emailImageTitle || section.referenceFileName) && (

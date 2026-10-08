@@ -1132,12 +1132,12 @@ class Canvas {
    * content box, which is why they are stamped here rather than laid out with everything else: the
    * page count is only known once drawing has finished.
    */
-  async finish(exam: PrintableExam): Promise<void> {
+  async finish(exam: PrintableExam, footerText?: string): Promise<void> {
     const pages = this.document.getPages();
     const font = this.fonts.regular;
     // Truncate before sanitising: a full title can be tens of thousands of characters.
     const head = sanitizeText(exam.title.slice(0, 90));
-    const foot = `© Accountants for Tomorrow · ${formatDuration(exam.totalDurationSeconds)}`;
+    const foot = footerText ?? `© Accountants for Tomorrow · ${formatDuration(exam.totalDurationSeconds)}`;
     const headY = PAGE_HEIGHT - 42;
     const footY = 40;
     // The mark sits at the foot of every page, the way the reference papers carry theirs: small,
@@ -1766,6 +1766,76 @@ export async function generateBrandedPrintablePdf(
   await canvas.finish(exam);
   // Metadata is truncated because a title may be arbitrarily long authored content.
   document.setTitle(sanitizeText(exam.title.slice(0, 200)));
+  document.setCreator("AFT Learning Portal");
+  return Buffer.from(await document.save());
+}
+
+export type SubmissionPdfInput = {
+  title: string;
+  examType: PrintableExam["examType"] | null;
+  learner: string;
+  submittedAt: string;
+  statusLabel: string;
+  sections: { sectionNumber: number; title: string; html: string | null; wordCount: number }[];
+  marking?: { awardedPoints: number; totalPoints: number; percent: number | null; feedback: string | null } | null;
+};
+
+/**
+ * Builds a learner's submission as a PDF, for the instructor to read and mark on paper or in an
+ * annotation tool. It uses the same type, colours and footer as the printable exam, so a marked
+ * script sits alongside the paper it was written on.
+ */
+export async function generateSubmissionPdf(input: SubmissionPdfInput): Promise<Buffer> {
+  const document = await PDFDocument.create();
+  const fonts: Fonts = {
+    regular: await document.embedFont(StandardFonts.Helvetica),
+    bold: await document.embedFont(StandardFonts.HelveticaBold),
+    italic: await document.embedFont(StandardFonts.HelveticaOblique),
+    boldItalic: await document.embedFont(StandardFonts.HelveticaBoldOblique),
+  };
+  const canvas = new Canvas(document, fonts);
+
+  await drawLogo(canvas, 40);
+  canvas.space(BODY_LEADING);
+  drawHeading(canvas, sanitizeText(input.title), fonts, TITLE_SIZE, TITLE_LEADING, BRAND);
+  canvas.space(BODY_LEADING * 0.4);
+  await drawFragment(
+    canvas,
+    fonts,
+    [
+      `<p><strong>Learner:</strong> ${escapeHtml(input.learner)}</p>`,
+      `<p><strong>Submitted:</strong> ${escapeHtml(input.submittedAt)}</p>`,
+      `<p><strong>Status:</strong> ${escapeHtml(input.statusLabel)}</p>`,
+    ].join(""),
+    BODY_SIZE,
+    BODY_LEADING,
+    BODY_LEADING * 0.6,
+  );
+
+  if (input.marking) {
+    const { awardedPoints, totalPoints, percent, feedback } = input.marking;
+    const score = `${awardedPoints} / ${totalPoints}${percent != null ? ` (${percent}%)` : ""}`;
+    canvas.space(BODY_LEADING * 0.4);
+    await drawFragment(canvas, fonts, `<p><strong>Marks:</strong> ${escapeHtml(score)}</p>`, BODY_SIZE, BODY_LEADING, BODY_LEADING * 0.6);
+    if (feedback) await drawFragment(canvas, fonts, `<p>${escapeHtml(feedback)}</p>`, BODY_SIZE, BODY_LEADING, BODY_LEADING * 0.6);
+  }
+
+  for (const section of input.sections) {
+    canvas.reserve(H1_LEADING * 3);
+    canvas.space(BODY_LEADING * 0.8);
+    drawHeading(canvas, `Task ${section.sectionNumber} · ${sanitizeText(section.title)}`, fonts, H1_SIZE, H1_LEADING, BRAND);
+    canvas.space(H1_LEADING * 0.35);
+    await drawFragment(
+      canvas,
+      fonts,
+      section.html && section.html.trim() ? section.html : `<p>${escapeHtml("No answer was saved for this task.")}</p>`,
+    );
+    canvas.space(BODY_LEADING * 0.2);
+    await drawFragment(canvas, fonts, `<p>${escapeHtml(`${section.wordCount} words`)}</p>`, META_SIZE, META_LEADING, 0);
+  }
+
+  await canvas.finish({ title: input.title, examType: input.examType ?? "case_study", intro: null, totalDurationSeconds: 0 }, `© Accountants for Tomorrow · Learner submission`);
+  document.setTitle(sanitizeText(`Submission · ${input.title}`.slice(0, 200)));
   document.setCreator("AFT Learning Portal");
   return Buffer.from(await document.save());
 }
