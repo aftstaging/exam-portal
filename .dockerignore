@@ -1,0 +1,24 @@
+# Keep the Docker build context small and free of secrets / platform-specific files.
+node_modules
+**/node_modules
+dist
+.git
+.github
+.vscode
+.idea
+
+# Secrets and keys
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Large local-only data and the WordPress working copy (not needed by the exam image)
+Wordpress
+references
+source-pdfs
+*.log
+dev-server.log
+dev-server-err.log

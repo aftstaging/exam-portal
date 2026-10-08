@@ -1,0 +1,27 @@
+# Exam portal image for the local Docker stack.
+# Builds the Vite client with the /exam base path and runs the Express server,
+# applying Drizzle migrations before it starts.
+FROM node:22-bookworm-slim
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
+
+WORKDIR /app
+
+# Install dependencies first so the layer caches when only source changes.
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+# APP_BASE_PATH must be set at build time (Vite) and at runtime (Express).
+ARG APP_BASE_PATH=/exam
+ENV APP_BASE_PATH=$APP_BASE_PATH
+RUN pnpm build
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+# Apply Drizzle migrations, then run the bundled server.
+CMD ["sh", "-c", "pnpm exec drizzle-kit migrate && node dist/index.js"]

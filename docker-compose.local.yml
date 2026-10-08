@@ -1,0 +1,115 @@
+# Local machine stack for the AFT learning portal.
+#
+# Reproduces the production layout on one machine:
+#   http://localhost/         -> WordPress (main site)
+#   http://localhost/exam/    -> Node.js exam portal (proxied to port 3000)
+#
+# Start with:  docker compose -f docker-compose.local.yml up -d --build
+# Stop with:   docker compose -f docker-compose.local.yml down
+# Reset data:  docker compose -f docker-compose.local.yml down -v
+#
+# The WordPress DB and the exam portal DB live in the same MySQL server but in
+# separate databases (wordpress / aft_portal), matching production.
+
+name: aft-local
+
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./deploy/local/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  wordpress:
+    image: wordpress:php8.2-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'http://localhost');
+        define('WP_SITEURL', 'http://localhost');
+        define('FS_METHOD', 'direct');
+    volumes:
+      - wp_data:/var/www/html
+      - ./Wordpress/wp-content/themes/aft:/var/www/html/wp-content/themes/aft
+      - ./Wordpress/wp-content/mu-plugins:/var/www/html/wp-content/mu-plugins
+      - ./Wordpress/wp-content/plugins/aft-migration-assistant:/var/www/html/wp-content/plugins/aft-migration-assistant
+      - ./Wordpress/wp-content/plugins/aft-portal-auth:/var/www/html/wp-content/plugins/aft-portal-auth
+
+  exam:
+    build:
+      context: .
+      dockerfile: deploy/local/Dockerfile.exam
+      args:
+        APP_BASE_PATH: /exam
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      APP_BASE_PATH: /exam
+      DATABASE_URL: mysql://aftportal:aftportal@db:3306/aft_portal
+      JWT_SECRET: local-dev-only-secret-change-me-0123456789abcdef
+      OWNER_EMAIL: owner@example.com
+      OWNER_NAME: AFT Owner
+      # Local WordPress handshake (aft-portal-auth plugin). Local dev value only.
+      WP_VERIFY_URL: http://wordpress/wp-json
+      WP_SHARED_SECRET: ef764eff328cb25e992688728009efcbb9017bd2e7d2f7002cf35615c923bac1
+      AFT_QA_DEMO_ACCESS: "true"
+    expose:
+      - "3000"
+
+  proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - wordpress
+      - exam
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/local/nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # Convenience WP-CLI container. Run on demand:
+  #   docker compose -f docker-compose.local.yml --profile tools run --rm wpcli --allow-root core version
+  wpcli:
+    image: wordpress:cli-php8.2
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes:
+      - wp_data:/var/www/html
+      - ./Wordpress/wp-content/themes/aft:/var/www/html/wp-content/themes/aft
+      - ./Wordpress/wp-content/mu-plugins:/var/www/html/wp-content/mu-plugins
+      - ./Wordpress/wp-content/plugins/aft-migration-assistant:/var/www/html/wp-content/plugins/aft-migration-assistant
+    entrypoint: wp
+
+volumes:
+  db_data:
+  wp_data:
