@@ -307,3 +307,14 @@ export type InsertSupervision = typeof supervisions.$inferInsert;
 export type UserProfile = typeof userProfiles.$inferSelect;
 export type SubmissionComment = typeof submissionComments.$inferSelect;
 export type Message = typeof messages.$inferSelect;
+
+// A marked script uploaded by the supervising instructor, returned to the learner with their result.
+export const markedSubmissionFiles = mysqlTable("markedSubmissionFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  attemptId: int("attemptId").notNull(),
+  uploadedBy: int("uploadedBy").notNull(),
+  fileName: varchar("fileName", { length: 240 }).notNull(),
+  fileKey: varchar("fileKey", { length: 512 }).notNull(),
+  sizeBytes: int("sizeBytes").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});

@@ -23,18 +23,33 @@ export function getProductRoute(productId: number, attemptId?: number, status?: 
   return `/dashboard?product=${productId}`;
 }
 
-export function getDashboardSelection(search: string): { attemptId?: number; productId?: number } {
+/** URL slugs for the dashboard sections, so other pages can link straight to one. */
+export const DASHBOARD_TAB_SLUGS: Record<string, DashboardTab> = {
+  overview: "Overview",
+  products: "My products",
+  attempts: "Saved attempts",
+  results: "Results",
+};
+
+/** The dashboard section a URL asks for, e.g. `?tab=results`, or undefined when none is asked for. */
+export function dashboardTabForSlug(slug: string | null): DashboardTab | undefined {
+  return slug ? DASHBOARD_TAB_SLUGS[slug.toLowerCase()] : undefined;
+}
+
+export function getDashboardSelection(search: string): { attemptId?: number; productId?: number; tab?: DashboardTab } {
   const params = new URLSearchParams(search);
   const attempt = Number(params.get("attempt"));
   const product = Number(params.get("product"));
+  const tab = dashboardTabForSlug(params.get("tab"));
   return {
     attemptId: Number.isInteger(attempt) && attempt > 0 ? attempt : undefined,
     productId: Number.isInteger(product) && product > 0 ? product : undefined,
+    ...(tab ? { tab } : {}),
   };
 }
 
-export function getDashboardSelectionState(selection: { attemptId?: number; productId?: number }): { tab: DashboardTab; attemptId?: number; productId?: number } {
+export function getDashboardSelectionState(selection: { attemptId?: number; productId?: number; tab?: DashboardTab }): { tab: DashboardTab; attemptId?: number; productId?: number } {
   if (selection.attemptId) return { tab: "Saved attempts", attemptId: selection.attemptId };
   if (selection.productId) return { tab: "My products", productId: selection.productId };
-  return { tab: "Overview" };
+  return { tab: selection.tab ?? "Overview" };
 }

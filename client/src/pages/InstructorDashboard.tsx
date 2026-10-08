@@ -13,7 +13,7 @@ import { EmptyState, PersonAvatar, ScoreTrend, StatCard } from "@/components/Por
 import { trpc } from "@/lib/trpc";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../../server/routers";
-import { formatDateTime, formatShortDate } from "@/lib/media";
+import { formatDateTime, formatShortDate, readFileAsDataUrl } from "@/lib/media";
 import { startLogin } from "@/const";
 
 type Tab = "overview" | "learners" | "submissions" | "messages" | "profile";
@@ -100,6 +100,17 @@ export default function InstructorDashboard() {
       </main>
     </Shell>
   );
+}
+
+/** Saves a base64 PDF to the user's machine. */
+function downloadBase64Pdf(fileName: string, base64: string) {
+  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -253,6 +264,33 @@ function SubmissionReview({ attemptId }: { attemptId: number }) {
     onError: (error) => toast.error(error.message),
   });
 
+  const submissionPdf = trpc.instructor.submissionPdf.useMutation({
+    onSuccess: (file) => downloadBase64Pdf(file.fileName, file.base64),
+    onError: (error) => toast.error(error.message),
+  });
+  const uploadMarked = trpc.instructor.uploadMarkedPdf.useMutation({
+    onSuccess: () => {
+      setMarkedFile(null);
+      toast.success("Marked PDF uploaded. The learner has been notified.");
+      utils.instructor.submission.invalidate({ attemptId });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const [markedFile, setMarkedFile] = useState<File | null>(null);
+  const uploadMarkedFile = async () => {
+    if (!markedFile) return;
+    if (markedFile.size > 25 * 1024 * 1024) {
+      toast.error("The marked PDF must be 25 MB or smaller");
+      return;
+    }
+    if (markedFile.type !== "application/pdf" && !markedFile.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("The marked script must be a PDF");
+      return;
+    }
+    const dataUrl = await readFileAsDataUrl(markedFile);
+    uploadMarked.mutate({ attemptId, fileName: markedFile.name, base64: dataUrl });
+  };
+
   if (detail.isLoading) return <Spinner />;
   if (!detail.data) return <EmptyState title="Submission unavailable" body="This submission could not be loaded, or it is not one of your learners." />;
   const d = detail.data;
@@ -272,6 +310,42 @@ function SubmissionReview({ attemptId }: { attemptId: number }) {
             <div className="text-xs text-white/45">Submitted {formatDateTime(d.attempt.submittedAt)} · {d.learner.performance.submitted} submissions · average {d.learner.performance.averagePercent ?? "—"}%</div>
           </div>
           <Link href={`/instructor?tab=learners`}><Button variant="outline" size="sm" className="border-white/20 text-white/80"><GraduationCap className="mr-2 h-4 w-4" /> Learners</Button></Link>
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/10 bg-[#120730]">
+        <CardHeader><CardTitle className="flex items-center gap-2 text-white"><FileText className="h-5 w-5 text-[#00e5ff]" /> Marked script</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" className="border-[#00e5ff] text-white" disabled={submissionPdf.isPending} onClick={() => submissionPdf.mutate({ attemptId })}>
+              {submissionPdf.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Download submission PDF
+            </Button>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0c0524] p-4">
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              className="text-sm text-[#c4b5fd] file:mr-3 file:rounded-md file:border-0 file:bg-[#18093c] file:px-3 file:py-1.5 file:text-white"
+              onChange={(event) => setMarkedFile(event.target.files?.[0] ?? null)}
+            />
+            <Button className="aft-button" disabled={!markedFile || uploadMarked.isPending} onClick={() => void uploadMarkedFile()}>
+              {uploadMarked.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Upload marked PDF
+            </Button>
+          </div>
+          {d.markedFiles.length ? (
+            <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
+              {d.markedFiles.map((file) => (
+                <li key={file.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
+                  <span className="text-white">{file.fileName} <span className="text-[#c4b5fd]">· {formatDateTime(file.createdAt)}</span></span>
+                  <a href={file.url} target="_blank" rel="noreferrer" className="font-semibold text-[#00ff88] hover:underline">Download</a>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-[#c4b5fd]">No marked script uploaded yet. Uploading one sends the learner a notification.</p>
+          )}
         </CardContent>
       </Card>
 

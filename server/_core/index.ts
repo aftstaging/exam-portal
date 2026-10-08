@@ -4,6 +4,7 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerStorageProxy } from "./storageProxy";
+import { genericErrorHandler, securityHeaders } from "./securityHeaders";
 import { registerNotificationStream } from "./notificationStream";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -40,6 +41,7 @@ async function startServer() {
   // 127.0.0.1. Trusting the proxy makes Express read the client's scheme from X-Forwarded-Proto,
   // which is what the session cookie and the payment return URLs need.
   app.set("trust proxy", true);
+  app.use(securityHeaders);
 
   // Every route below is registered on `portal` and written root-relative. Mounting that router
   // under the base path is what lets the app live at /exam while its own routes stay /api/trpc,
@@ -78,6 +80,9 @@ async function startServer() {
   if (port !== preferredPort) {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
+
+  // Registered last: anything a route did not handle ends here, with a generic body.
+  app.use(genericErrorHandler);
 
   server.listen(port, () => {
     console.log(

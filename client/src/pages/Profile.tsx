@@ -15,6 +15,14 @@ import { withBasePath } from "@/lib/basePath";
 import { startLogin } from "@/const";
 
 type Tab = "profile" | "performance" | "messages" | "notifications";
+
+/** The learner dashboard sections, linked from the profile. Slugs match `DASHBOARD_TAB_SLUGS`. */
+const DASHBOARD_LINKS = [
+  { slug: "overview", label: "Overview" },
+  { slug: "products", label: "My products" },
+  { slug: "attempts", label: "Saved attempts" },
+  { slug: "results", label: "Results" },
+] as const;
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "profile", label: "Profile", icon: <UserRound className="h-4 w-4" /> },
   { id: "performance", label: "Submissions & performance", icon: <BarChart3 className="h-4 w-4" /> },
@@ -65,6 +73,19 @@ export default function Profile() {
           </div>
           <Link href="/dashboard"><Button variant="outline" className="border-[#00e5ff] text-white">Back to dashboard</Button></Link>
         </div>
+
+        {data.user.role === "user" && (
+          <Card className="mt-8 border-white/10 bg-[#120730]">
+            <CardContent className="flex flex-wrap items-center gap-3 p-5">
+              <span className="mr-2 text-sm font-semibold text-[#c4b5fd]">Dashboard</span>
+              {DASHBOARD_LINKS.map((item) => (
+                <Link key={item.slug} href={`/dashboard?tab=${item.slug}`}>
+                  <Button variant="outline" className="border-[#00ff88]/40 text-white hover:border-[#00ff88] hover:text-[#00ff88]">{item.label}</Button>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="mt-8 flex gap-2 overflow-auto border-b border-white/10">
           {TABS.map((item) => (
@@ -178,6 +199,19 @@ function SubmissionDetail({ attemptId }: { attemptId: number }) {
         <div className="rounded-xl border border-[#00e5ff]/30 bg-[#102b36] p-4">
           <div className="font-bold text-white">Marker feedback</div>
           <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[#e9e4ff]">{d.feedback}</p>
+        </div>
+      )}
+      {d.markedFiles.length > 0 && (
+        <div className="rounded-xl border border-white/10 p-4">
+          <div className="font-bold text-white">Marked script</div>
+          <ul className="mt-2 divide-y divide-white/10">
+            {d.markedFiles.map((file) => (
+              <li key={file.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                <span className="text-[#e9e4ff]">{file.fileName}</span>
+                <a href={file.url} target="_blank" rel="noreferrer" className="font-semibold text-[#00ff88] hover:underline">Download</a>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {d.comments.length > 0 && (

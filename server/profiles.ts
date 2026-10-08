@@ -2,7 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, inArray, isNull, or, asc } from "drizzle-orm";
 import { getDb, getUserById } from "./db";
 import { notifyUser } from "./notifications";
-import { storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut } from "./storage";
+import { generateSubmissionPdf, isPdfBytes } from "./pdf";
 import { isAdminRole } from "@shared/integrity";
 import { isEnrolled } from "@shared/supervision";
 import {
@@ -21,6 +22,7 @@ import {
   attempts,
   caseStudySections,
   entitlements,
+  markedSubmissionFiles,
   markings,
   messages,
   mockExams,
@@ -379,6 +381,7 @@ export async function getInstructorSubmission(actor: { id: number; role: Role },
       return { sectionId: answer.sectionId, title: section?.title ?? `Task ${answer.sectionId}`, body: answer.body, wordCount: answer.wordCount, savedAt: answer.savedAt };
     }),
     marking: markingRows[0] ?? null,
+    markedFiles: await listMarkedFiles(db, attemptId),
     feedback: feedbackRows[0] ?? null,
     comments: commentRows.map((comment) => ({
       id: comment.id,
@@ -540,6 +543,7 @@ export async function getLearnerSubmissionDetail(userId: number, attemptId: numb
     awardedPoints: markingRow?.status === "submitted" ? markingRow.awardedPoints : null,
     totalPoints: markingRow?.status === "submitted" ? markingRow.totalPoints : null,
     feedback: markingRow?.status === "submitted" ? markingRow.feedback : null,
+    markedFiles: await listMarkedFiles(db, attemptId),
     markedAt: markingRow?.markedAt ?? null,
     comments: comments.map((comment) => ({ id: comment.id, body: comment.body, createdAt: comment.createdAt, authorName: authorName.get(comment.authorId) ?? "Instructor" })),
     answers: answerRows.map((answer) => ({ sectionId: answer.sectionId, title: sections.find((item) => item.sectionNumber === answer.sectionId)?.title ?? `Task ${answer.sectionId}`, body: answer.body, wordCount: answer.wordCount })),
@@ -555,3 +559,68 @@ export async function getInstructorPublicCard(instructorId: number) {
   return { id: user.id, name: user.name, role: user.role, headline: profile?.headline ?? null, bio: profile?.bio ?? null, avatarUrl: avatarPath(profile?.avatarKey) };
 }
 
+/** Marked scripts for an attempt, each with a short-lived download link. */
+async function listMarkedFiles(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, attemptId: number) {
+  const rows = await db.select().from(markedSubmissionFiles).where(eq(markedSubmissionFiles.attemptId, attemptId)).orderBy(desc(markedSubmissionFiles.id));
+  return Promise.all(rows.map(async (row) => ({
+    id: row.id,
+    fileName: row.fileName,
+    sizeBytes: row.sizeBytes,
+    uploadedBy: row.uploadedBy,
+    createdAt: row.createdAt,
+    url: await storageGetSignedUrl(row.fileKey),
+  })));
+}
+
+const MARKED_PDF_MAX_BYTES = 25 * 1024 * 1024;
+
+/** Builds the learner's submission as a PDF for the instructor to download. */
+export async function buildSubmissionPdf(actor: { id: number; role: Role }, attemptId: number) {
+  const detail = await getInstructorSubmission(actor, attemptId);
+  const bytes = await generateSubmissionPdf({
+    title: detail.exam.title,
+    examType: detail.exam.examType,
+    learner: [detail.learner.name, detail.learner.email].filter(Boolean).join(" · ") || "Learner",
+    submittedAt: detail.attempt.submittedAt ? new Date(detail.attempt.submittedAt).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg" }) : "Not yet submitted",
+    statusLabel: detail.statusLabel,
+    sections: detail.answers.map((answer) => ({
+      sectionNumber: answer.sectionId,
+      title: answer.title,
+      html: answer.body,
+      wordCount: answer.wordCount ?? 0,
+    })),
+    marking: detail.marking
+      ? { awardedPoints: detail.marking.awardedPoints ?? 0, totalPoints: detail.marking.totalPoints ?? 0, percent: scorePercent(detail.marking.awardedPoints ?? 0, detail.marking.totalPoints ?? 0), feedback: detail.marking.feedback ?? null }
+      : null,
+  });
+  const safeName = detail.learner.name?.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || `attempt-${attemptId}`;
+  return { fileName: `submission-${safeName}-${attemptId}.pdf`, base64: bytes.toString("base64") };
+}
+
+/** Stores a marked PDF against the attempt and tells the learner it is ready. */
+export async function uploadMarkedSubmission(actor: { id: number; role: Role; name?: string | null }, input: { attemptId: number; fileName: string; base64: string }) {
+  const db = requireDb(await getDb());
+  const [attempt] = await db.select({ id: attempts.id, userId: attempts.userId, mockExamId: attempts.mockExamId, status: attempts.status }).from(attempts).where(eq(attempts.id, input.attemptId)).limit(1);
+  if (!attempt) throw new TRPCError({ code: "NOT_FOUND", message: "Submission not found" });
+  await assertCanActOnLearner(actor, attempt.userId);
+  if (attempt.status === "in_progress" || attempt.status === "not_started") {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "The learner has not submitted this attempt yet" });
+  }
+  const bytes = Buffer.from(input.base64.replace(/^data:[^,]*,/, ""), "base64");
+  if (!bytes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "The marked file is empty" });
+  if (!isPdfBytes(bytes)) throw new TRPCError({ code: "BAD_REQUEST", message: "The marked file must be a PDF" });
+  if (bytes.length > MARKED_PDF_MAX_BYTES) throw new TRPCError({ code: "BAD_REQUEST", message: "The marked PDF must be 25 MB or smaller" });
+  const cleanName = (input.fileName.replace(/[^\w.\- ]+/g, "").trim() || "marked.pdf").slice(0, 200);
+  const fileName = /\.pdf$/i.test(cleanName) ? cleanName : `${cleanName}.pdf`;
+  const stored = await storagePut(`submissions/${attempt.id}/marked/${Date.now()}-${fileName.replace(/\s+/g, "-")}`, bytes, "application/pdf");
+  await db.insert(markedSubmissionFiles).values({ attemptId: attempt.id, uploadedBy: actor.id, fileName, fileKey: stored.key, sizeBytes: bytes.length });
+  const [exam] = await db.select({ title: mockExams.title }).from(mockExams).where(eq(mockExams.id, attempt.mockExamId)).limit(1);
+  await notifyUser(db, {
+    userId: attempt.userId,
+    type: "marking",
+    subject: "Your marked script is ready",
+    body: `${actor.name ?? "Your instructor"} has returned a marked script for ${exam?.title ?? "your exam"}. Open your profile to download it.`,
+    link: `/profile?attempt=${attempt.id}`,
+  });
+  return { success: true, markedFiles: await listMarkedFiles(db, attempt.id) };
+}
