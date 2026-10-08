@@ -821,6 +821,9 @@ Demo/QA accounts (`demo.*`, `qa.*`, QA login shortcuts, demo cards) are being
 | W3 | EC2 pull script gained plugin activation + secret warning | done, pushed |
 | W4 | Footer shows the logo image only (wordmark text removed) | done, pushed |
 | W5 | Production WordPress secrets/activation on EC2 | **manual, one-time** (§5.2) |
+| D1 | `COMBINED-PORTAL-UPDATES.md` operator runbook (incl. §7 database rules: additive-only migrations, backups, before/after inventory) | done, pushed (`eba335e`) |
+| D2 | Local Docker stack committed (`docker-compose.local.yml`, `deploy/local/`); nested `Wordpress/` ignored | done, pushed (`eba335e`) |
+| S3 | AWS S3 storage (profile pictures, resources, printable PDFs) | configured on EC2 already; local `.env` has no keys on purpose |
 | P1 | Remove all demo/QA accounts and QA login shortcuts | pending |
 | P2 | Schema: learner profiles, inbox messages, persisted objective results | pending |
 | P3 | Comprehensive registration + learner profile page | pending |
@@ -844,7 +847,8 @@ Append a row for every change. `pulled` means it is live on EC2.
 | 2026-10-08 | wordpress | `730c4c4` | Add `aft-portal-auth` plugin; track theme/MU-plugins/migration plugin; `ec2-pull-update.sh` activates the plugin and warns about the secret; CI + README cover the new path | no |
 | 2026-10-08 | wordpress | `bf21b39` | Footer wordmark text removed (CI correctly failed on this commit — an accidental plugin deletion slipped in; superseded by `6ca678d`) | no |
 | 2026-10-08 | wordpress | `6ca678d` | Restore `aft-migration-assistant` plugin files, CI green | no |
-| 2026-10-08 | exam-portal | (docs) | This document added — pull instructions for both sites | no |
+| 2026-10-08 | exam-portal | `eba335e` | This document (pull instructions for both sites, including the database rules in §7), local Docker stack (`docker-compose.local.yml`, `deploy/local/`), `.dockerignore`, ignore the nested `Wordpress/` copy | n/a (operator reads it on GitHub; the local stack is never deployed to EC2) |
+| 2026-10-08 | exam-portal | `376830d` | Merged PRs #4–#6 from `arena/*`: exam paper brief shown once on the first page, printable/debrief fixes, task instructions kept inside interactive exams, QA demo access restricted to non-production + `reconcile-production-accounts.ts` (pre-existing upstream work, reviewed before starting P1) | no |
 | — | exam-portal | — | P1–P8 portal release (not yet committed) | no |
 
 ### Verified locally before pushing
