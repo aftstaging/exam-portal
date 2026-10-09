@@ -10,7 +10,7 @@ import { buildZipBuffer, sanitizeZipName } from "./zip";
 import { accountRemovalBlocker, hasActiveEntitlement, isAdminRole, isAttemptEditable, isAttemptSubmittable } from "@shared/integrity";
 import { richTextWordCount, sanitizeAuthoredHtml } from "@shared/richText";
 import { countActiveEntitlements, isEnrolled } from "@shared/supervision";
-import { entitlementExpiryFromAccessDays } from "@shared/payments";
+import { couponExpiryFromInput as sharedCouponExpiryFromInput, entitlementExpiryFromAccessDays } from "@shared/payments";
 import { clampPage } from "@shared/pagination";
 import { containsPattern } from "@shared/search";
 import { DEMO_LEARNER_EMAIL, DEMO_LEARNER_NAME, DEMO_LEARNER_OPEN_ID } from "@shared/const";
@@ -203,7 +203,8 @@ export async function getAdminOverview() {
   if (!db) return { activeLearners: 0, awaitingMarking: 0, publishedProducts: 0, recentActivity: [] };
   const [learnerCount, markingCount, productCount] = await Promise.all([
     db.select({ value: count() }).from(users),
-    db.select({ value: count() }).from(attempts).where(eq(attempts.status, "awaiting_marking")),
+    // Live queue depth: every locked submission whose feedback has not been released yet.
+    db.select({ value: count() }).from(markings).innerJoin(submissions, eq(markings.attemptId, submissions.attemptId)).where(inArray(markings.status, ["unassigned", "assigned", "in_progress"])),
     db.select({ value: count() }).from(products).where(eq(products.status, "published")),
   ]);
   const recentActivity = await db.select().from(auditEvents).orderBy(desc(auditEvents.createdAt)).limit(8);
@@ -282,7 +283,9 @@ export async function listAttemptAnswers(userId: number, attemptId: number) {
   ]);
   const answerBySection = new Map(answerRows.map((row) => [row.sectionId, row]));
   const authored = sectionRows.sort((a, b) => a.sectionNumber - b.sectionNumber);
-  const maxTask = Math.max(4, ...authored.map((section) => section.sectionNumber), ...answerRows.map((row) => row.sectionId));
+  // Show the authored tasks plus any task numbers that actually carry answers - never pad the
+  // paper out to a fixed four tasks and print empty placeholders for exams with fewer sections.
+  const maxTask = Math.max(1, ...authored.map((section) => section.sectionNumber), ...answerRows.map((row) => row.sectionId));
   return {
     attempt: attempt[0],
     mockExamId: attempt[0].mockExamId,
@@ -589,11 +592,24 @@ export async function createLockedSubmission(input: { userId: number; attemptId:
   const status = input.optOutOfMarking ? "submitted" : "awaiting_marking";
   await db.update(attempts).set({ status, optOutOfMarking: input.optOutOfMarking ? 1 : 0, submittedAt: new Date() }).where(eq(attempts.id, input.attemptId));
   const created = await db.insert(submissions).values({ attemptId: input.attemptId, submittedBy: input.userId, status: input.optOutOfMarking ? "locked" : "received" }).$returningId();
-  if (!input.optOutOfMarking) {
-    await db.insert(markings).values({ attemptId: input.attemptId, status: "unassigned", totalPoints: 0, awardedPoints: 0 });
-  }
+  // Every locked submission enters the marking pipeline, so the staff queue and the
+  // performance dashboards pick it up in real time. `optOutOfMarking` only records whether
+  // the learner asked for instructor feedback; it never hides the submission from staff.
+  await db.insert(markings).values({ attemptId: input.attemptId, status: "unassigned", totalPoints: 0, awardedPoints: 0 });
   await notifyUser(db, { userId: input.userId, type: "submission", subject: "Exam submission received", body: "Your submission has been securely locked and recorded." });
   return { submissionId: created[0]?.id, status };
+}
+
+/** Whether the learner currently holds an active instructor-marking add-on. */
+export async function hasMarkingEntitlement(userId: number): Promise<boolean> {
+  try {
+    const db = await getDb();
+    if (!db) return false;
+    const markingAccess = await db.select({ entitlement: entitlements }).from(entitlements).innerJoin(products, eq(entitlements.productId, products.id)).where(and(eq(products.category, "marking"), eq(entitlements.userId, userId), eq(entitlements.status, "active"))).limit(1);
+    return hasActiveEntitlement(markingAccess[0]?.entitlement);
+  } catch {
+    return false;
+  }
 }
 
 export async function getUserFeedbackStates(userId: number) {
@@ -859,6 +875,7 @@ export async function releaseFeedback(input: { markingId: number; feedback: stri
   await db.update(markings).set({ status: "submitted", feedback: input.feedback, rubricSnapshot: input.rubricSnapshot ?? null, awardedPoints: input.awardedPoints, totalPoints: input.totalPoints, markedAt: new Date() }).where(eq(markings.id, input.markingId));
   await db.insert(feedbackStates).values({ attemptId: row[0].attemptId, state: "available", summary: input.feedback, releasedAt: new Date() });
   await db.update(attempts).set({ status: "marked" }).where(eq(attempts.id, row[0].attemptId));
+  await db.update(submissions).set({ status: "released", releasedAt: new Date() }).where(eq(submissions.attemptId, row[0].attemptId));
   const attemptOwner = await db.select().from(attempts).where(eq(attempts.id, row[0].attemptId)).limit(1);
   if (attemptOwner[0]) await notifyUser(db, { userId: attemptOwner[0].userId, type: "marking", subject: "Your marking is available", body: "Your case-study feedback has been released and is ready to review." });
   return { success: true };
@@ -2057,13 +2074,8 @@ export async function listAdminCoupons() {
 }
 
 function couponExpiryFromInput(input?: string | null): Date | null {
-  if (!input) return null;
-  const parsed = new Date(input);
-  if (Number.isNaN(parsed.getTime())) throw new Error("Coupon expiry must be a valid date and time");
-  const atMidnight = parsed.getHours() === 0 && parsed.getMinutes() === 0 && parsed.getSeconds() === 0;
-  const expiry = atMidnight ? new Date(parsed.getTime() + 24 * 60 * 60 * 1000 - 1) : parsed;
-  if (expiry.getTime() + 60_000 < Date.now()) throw new Error("Coupon expiry must be in the future");
-  return expiry;
+  // Shared with the admin forms and covered by unit tests in `server/payments.test.ts`.
+  return sharedCouponExpiryFromInput(input);
 }
 
 export async function createAdminCoupon(input: { userId: number; code: string; discountType: "percent" | "fixed"; value: number; maxUses?: number; expiresAt?: string | null }) {
@@ -2124,7 +2136,8 @@ export async function updateAdminCoupon(input: { userId: number; couponId: numbe
   if (input.discountType !== undefined) updates.discountType = input.discountType;
   if (input.value !== undefined) {
     const value = Math.round(input.value);
-    if (input.discountType === "percent") {
+    const effectiveType = input.discountType ?? coupon.discountType;
+    if (effectiveType === "percent") {
       if (value < 1 || value > 100) throw new Error("Percent coupons must be between 1 and 100");
     } else {
       if (value < 1) throw new Error("Fixed coupon value must be at least R0.01");
@@ -2168,7 +2181,11 @@ export async function validateCoupon(input: { code: string; subtotalCents: numbe
   if (!code) throw new Error("Enter a coupon code");
   const coupon = (await db.select().from(coupons).where(eq(coupons.code, code)).limit(1))[0];
   if (!coupon || coupon.status !== "active") throw new Error("This coupon code is not valid");
-  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) throw new Error("This coupon has expired");
+  if (coupon.expiresAt) {
+    const expiryTime = new Date(coupon.expiresAt).getTime();
+    // An unparseable expiry must not condemn the coupon; only a real, elapsed date expires it.
+    if (Number.isFinite(expiryTime) && expiryTime < Date.now()) throw new Error("This coupon has expired");
+  }
   if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) throw new Error("This coupon has reached its usage limit");
   const discountCents = coupon.discountType === "percent"
     ? Math.round((subtotal * coupon.value) / 100)

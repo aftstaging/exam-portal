@@ -38,7 +38,7 @@ export default function InstructorDashboard() {
   const [learnerFilter, setLearnerFilter] = useState<number | null>(null);
   const [openAttempt, setOpenAttempt] = useState<number | null>(null);
   const [messageTarget, setMessageTarget] = useState<number | null>(null);
-  const dashboard = trpc.instructor.dashboard.useQuery(undefined, { enabled: allowed, retry: false });
+  const dashboard = trpc.instructor.dashboard.useQuery(undefined, { enabled: allowed, retry: false, refetchInterval: 30_000 });
   const profile = trpc.profile.me.useQuery(undefined, { enabled: allowed, retry: false });
   const unread = trpc.messages.unreadCount.useQuery(undefined, { enabled: allowed, retry: false, refetchInterval: 30_000 });
 

@@ -50,7 +50,10 @@ describe("submissionStatusLabel", () => {
     expect(submissionStatusLabel("awaiting_marking", "unassigned", false)).toBe("Awaiting marking");
     expect(submissionStatusLabel("awaiting_marking", "in_progress", false)).toBe("Being marked");
     expect(submissionStatusLabel("marked", "submitted", false)).toBe("Marked");
-    expect(submissionStatusLabel("submitted", null, true)).toBe("Submitted (no marking requested)");
+  });
+  it("keeps opted-out submissions in the live marking pipeline", () => {
+    expect(submissionStatusLabel("submitted", null, true)).toBe("Awaiting marking");
+    expect(submissionStatusLabel("submitted", "unassigned", true)).toBe("Awaiting marking");
   });
 });
 

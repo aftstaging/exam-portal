@@ -112,7 +112,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function PerformancePanel() {
-  const performance = trpc.profile.performance.useQuery(undefined, { retry: false });
+  const performance = trpc.profile.performance.useQuery(undefined, { retry: false, refetchInterval: 30_000 });
   const [openAttempt, setOpenAttempt] = useState<number | null>(() => {
     const value = new URLSearchParams(window.location.search).get("attempt");
     return value ? Number(value) : null;
@@ -241,7 +241,7 @@ function SubmissionDetail({ attemptId }: { attemptId: number }) {
 
 function MessagesPanel() {
   const utils = trpc.useUtils();
-  const performance = trpc.profile.performance.useQuery(undefined, { retry: false });
+  const performance = trpc.profile.performance.useQuery(undefined, { retry: false, refetchInterval: 30_000 });
   const supervisor = performance.data?.supervisor ?? null;
   const thread = trpc.messages.thread.useQuery({ partnerId: supervisor?.id ?? 0 }, { enabled: Boolean(supervisor), retry: false, refetchInterval: 15_000 });
   const [draft, setDraft] = useState("");
