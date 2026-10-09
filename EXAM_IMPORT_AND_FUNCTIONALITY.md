@@ -241,11 +241,11 @@ pre-moderated question paper — no manual data entry or SQL required:
     `server/pdfImport.ts`). The server reads the file with pdfjs-dist and
     returns a structured `PdfExamDraft` that the client applies to the whole
     form (`applyImportedDraft`): title, exam type, total duration, section
-    tasks, objective questions, the email brief, and the carved
-    **reference** and **formulae + tables** PDFs (both are re-serialised from
-    the original file). It never writes to the database — the admin then saves
-    the populated form through the normal bundle flow (always a **draft**,
-    never auto-published).
+    tasks, objective questions, **each task's email brief** (compose fields +
+    rich-text body), and the carved **reference** (per task and combined) and
+    **formulae + tables** PDFs (all re-serialised from the original file). It
+    never writes to the database — the admin then saves the populated form
+    through the normal bundle flow (always a **draft**, never auto-published).
   - **Suggested answers / solutions / marking guide (PDF, optional)** — simply
     attached to the exam's **feedback** resource using the existing
     `setFeedbackFile` flow.
@@ -258,17 +258,29 @@ pre-moderated question paper — no manual data entry or SQL required:
   the server strips the data-URL prefix via `stripDataUrl` in
   `server/pdfImport.ts`.
 - Parsing quirks handled by the parser (see `server/pdfImport.ts`):
+  - The text layer is rebuilt into **visual lines using pdfjs geometry**
+    (baseline `y`, `x` gaps), so split glyphs rejoin ("F rom:" → "From:") and
+    line/paragraph breaks survive — this is what lets emails keep the paper's
+    own formatting (greeting, paragraphs, `●` bullet lists with
+    `[sub-task (a) = 40%]` notes, sign-off block) in the rich-text body.
   - Running headers / footers are stripped from an **additive data list**
     (`RUNNING_HEADER_PATTERNS`) so they never corrupt section content —
     adding a new publisher's token (`MOCK EXAM B`, `KAPLAN PUBLISHING`,
     `© Astranti 2026`, …) is a one-line list change, not a parser edit.
-  - Each case-study task maps to a section with a 45-minute
+  - Each case-study task maps to a section with the printed
     `durationSeconds`, title `Task N — Unseen case material` (Cartn) or
-    `Task N` (Mock B), and the full task-page text as its introduction.
-  - Reference/formulae pages are located by running header + dropping
-    continuation pages, then re-serialised into PDF attachments. Page 1's
-    cover title is re-extracted raw (`extractCoverText`) because the running
-    header already swallowed "Mock Exam 3"-style text.
+    `Task N` (Mock B), the pre-email scenario as its introduction, and the
+    task's own email: `From:`/`To:`/`Subject:` (recipient-above-sender Kaplan
+    order included) into the compose fields and the body into the rich-text
+    message, formatted as printed. Nested emails inside reference material
+    stay with the reference pages — they never overwrite the task brief.
+  - Each task's **Reference material** pages are carved into that task's own
+    `-task-N-reference.pdf` attachment (tables and layout survive exactly as
+    printed); the union of all reference pages is also carved as the
+    exam-level `-reference.pdf`. Formulae/tables pages are carved into
+    `-formulae-tables.pdf`. Page 1's cover title is re-extracted raw
+    (`extractCoverText`) because the running header already swallowed "Mock
+    Exam 3"-style text.
   - A **pre-seen / advance-information** section (pages before Task 1 headed
     "Pre-seen material", "Advance information", etc.) is detected and carved
     into a protected `-pre-seen.pdf` attached to the exam's Pre-seen slot;
@@ -280,9 +292,10 @@ pre-moderated question paper — no manual data entry or SQL required:
   `ExamPreviewDraft` inside the same `.exam-shell` (titlebar with title +
   duration, a sessionbar of section chips, `exam-card` content) so admins see
   exactly how learners will experience the exam before saving.
-- Coverage is enforced by `server/pdfImport.test.ts` (7 contract tests that
+- Coverage is enforced by `server/pdfImport.test.ts` (contract tests that
   load the six `source-pdfs/` files through the real
-  `exams.createFromPdf` tRPC route with a staff caller).
+  `exams.createFromPdf` tRPC route with a staff caller, asserting per-task
+  email headers, formatted bodies and per-task reference carves).
 
 ---
 
