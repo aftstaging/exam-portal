@@ -185,7 +185,9 @@ async function loadAttemptRecords(userIds: number[], filter?: { attemptId?: numb
     const marking = markingByAttempt.get(attempt.id) ?? null;
     const submitted = Boolean(submittedAttempts.has(attempt.id) || SUBMITTED_STATUSES.includes(attempt.status as (typeof SUBMITTED_STATUSES)[number]));
     const percent = marking && marking.status === "submitted" ? scorePercent(marking.awardedPoints, marking.totalPoints) : null;
-    const awaitingMarking = submitted && attempt.status === "awaiting_marking" && !(marking && marking.status === "submitted");
+    // Every locked submission is in the marking pipeline, so "awaiting marking" counts anything
+    // submitted whose feedback has not been released — including opt-outs, which staff still see.
+    const awaitingMarking = submitted && !(marking && marking.status === "submitted");
     const optedOut = Boolean(attempt.optOutOfMarking);
     return {
       attemptId: attempt.id,
@@ -432,6 +434,7 @@ export async function gradeSubmission(actor: { id: number; role: Role; name?: st
     await db.insert(markings).values({ attemptId: attempt.id, markerId: actor.id, status: "submitted", awardedPoints: input.awardedPoints, totalPoints: input.totalPoints, feedback, markedAt: now });
   }
   await db.update(attempts).set({ status: "marked" }).where(eq(attempts.id, attempt.id));
+  await db.update(submissions).set({ status: "released", releasedAt: now }).where(eq(submissions.attemptId, attempt.id));
   await db.insert(feedbackStates).values({ attemptId: attempt.id, state: "available", summary: feedback.slice(0, 2000), releasedAt: now });
   const percent = scorePercent(input.awardedPoints, input.totalPoints);
   await notifyUser(db, {

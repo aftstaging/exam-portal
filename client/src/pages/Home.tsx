@@ -174,18 +174,77 @@ function PublicHeader({ onLogin }: { onLogin: () => void }) {
 function ExamCalculator() {
   const [expression, setExpression] = useState("");
   const [display, setDisplay] = useState("0");
+  const [justEvaluated, setJustEvaluated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isOperator = (value: string) => ["+", "−", "×", "÷"].includes(value);
+  const evaluate = () => {
+    if (!expression.trim()) return;
+    try {
+      const result = calculateExamExpression(expression);
+      setExpression(result);
+      setDisplay(result);
+      setError(null);
+      setJustEvaluated(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid calculation");
+    }
+  };
   const press = (value: string) => {
-    if (value === "C") { setExpression(""); setDisplay("0"); return; }
-    if (value === "⌫") { const next = expression.slice(0, -1); setExpression(next); setDisplay(next || "0"); return; }
-    if (value === "=") { try { const result = calculateExamExpression(expression); setExpression(result); setDisplay(result); } catch (error) { setDisplay(error instanceof Error ? error.message : "Invalid calculation"); } return; }
-    const next = `${expression}${value}`;
+    setError(null);
+    if (value === "C") { setExpression(""); setDisplay("0"); setJustEvaluated(false); return; }
+    if (value === "⌫") {
+      const next = expression.slice(0, -1);
+      setExpression(next);
+      setDisplay(next || "0");
+      setJustEvaluated(false);
+      return;
+    }
+    if (value === "=") { evaluate(); return; }
+    let base = expression;
+    if (justEvaluated) {
+      // After `=` a digit starts a fresh calculation, an operator continues from the result.
+      base = isOperator(value) || value === "%" ? expression : "";
+      setJustEvaluated(false);
+    }
+    if (isOperator(value)) {
+      if (!base.trim()) {
+        // A leading operator is only meaningful as the minus sign.
+        if (value !== "−") return;
+      } else if (isOperator(base.trim().slice(-1))) {
+        // Replace a dangling operator instead of stacking `2 + ×`.
+        base = base.trim().slice(0, -1);
+      }
+    } else if (value === ".") {
+      const currentNumber = base.split(/[+−×÷()]/).pop() ?? "";
+      if (currentNumber.includes(".")) return;
+      if (!currentNumber) base = `${base}0`;
+    } else if (value === ")") {
+      const open = (base.match(/\(/g) ?? []).length;
+      const closed = (base.match(/\)/g) ?? []).length;
+      if (open <= closed) return;
+    } else if (value === "%") {
+      if (!base.trim() || isOperator(base.trim().slice(-1)) || base.trim().endsWith("(")) return;
+    }
+    const next = `${base}${value}`;
     setExpression(next);
     setDisplay(next);
   };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key >= "0" && event.key <= "9") { event.preventDefault(); press(event.key); return; }
+      const map: Record<string, string> = { "+": "+", "-": "−", "*": "×", "/": "÷", "x": "×", ".": ".", "%": "%", "(": "(", ")": ")" };
+      if (map[event.key]) { event.preventDefault(); press(map[event.key]!); return; }
+      if (event.key === "Enter" || event.key === "=") { event.preventDefault(); press("="); return; }
+      if (event.key === "Backspace") { event.preventDefault(); press("⌫"); return; }
+      if (event.key === "Escape" || event.key === "Delete") { event.preventDefault(); press("C"); }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expression, justEvaluated]);
   return <div className="exam-calculator">
-    <div className="exam-calculator-display" aria-live="polite">{display}</div>
+    <div className="exam-calculator-display" aria-live="polite">{error ? <span className="text-[#ff8278]">{error}</span> : display}</div>
     <div className="exam-calculator-grid">{["C", "⌫", "%", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "(", ")", "="].map((key) => <button key={key} type="button" onClick={() => press(key)} className={key === "=" ? "exam-calculator-key exam-calculator-equals" : key === "C" ? "exam-calculator-key exam-calculator-clear" : "exam-calculator-key"}>{key}</button>)}</div>
-    <p className="mt-3 text-xs text-white/45">For exam working only. Results are not saved to your submission.</p>
+    <p className="mt-3 text-xs text-white/45">Type or click. Percent works like a standard calculator — 50 + 10% = 55. Results are not saved to your submission.</p>
   </div>;
 }
 
@@ -254,9 +313,11 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
   const examSections = caseStudySectionsQuery.data ?? [];
   const mockExamsQuery = trpc.catalogue.mockExams.useQuery(undefined, { retry: false });
   const examRecord = mockExamsQuery.data?.find((item) => item.mockExam.id === examMockExamId)?.mockExam;
+  const shellEntitlementsQuery = trpc.student.entitlements.useQuery(undefined, { retry: false });
+  const shellHasMarkingAccess = shellEntitlementsQuery.data?.some(({ entitlement, product }) => product.category === "marking" && hasActiveEntitlement(entitlement)) === true;
   // The paper-wide brief (instructions + table of contents) is shown once, on the first exam page.
   const examIntro = examRecord?.intro?.trim() ?? "";
-  const totalSections = Math.max(4, examSections.length);
+  const totalSections = examSections.length || 4;
   const resolveTaskResource = (kind: "email" | "reference" | "instructions" | "pre_seen" | "formulae") => {
     const universal = kind === "formulae" || kind === "pre_seen";
     const rows = examResourcesQuery.data?.filter((item) => item.kind === kind && (universal || item.sectionNumber === currentSection)) ?? [];
@@ -378,7 +439,7 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
       } else {
         transitioningToSubmission.current = true;
         toast.warning("Time is up — your exam is being submitted with the answers saved so far.");
-        submitAttempt.mutate({ attemptId, optOutOfMarking: true }, { onSuccess: () => setScreen("debrief"), onError: (error) => { toast.error(error.message); setScreen("debrief"); } });
+        submitAttempt.mutate({ attemptId, optOutOfMarking: !shellHasMarkingAccess }, { onSuccess: () => setScreen("debrief"), onError: (error) => { toast.error(error.message); setScreen("debrief"); } });
       }
     };
     if (richTextWordCount(answer)) {
@@ -393,7 +454,7 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
       if (transitioningToSubmission.current || !attemptId) return;
       if (event.type === "pagehide" && (event as PageTransitionEvent).persisted) return;
       try {
-        navigator.sendBeacon(`/api/auto-submit?attempt=${attemptId}`);
+        navigator.sendBeacon(withBasePath(`/api/auto-submit?attempt=${attemptId}`));
       } catch {
         // Beacon failure must never block the leave navigation.
       }
@@ -408,7 +469,7 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
   const endSession = () => {
     if (!window.confirm("End and submit this exam now? Your exam will be submitted with the answers saved so far and cannot be resumed.")) return;
     if (attemptLocked || !attemptId) { setScreen("debrief"); return; }
-    submitAttempt.mutate({ attemptId, optOutOfMarking: true }, { onSuccess: () => { toast.success("Exam submitted with your saved answers."); setScreen("debrief"); }, onError: (error) => { toast.error(error.message); setScreen("debrief"); } });
+    submitAttempt.mutate({ attemptId, optOutOfMarking: !shellHasMarkingAccess }, { onSuccess: () => { toast.success("Exam submitted with your saved answers."); setScreen("debrief"); }, onError: (error) => { toast.error(error.message); setScreen("debrief"); } });
   };
 
   return (
@@ -417,7 +478,7 @@ function ExamShell({ screen, setScreen }: { screen: string; setScreen: (next: st
         <div className="exam-brand-tools"><BrandMark inverse /><ExamUtilityRail onResource={setResource} /></div>
       </div>
       <div className="exam-titlebar">
-        <div className="flex items-center gap-3"><Menu className="h-5 w-5" /><span>CIMA OCS Mock Exam 1</span></div>
+        <div className="flex items-center gap-3"><Menu className="h-5 w-5" /><span>{examRecord?.title ?? "Case-study exam"}</span></div>
         <div className="flex items-center gap-2 font-semibold"><Clock3 className="h-5 w-5" /> {isIntro ? `00:${String(countdown).padStart(2, "0")}` : isQuestion ? formatExamTime(sectionSeconds) : "45 minutes"}</div>
       </div>
       <div className="exam-sessionbar"><div className="text-xs font-semibold uppercase tracking-[.14em] text-white/45">Exam controls</div><div className="flex items-center gap-5 text-sm font-semibold text-white"><button onClick={() => toast.info("Exam help will be available from the configured exam administrator.")} className="exam-top-action"><HelpCircle className="h-4 w-4" /> Help</button><button onClick={endSession} className="exam-top-action"><X className="h-4 w-4" /> End session</button></div></div>
@@ -588,7 +649,7 @@ function ModeSelection({ setScreen }: { setScreen: (next: string) => void }) { c
             )}
           </div><div className="mt-8 grid gap-4 md:grid-cols-2">{modes.map(({ id, title, text, icon: Icon }) => <button key={id} onClick={() => setMode(id)} className={`mode-card text-left ${mode === id ? "mode-card-selected" : ""}`}><div className="flex items-center justify-between gap-4"><div className={`mode-icon ${mode === id ? "mode-icon-selected" : ""}`}><Icon className="h-6 w-6" /></div><ChevronRight className="h-5 w-5 text-[#00ff88]" /></div><h2 className="mt-5 font-bold text-white">{title}</h2><p className="mt-1 text-sm leading-6 text-[#c4b5fd]">{text}</p></button>)}</div>{mode === "printable" && <div className={`mt-6 rounded-xl border p-4 text-sm ${printableResource ? "border-[#00ff88]/40 bg-[#102b36] text-[#c4b5fd]" : "border-[#00e5ff]/30 bg-[#18093c] text-[#c4b5fd]"}`}><div className="font-bold text-white">{resourcesQuery.isLoading ? "Checking printable resource…" : printableResource ? "Printable exam ready" : "Printable exam not published yet"}</div><p className="mt-1">{printableResource ? "The question paper PDF will open here." : "The question paper PDF is generated automatically and opened when you continue."}</p></div>}<div className="mt-8 flex gap-3"><Button variant="outline" className="border-[#00e5ff] text-white" onClick={() => setScreen("debrief")}>Back</Button><Button className="aft-button" onClick={async () => { if (mode === "solutions") { setScreen("solutions"); return; } if (mode !== "interactive") { const kind = mode === "printable" ? "printable_pdf" : mode === "feedback" ? "feedback" : "reference"; const resource = resourcesQuery.data?.find((item) => item.kind === kind && item.hasFile); if (resource) { try { const result = await resourceUtils.resources.download.fetch({ resourceId: resource.id }); if (result.url) window.location.assign(result.url); } catch (error) { toast.error(error instanceof Error ? error.message : "Resource unavailable"); } } else if (mode === "printable") { try { const result = await printableMutation.mutateAsync({ mockExamId }); if (result.url) window.location.assign(result.url); else toast.error("Printable PDF could not be generated"); } catch (error) { toast.error(error instanceof Error ? error.message : "Printable PDF could not be generated"); } } else { toast.info("This mode is available once the corresponding protected file has been published."); } return; } startAttempt.mutate({ mockExamId, mode: "interactive" }, { onSuccess: (attempt) => { if (attempt?.id && typeof window !== "undefined") { window.sessionStorage.setItem("aft-attempt-id", String(attempt.id)); const nextParams = new URLSearchParams(window.location.search); nextParams.set("attempt", String(attempt.id)); window.history.replaceState({}, "", `${window.location.pathname}?${nextParams.toString()}`); } setScreen("instructions"); }, onError: (error) => toast.error(error.message || "Sign in to start an interactive attempt") }); }}>Continue <ArrowRight className="ml-2 h-4 w-4" /></Button></div></div></main></div>; }
 
-function Debrief({ setScreen }: { setScreen: (next: string) => void }) { const [, navigate] = useLocation(); const mockExamsQuery = trpc.catalogue.mockExams.useQuery(undefined, { retry: false }); const mockExamId = typeof window === "undefined" ? 1 : Number(new URLSearchParams(window.location.search).get("mockExamId") || 1); const selected = mockExamsQuery.data?.find((item) => item.mockExam.id === mockExamId); const examTitle = selected?.mockExam.title ?? "Selected mock exam"; const durationMinutes = Math.round((selected?.mockExam.totalDurationSeconds ?? 10800) / 60); const productId = typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("productId") || 0) || selected?.mockExam.productId || 0; const attemptsQuery = trpc.student.attempts.useQuery(undefined, { retry: false }); const finishedAttempt = attemptsQuery.data?.find(({ attempt }) => attempt.mockExamId === mockExamId && ["submitted", "awaiting_marking", "marked"].includes(attempt.status)); const reviewAttemptId = finishedAttempt?.attempt.id ?? 0; const goReview = () => { setScreen("review"); navigate(`/case-study/review?mockExamId=${mockExamId}&productId=${productId}&attempt=${reviewAttemptId}`); }; return <div className="min-h-screen bg-[#0c0524]"><PublicHeader onLogin={() => startLogin("login")} /><ExamUtilityRail /><main className="container py-12"><div className="mx-auto max-w-3xl"><div className="grid gap-8"><Card className="border-0 bg-[#102b36] shadow-none"><CardContent className="space-y-5 p-7">{[["What is included", "Four timed case-study tasks with one answer screen per task."], ["Timing", `${durationMinutes} minutes total, based on the imported exam configuration.`], ["Resources", "Protected question paper, formulae/tables, and post-submission solutions where supplied."], ["What to expect", "Realistic scenarios, time pressure, and integrated professional judgement."]].map(([label, value]) => <div key={label} className="flex gap-4 border-b border-[#00ff88] pb-5 last:border-0 last:pb-0"><Check className="mt-1 h-5 w-5 text-[#00ff88]" /><div><div className="font-bold text-white">{label}</div><div className="mt-1 text-sm text-[#c4b5fd]">{value}</div></div></div>)}</CardContent></Card><div className="flex flex-wrap items-center gap-3"><Button className="aft-button" onClick={() => setScreen("mode")}>Continue to exam modes <ArrowRight className="ml-2 h-4 w-4" /></Button>{reviewAttemptId ? <Button variant="outline" className="border-[#00e5ff] text-[#00e5ff]" onClick={goReview}>Review my submitted answers</Button> : null}</div></div></div></main></div>; }
+function Debrief({ setScreen }: { setScreen: (next: string) => void }) { const [, navigate] = useLocation(); const mockExamsQuery = trpc.catalogue.mockExams.useQuery(undefined, { retry: false }); const mockExamId = typeof window === "undefined" ? 1 : Number(new URLSearchParams(window.location.search).get("mockExamId") || 1); const selected = mockExamsQuery.data?.find((item) => item.mockExam.id === mockExamId); const examTitle = selected?.mockExam.title ?? "Selected mock exam"; const durationMinutes = Math.round((selected?.mockExam.totalDurationSeconds ?? 10800) / 60); const productId = typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("productId") || 0) || selected?.mockExam.productId || 0; const sectionsQuery = trpc.catalogue.caseStudySections.useQuery({ mockExamId }, { retry: false, enabled: Boolean(selected) }); const taskCount = sectionsQuery.data?.length || 4; const attemptsQuery = trpc.student.attempts.useQuery(undefined, { retry: false }); const finishedAttempt = attemptsQuery.data?.find(({ attempt }) => attempt.mockExamId === mockExamId && ["submitted", "awaiting_marking", "marked"].includes(attempt.status)); const reviewAttemptId = finishedAttempt?.attempt.id ?? 0; const goReview = () => { setScreen("review"); navigate(`/case-study/review?mockExamId=${mockExamId}&productId=${productId}&attempt=${reviewAttemptId}`); }; return <div className="min-h-screen bg-[#0c0524]"><PublicHeader onLogin={() => startLogin("login")} /><ExamUtilityRail /><main className="container py-12"><div className="mx-auto max-w-3xl"><div className="grid gap-8"><Card className="border-0 bg-[#102b36] shadow-none"><CardContent className="space-y-5 p-7">{[["What is included", `${taskCount} timed case-study task${taskCount === 1 ? "" : "s"} with one answer screen per task.`], ["Timing", `${durationMinutes} minutes total, based on the imported exam configuration.`], ["Resources", "Protected question paper, formulae/tables, and post-submission solutions where supplied."], ["What to expect", "Realistic scenarios, time pressure, and integrated professional judgement."]].map(([label, value]) => <div key={label} className="flex gap-4 border-b border-[#00ff88] pb-5 last:border-0 last:pb-0"><Check className="mt-1 h-5 w-5 text-[#00ff88]" /><div><div className="font-bold text-white">{label}</div><div className="mt-1 text-sm text-[#c4b5fd]">{value}</div></div></div>)}</CardContent></Card><div className="flex flex-wrap items-center gap-3"><Button className="aft-button" onClick={() => setScreen("mode")}>Continue to exam modes <ArrowRight className="ml-2 h-4 w-4" /></Button>{reviewAttemptId ? <Button variant="outline" className="border-[#00e5ff] text-[#00e5ff]" onClick={goReview}>Review my submitted answers</Button> : null}</div></div></div></main></div>; }
 
 function MockExams({ setScreen }: { setScreen: (next: string) => void }) { const [, navigate] = useLocation(); const examsQuery = trpc.catalogue.mockExams.useQuery(undefined, { retry: false }); const exams = examsQuery.data ?? []; return <div className="min-h-screen bg-[#0c0524]"><PublicHeader onLogin={() => startLogin("login")} /><main className="container py-12"><div className="mx-auto max-w-5xl"><p className="eyebrow">CIMA / Case study</p><div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center"><div><h1 className="text-4xl font-bold text-white">Choose your mock exam</h1><p className="mt-4 text-lg leading-8 text-[#c4b5fd]">Attempting mock exams is one of the best ways to prepare for the CIMA Objective Case Study. Build confidence, apply knowledge under timed conditions, and identify the areas to focus on.</p><p className="mt-4 text-sm font-semibold text-[#00ff88]">Choose a format, start when you are ready, and keep your preparation moving.</p></div><div className="space-y-3">{examsQuery.isLoading ? <div className="h-48 animate-pulse rounded-2xl bg-[#120730]" /> : exams.length ? exams.map(({ mockExam, product }, index) => <button key={mockExam.id} onClick={() => { const query = `?mockExamId=${mockExam.id}&productId=${product.id}`; navigate(`/case-study/debrief${query}`); setScreen("debrief"); }} className={`exam-choice ${index === 0 ? "exam-choice-featured" : ""}`}><span>{mockExam.title}</span><ArrowRight className="h-5 w-5" /></button>) : <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-sm text-[#c4b5fd]">No published mock exams are available yet.</div>}</div></div></div></main></div>; }
 
@@ -597,14 +658,14 @@ function ObjectiveTests() { const [timed, setTimed] = useState(true); const [top
 function Admin() {
   const { user, loading, isAuthenticated } = useAuth();
   const [active, setActive] = useState("Overview");
-  const overviewQuery = trpc.admin.overview.useQuery(undefined, { retry: false, enabled: isAuthenticated && user?.role === "admin" });
+  const overviewQuery = trpc.admin.overview.useQuery(undefined, { retry: false, refetchInterval: 30_000, enabled: isAuthenticated && user?.role === "admin" });
   const productsQuery = trpc.admin.products.useQuery(undefined, { retry: false, enabled: isAuthenticated && user?.role === "admin" });
   const contentQuery = trpc.admin.contentOverview.useQuery(undefined, { retry: false, enabled: isAuthenticated && user?.role === "admin" });
   const contentKind = active === "Case-study exams" ? "mock_exams" : active === "Resources" ? "resources" : active === "Question bank" ? "objective_questions" : "sections";
   const contentItemsQuery = trpc.admin.contentItems.useQuery({ kind: contentKind }, { retry: false, enabled: isAuthenticated && user?.role === "admin" && active !== "Overview" && active !== "Products" && active !== "Marker queue" && active !== "Users" });
   const contentStatusMutation = trpc.admin.updateContentStatus.useMutation({ onSuccess: () => { toast.success("Content status updated"); contentItemsQuery.refetch(); contentQuery.refetch(); }, onError: (error) => toast.error(error.message) });
   const sectionTitleMutation = trpc.admin.updateSectionTitle.useMutation({ onSuccess: () => { toast.success("Section title updated"); contentItemsQuery.refetch(); }, onError: (error) => toast.error(error.message) });
-  const queueQuery = trpc.marking.queue.useQuery(undefined, { retry: false, enabled: isAuthenticated && user?.role === "admin" });
+  const queueQuery = trpc.marking.queue.useQuery(undefined, { retry: false, refetchInterval: 30_000, enabled: isAuthenticated && user?.role === "admin" });
   const updateProductStatus = trpc.admin.updateProductStatus.useMutation({ onSuccess: () => { toast.success("Product status updated"); productsQuery.refetch(); overviewQuery.refetch(); }, onError: (error) => toast.error(error.message) });
   const generatePrintablePdfMutation = trpc.admin.generatePrintablePdf.useMutation({ onSuccess: () => { toast.success("Printable exam PDF generated"); contentItemsQuery.refetch(); }, onError: (error) => toast.error(error.message) });
   const utils = trpc.useUtils();
@@ -701,10 +762,43 @@ function Submission({ setScreen }: { setScreen: (next: string) => void }) {
   const [submitted, setSubmitted] = useState(false);
   const submitAttempt = trpc.exams.submit.useMutation();
   const entitlementsQuery = trpc.student.entitlements.useQuery(undefined, { retry: false });
+  const meQuery = trpc.auth.me.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
   const attemptId = typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("attempt") || 0);
+  const attemptContextQuery = trpc.exams.attemptContext.useQuery({ attemptId }, { retry: false, enabled: Boolean(attemptId) });
+  const mockExamId = attemptContextQuery.data?.mockExamId ?? (typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("mockExamId") || 0));
+  const sectionsQuery = trpc.catalogue.caseStudySections.useQuery({ mockExamId }, { retry: false, enabled: Boolean(mockExamId) });
   const hasMarkingAccess = entitlementsQuery.data?.some(({ entitlement, product }) => product.category === "marking" && hasActiveEntitlement(entitlement)) === true;
-  const submit = (optOutOfMarking: boolean) => submitAttempt.mutate({ attemptId, optOutOfMarking }, { onSuccess: () => { setSubmitted(true); toast.success("Submission locked and recorded"); }, onError: (error) => toast.error(error.message) });
-  return <div className="min-h-screen bg-[#0c0524]"><PublicHeader onLogin={() => startLogin("login")} /><main className="container py-12"><Card className="mx-auto max-w-3xl border-0 shadow-[0_25px_80px_rgba(7,24,79,0.10)]"><CardContent className="p-9">{submitted ? <div className="py-8 text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#e5f7e9]"><Check className="h-8 w-8 text-[#00ff88]" /></div><h1 className="mt-6 text-3xl font-bold text-white">Exam submitted</h1><p className="mx-auto mt-3 max-w-md leading-7 text-[#c4b5fd]">Your attempt has been locked and securely recorded. You’ll receive a notification when marking is complete.</p><Button className="aft-button mt-7" onClick={() => setScreen("solutions")}>View illustrative solutions <ArrowRight className="ml-2 h-4 w-4" /></Button><Button variant="outline" className="border-[#00e5ff] text-[#00e5ff] mt-3" onClick={() => setScreen("review")}>Review your submitted answers</Button><Button variant="outline" className="border-[#00ff88] text-[#00ff88] mt-3" onClick={() => window.location.href = withBasePath("/")}>Return to home</Button></div> : <><p className="eyebrow">Final step</p><h1 className="mt-2 text-3xl font-bold text-white">Submit your case-study exam</h1><p className="mt-3 text-[#c4b5fd]">Review your completion summary before you lock and submit this attempt.</p><div className="mt-7 grid gap-3 sm:grid-cols-2">{[["First Name", "Thando"], ["Last Name", "Mokoena"], ["Email", "thando@example.com"], ["Status", "All sections answered"]].map(([label, value]) => <div key={label} className="rounded-xl border border-white/10 p-4"><div className="text-xs font-semibold uppercase tracking-wider text-white/50">{label}</div><div className="mt-1 font-semibold text-white">{value}</div></div>)}</div><div className="mt-6 rounded-xl border border-[#00e5ff]/30 bg-[#120730] p-4"><div className="font-bold text-white">Instructor marking</div><p className="mt-1 text-sm leading-6 text-[#c4b5fd]">{entitlementsQuery.isLoading ? "Checking your marking access…" : hasMarkingAccess ? "Your marking add-on is active. Send this locked attempt to the instructor queue." : "Purchase the Instructor marking add-on from the store to enable Send for marking."}</p></div><div className="mt-7 flex flex-wrap justify-end gap-3"><Button variant="outline" className="border-white/15 text-white/60" disabled={!attemptId || submitAttempt.isPending} onClick={() => submit(true)}>Submit without marking</Button><Button className="aft-button" disabled={!attemptId || submitAttempt.isPending || entitlementsQuery.isLoading || !hasMarkingAccess} onClick={() => submit(false)}>{submitAttempt.isPending ? "Locking…" : "Send for marking"} <ArrowRight className="ml-2 h-4 w-4" /></Button></div></>}</CardContent></Card></main></div>;
+  // The signed-in learner's real identity — never a placeholder.
+  const fullName = meQuery.data?.name?.trim() ?? "";
+  const firstSpace = fullName.indexOf(" ");
+  const firstName = firstSpace > 0 ? fullName.slice(0, firstSpace) : fullName;
+  const lastName = firstSpace > 0 ? fullName.slice(firstSpace + 1).trim() : "";
+  const email = meQuery.data?.email ?? "";
+  // Completion status derived from the answers actually saved on this attempt.
+  const savedAnswers = attemptContextQuery.data?.answers ?? [];
+  const answeredCount = savedAnswers.filter((item) => richTextToPlainText(item.body).trim()).length;
+  const totalSections = sectionsQuery.data?.length || savedAnswers.length || 0;
+  const statusLabel = totalSections && answeredCount < totalSections ? `${answeredCount} of ${totalSections} sections answered` : answeredCount ? "All sections answered" : "Ready to submit";
+  const submit = (optOutOfMarking: boolean) => submitAttempt.mutate({ attemptId, optOutOfMarking }, {
+    onSuccess: () => {
+      setSubmitted(true);
+      toast.success("Submission locked and recorded");
+      utils.profile.performance.invalidate();
+      utils.student.attempts.invalidate();
+      utils.instructor.dashboard.invalidate();
+      utils.marking.queue.invalidate();
+      utils.marking.stats.invalidate();
+      utils.admin.overview.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const summary = meQuery.isLoading
+    ? [["First Name", "…"], ["Last Name", "…"], ["Email", "…"], ["Status", statusLabel]] as [string, string][]
+    : meQuery.data
+      ? [["First Name", firstName || "—"], ["Last Name", lastName || "—"], ["Email", email], ["Status", statusLabel]] as [string, string][]
+      : [["First Name", "—"], ["Last Name", "—"], ["Email", "Sign in to confirm your details"], ["Status", statusLabel]] as [string, string][];
+  return <div className="min-h-screen bg-[#0c0524]"><PublicHeader onLogin={() => startLogin("login")} /><main className="container py-12"><Card className="mx-auto max-w-3xl border-0 shadow-[0_25px_80px_rgba(7,24,79,0.10)]"><CardContent className="p-9">{submitted ? <div className="py-8 text-center"><div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#e5f7e9]"><Check className="h-8 w-8 text-[#00ff88]" /></div><h1 className="mt-6 text-3xl font-bold text-white">Exam submitted</h1><p className="mx-auto mt-3 max-w-md leading-7 text-[#c4b5fd]">Your attempt has been locked and securely recorded. You’ll receive a notification when marking is complete.</p><Button className="aft-button mt-7" onClick={() => setScreen("solutions")}>View illustrative solutions <ArrowRight className="ml-2 h-4 w-4" /></Button><Button variant="outline" className="border-[#00e5ff] text-[#00e5ff] mt-3" onClick={() => setScreen("review")}>Review your submitted answers</Button><Button variant="outline" className="border-[#00ff88] text-[#00ff88] mt-3" onClick={() => window.location.href = withBasePath("/")}>Return to home</Button></div> : <><p className="eyebrow">Final step</p><h1 className="mt-2 text-3xl font-bold text-white">Submit your case-study exam</h1><p className="mt-3 text-[#c4b5fd]">Review your completion summary before you lock and submit this attempt.</p><div className="mt-7 grid gap-3 sm:grid-cols-2">{summary.map(([label, value]) => <div key={label} className="rounded-xl border border-white/10 p-4"><div className="text-xs font-semibold uppercase tracking-wider text-white/50">{label}</div><div className="mt-1 font-semibold text-white">{value}</div></div>)}</div><div className="mt-6 rounded-xl border border-[#00e5ff]/30 bg-[#120730] p-4"><div className="font-bold text-white">Instructor marking</div><p className="mt-1 text-sm leading-6 text-[#c4b5fd]">{entitlementsQuery.isLoading ? "Checking your marking access…" : hasMarkingAccess ? "Your marking add-on is active. Send this locked attempt to the instructor queue." : "Purchase the Instructor marking add-on from the store to enable Send for marking."}</p></div><div className="mt-7 flex flex-wrap justify-end gap-3"><Button variant="outline" className="border-white/15 text-white/60" disabled={!attemptId || submitAttempt.isPending} onClick={() => submit(true)}>Submit without marking</Button><Button className="aft-button" disabled={!attemptId || submitAttempt.isPending || entitlementsQuery.isLoading || !hasMarkingAccess} onClick={() => submit(false)}>{submitAttempt.isPending ? "Locking…" : "Send for marking"} <ArrowRight className="ml-2 h-4 w-4" /></Button></div></>}</CardContent></Card></main></div>;
 }
 
 export default function Home() { return <AppRouter />; }

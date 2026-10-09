@@ -58,13 +58,14 @@ function round1(value: number): number {
 }
 
 /** The plain-language status a learner or instructor sees for one submission. */
-export function submissionStatusLabel(attemptStatus: string, markingStatus: string | null | undefined, optedOut: boolean): string {
+export function submissionStatusLabel(attemptStatus: string, markingStatus: string | null | undefined, _optedOut: boolean): string {
   if (attemptStatus === "in_progress" || attemptStatus === "not_started") return "In progress";
   if (attemptStatus === "expired") return "Expired";
   if (attemptStatus === "cancelled") return "Cancelled";
   if (markingStatus === "submitted" || attemptStatus === "marked") return "Marked";
-  if (optedOut) return "Submitted (no marking requested)";
   if (markingStatus === "assigned" || markingStatus === "in_progress") return "Being marked";
+  // Every locked submission sits in the marking queue until feedback is released, whether or not
+  // the learner explicitly asked for feedback (the opt-out only tags the queue entry).
   return "Awaiting marking";
 }
 

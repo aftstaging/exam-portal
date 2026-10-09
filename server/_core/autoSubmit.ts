@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { sdk } from "./sdk";
-import { createLockedSubmission } from "../db";
+import { createLockedSubmission, hasMarkingEntitlement } from "../db";
 
 /**
  * Fires from a `navigator.sendBeacon` when a learner ends a case-study exam
@@ -26,7 +26,10 @@ export async function handleAutoSubmit(req: Request, res: Response) {
     return;
   }
   try {
-    const result = await createLockedSubmission({ userId: user.id, attemptId, optOutOfMarking: true });
+    // A forced lock (tab closed, timer expired) should not strip the learner of instructor
+    // marking: request it whenever their marking add-on is active, exactly as the submit screen would.
+    const optOutOfMarking = !(await hasMarkingEntitlement(user.id));
+    const result = await createLockedSubmission({ userId: user.id, attemptId, optOutOfMarking });
     res.status(200).json({ ok: true, ...result });
   } catch (error) {
     res.status(409).json({ ok: false, error: error instanceof Error ? error.message : "Could not submit attempt" });

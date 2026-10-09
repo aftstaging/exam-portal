@@ -136,7 +136,7 @@ function DeniedState({ title, copy }: { title: string; copy: string }) {
 }
 
 function OverviewTab() {
-  const overviewQuery = trpc.admin.overview.useQuery(undefined, { retry: false });
+  const overviewQuery = trpc.admin.overview.useQuery(undefined, { retry: false, refetchInterval: 30_000 });
   const settingsQuery = trpc.admin.payfastSettings.useQuery(undefined, { retry: false });
   const overview = overviewQuery.data;
   const activity = overview?.recentActivity ?? [];
@@ -1601,7 +1601,7 @@ function MarkingTab() {
   const isAdmin = user?.role === "admin";
   const utils = trpc.useUtils();
   const [reviewingId, setReviewingId] = useState<number | null>(null);
-  const queueQuery = trpc.marking.queue.useQuery(undefined, { retry: false });
+  const queueQuery = trpc.marking.queue.useQuery(undefined, { retry: false, refetchInterval: 30_000 });
   const instructorsQuery = trpc.supervision.instructors.useQuery(undefined, { retry: false, enabled: isAdmin });
   const instructors = instructorsQuery.data ?? [];
   const assign = trpc.marking.assign.useMutation({
@@ -1740,7 +1740,7 @@ function MarkingReleaseForm({ item, onReleased }: { item: QueueItem; onReleased:
 }
 
 function PerformanceTab() {
-  const statsQuery = trpc.marking.stats.useQuery(undefined, { retry: false });
+  const statsQuery = trpc.marking.stats.useQuery(undefined, { retry: false, refetchInterval: 30_000 });
   const stats = statsQuery.data as MarkerStats | null;
   return (
     <div className="mt-8">
@@ -1866,7 +1866,8 @@ function CouponsTab() {
     create.mutate({
       code: code.trim(),
       discountType,
-      value: Math.round(numValue),
+      // Percent coupons store the percent; fixed coupons store cents (R50 → 5000).
+      value: discountType === "fixed" ? Math.max(1, Math.round(numValue * 100)) : Math.round(numValue),
       maxUses: maxUses ? Math.max(0, Math.round(Number(maxUses))) : undefined,
       expiresAt: expiry ? expiry.toISOString() : undefined,
     });
@@ -1876,7 +1877,7 @@ function CouponsTab() {
     setEditingId(coupon.id);
     setEditCode(coupon.code);
     setEditDiscountType(coupon.discountType);
-    setEditValue(String(coupon.value));
+    setEditValue(coupon.discountType === "fixed" ? String(coupon.value / 100) : String(coupon.value));
     setEditMaxUses(coupon.maxUses > 0 ? String(coupon.maxUses) : "");
     setEditExpiresAt(coupon.expiresAt ? toDatetimeLocal(new Date(coupon.expiresAt)) : "");
   };
@@ -1891,7 +1892,8 @@ function CouponsTab() {
       couponId: editingId!,
       code: editCode.trim(),
       discountType: editDiscountType,
-      value: Math.round(numValue),
+      // Percent coupons store the percent; fixed coupons store cents (R50 → 5000).
+      value: editDiscountType === "fixed" ? Math.max(1, Math.round(numValue * 100)) : Math.round(numValue),
       maxUses: editMaxUses ? Math.max(0, Math.round(Number(editMaxUses))) : undefined,
       expiresAt: expiry ? expiry.toISOString() : null,
     });
