@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
-import { formatPageRanges, stripRunningHeaders } from "./pdfImport";
+import { formatPageRanges, linesToHtml, stripRunningHeaders } from "./pdfImport";
 
 const base = fileURLToPath(new URL("../source-pdfs/", import.meta.url));
 
@@ -92,20 +92,57 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
     sections.forEach((section, index) => {
       expect(section.title).toBe(`Task ${index + 1} — Unseen case material`);
       expect(section.durationSeconds).toBe(2700);
-      expect(section.introduction?.length).toBeGreaterThan(100);
+      // Each task carries its own brief: the intro line plus the composed email,
+      // and its own reference-material pages carved out of the paper.
+      expect(section.introduction).toContain("You received the following email");
+      expect(section.emailFrom).toBe("Elizabeth Maenda, Senior Financial Manager");
+      expect(section.emailTo).toBe("Financial Manager");
+      expect(section.emailSubject).toBeTruthy();
+      expect(section.emailText ?? "").toMatch(/<ul><li>/);
+      expect(section.emailText ?? "").toContain("Kind regards");
+      expect(section.emailText?.length ?? 0).toBeGreaterThan(500);
+      expect(section.reference?.fileName).toBe(`cartn-mock-3-questions-task-${index + 1}-reference.pdf`);
     });
   }, REAL_PAPER_TIMEOUT_MS);
 
-  it("extracts the Cartn Mock Exam 4 case study with the expected title and tasks", async () => {
+  it("extracts the Cartn Mock Exam 4 case study with per-task emails and reference material", async () => {
     const draft = await staffCaller().exams.createFromPdf(uploadArgs("cartn-mock-4-questions.pdf"));
     expect(draft.isSolutionsDocument).toBe(false);
     expect(draft.title).toBe("Cartn Mock Exam 4");
     expect(draft.examType).toBe("case_study");
     expect(draft.totalDurationSeconds).toBe(10800);
-    expect(draft.caseStudySections).toHaveLength(4);
     expect(draft.reference?.fileName).toBe("cartn-mock-4-questions-reference.pdf");
     expect(draft.formulae?.fileName).toBe("cartn-mock-4-questions-formulae-tables.pdf");
     expect(draft.emailText?.length).toBeGreaterThan(500);
+    const sections = draft.caseStudySections ?? [];
+    expect(sections).toHaveLength(4);
+    // Every task's email brief is picked up with its own headers …
+    expect(sections.map((section) => section.emailSubject)).toEqual([
+      "Digital Data Sources and Quality Management",
+      "Circular Business Model and Stakeholders",
+      "Measuring Risk and Project Management Tools and Techniques",
+      "Plant Alpha Accounting Treatment and Conflict Resolution",
+    ]);
+    sections.forEach((section) => {
+      expect(section.emailFrom).toBe("Elizabeth Maenda, Senior Financial Manager");
+      expect(section.emailTo).toBe("Financial Manager");
+    });
+    // … and the body keeps the document's own formatting: greeting paragraph,
+    // bullet list with the sub-task weightings, and the sign-off block.
+    const body = sections[0]?.emailText ?? "";
+    expect(body).toContain("<p>Hi,</p>");
+    expect(body).toMatch(/<ul><li>/);
+    expect(body).toContain("[sub-task (a) = 40%]");
+    expect(body).toContain("[sub-task (b) = 60%]");
+    expect(body).toContain("Kind regards");
+    expect(body).toContain("Elizabeth");
+    expect(body).not.toContain("Astranti");
+    expect(sections[0]?.introduction ?? "").toContain("new government regulation in Harrland");
+    // Reference material is attached per task, carved from that task's own pages.
+    sections.forEach((section, index) => {
+      expect(section.reference?.fileName).toBe(`cartn-mock-4-questions-task-${index + 1}-reference.pdf`);
+      expect(section.reference?.base64.length ?? 0).toBeGreaterThan(64);
+    });
   }, REAL_PAPER_TIMEOUT_MS);
 
   it("extracts the CIMA MCS Mock B case study with task titles and resources", async () => {
@@ -120,6 +157,14 @@ describe("exams.createFromPdf — import exam papers from a PDF", () => {
     expect(draft.reference?.fileName).toBe("cima-mock-b-questions-reference.pdf");
     expect(draft.formulae?.fileName).toBe("cima-mock-b-questions-formulae-tables.pdf");
     expect(draft.emailSubject).toMatch(/^Cartn trays/);
+    // Kaplan prints the recipient above the sender — both must land in the compose fields.
+    expect(sections[1]?.emailSubject).toBe("Cartn trays");
+    expect(sections[1]?.emailFrom).toBe("Elizabeth Maenda");
+    expect(sections[1]?.emailTo).toBe("Financial Manager");
+    expect(sections[1]?.emailText ?? "").toMatch(/<ul><li>/);
+    sections.forEach((section, index) => {
+      expect(section.reference?.fileName).toBe(`cima-mock-b-questions-task-${index + 1}-reference.pdf`);
+    });
   }, REAL_PAPER_TIMEOUT_MS);
 
   it("treats solutions and marking-guide PDFs as the feedback document without building sections", async () => {
@@ -196,5 +241,23 @@ describe("pdfImport helpers", () => {
     expect(formatPageRanges([3])).toBe("3");
     expect(formatPageRanges([1, 2])).toBe("1–2");
     expect(formatPageRanges([])).toBe("");
+  });
+
+  it("rebuilds email lines into paragraphs, bullets and a sign-off block", () => {
+    const lines = [
+      { text: "Hi,", x: 40, y: 700, height: 10, page: 1 },
+      { text: "First line of a paragraph that wraps", x: 40, y: 664, height: 10, page: 1 },
+      { text: "onto the next visual line.", x: 40, y: 650, height: 10, page: 1 },
+      { text: "● Identify three data sources.", x: 60, y: 618, height: 10, page: 1 },
+      { text: "[sub-task (a) = 40%]", x: 300, y: 604, height: 10, page: 1 },
+      { text: "Kind regards,", x: 40, y: 572, height: 10, page: 1 },
+      { text: "Elizabeth", x: 40, y: 558, height: 10, page: 1 },
+    ];
+    const html = linesToHtml(lines);
+    expect(html).toContain("<p>Hi,</p>");
+    // Wrapped lines join into one paragraph; the blank line before the bullet splits blocks.
+    expect(html).toContain("<p>First line of a paragraph that wraps onto the next visual line.</p>");
+    expect(html).toMatch(/<ul><li>Identify three data sources\.<br>\[sub-task \(a\) = 40%\]<\/li><\/ul>/);
+    expect(html).toContain("<p>Kind regards,<br>Elizabeth</p>");
   });
 });
